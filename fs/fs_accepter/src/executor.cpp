@@ -25,12 +25,14 @@
 
 #include "quickfix/FileStore.h"
 #include "quickfix/ThreadedSocketAcceptor.h"
-#include "quickfix/Log.h"
+#include "quickfix/FileLog.h"
 #include "quickfix/SessionSettings.h"
 #include "Application.h"
 #include <string>
 #include <iostream>
 #include <fstream>
+
+#include "log.h"
 
 void wait()
 {
@@ -43,7 +45,16 @@ void wait()
 
 int main( int argc, char** argv )
 {
-  if ( argc != 2 )
+  initialize ();
+  LogLog::getLogLog()->setInternalDebugging(true);
+  ConfigureAndWatchThread configureThread(getPropertiesFileArgument(argc, argv), 5 * 1000);
+
+  LOG(DEBUG_LOG_LEVEL, "TEST %d", 123);
+  LOG(INFO_LOG_LEVEL, "TEST %d", 123);
+  LOG(WARN_LOG_LEVEL, "TEST %d", 123);
+  LOG(ERROR_LOG_LEVEL, "TEST %d, %s, %f", 123, "aeradfa", 234.354);
+
+  if ( argc < 2 )
   {
     std::cout << "usage: " << argv[ 0 ]
     << " FILE." << std::endl;
@@ -57,7 +68,7 @@ int main( int argc, char** argv )
 
     Application application;
     FIX::FileStoreFactory storeFactory( settings );
-    FIX::ScreenLogFactory logFactory( settings );
+    FIX::FileLogFactory logFactory( settings );
     FIX::ThreadedSocketAcceptor acceptor( application, storeFactory, settings, logFactory );
 
     acceptor.start();
