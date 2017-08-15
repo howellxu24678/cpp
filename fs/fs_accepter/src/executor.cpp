@@ -34,6 +34,9 @@
 
 #include "log.h"
 
+#include "Poco/Foundation.h"
+
+
 void wait()
 {
   std::cout << "Type Ctrl-C to quit" << std::endl;
