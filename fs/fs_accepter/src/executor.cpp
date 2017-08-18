@@ -35,7 +35,15 @@
 #include "log.h"
 
 #include "Poco/Foundation.h"
+#include "Poco/LocalDateTime.h"
+#include "Poco/DateTimeFormatter.h"
+#include "Poco/DateTimeFormat.h"
+#include "Poco/Timestamp.h"
+#include "Poco/Thread.h"
+#include "Poco/Timespan.h"
 
+
+using namespace Poco;
 
 void wait()
 {
@@ -45,6 +53,20 @@ void wait()
     FIX::process_sleep(1);
   }
 }
+
+void testPoco()
+{
+  LocalDateTime now;
+  LOG(INFO_LOG_LEVEL, "now is %s", DateTimeFormatter::format(now, DateTimeFormat::ISO8601_FORMAT).c_str());
+  LOG(INFO_LOG_LEVEL, "now is %s", DateTimeFormatter::format(now, DateTimeFormat::SORTABLE_FORMAT).c_str());
+
+  Timestamp s;
+  Thread::sleep(5000);
+  Timespan sp = s.elapsed();
+
+  LOG(INFO_LOG_LEVEL, "elapsed:%ld ms", sp.totalMilliseconds());
+}
+
 
 int main( int argc, char** argv )
 {
@@ -56,6 +78,8 @@ int main( int argc, char** argv )
   LOG(INFO_LOG_LEVEL, "TEST %d", 123);
   LOG(WARN_LOG_LEVEL, "TEST %d", 123);
   LOG(ERROR_LOG_LEVEL, "TEST %d, %s, %f", 123, "aeradfa", 234.354);
+
+  testPoco();
 
   if ( argc < 2 )
   {

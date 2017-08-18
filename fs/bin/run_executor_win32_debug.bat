@@ -1,1 +1,1 @@
-Debug\Win32\fs_accepter.exe config\executor.cfg  config\log4cplus.properties
+Win32\Debug\fs_accepter.exe config\executor.cfg  config\log4cplus.properties
