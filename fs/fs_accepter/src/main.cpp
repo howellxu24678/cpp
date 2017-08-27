@@ -36,101 +36,13 @@
 using namespace Poco;
 using namespace Poco::Util;
 
-class TimerTest
-{
-public: 
-	TimerTest(){}
-	~TimerTest(){}
-
-	void onTimer(TimerTask& task)
-	{
-		cout << "onTimer" << endl;
-		LOG(INFO_LOG_LEVEL, "onTimer %d", 123);
-		//LOG(INFO_LOG_LEVEL, "TEST %d", 123);
-	}
-
-	void onTT()
-	{
-		cout << "onTT" << endl;
-	}
-};
-
 void wait()
 {
-  std::cout << "Type Ctrl-C to quit" << std::endl;
-  while(true)
-  {
-    FIX::process_sleep(1);
-  }
-}
-
-void testPoco()
-{
-  LocalDateTime now;
-  LOG(INFO_LOG_LEVEL, "now is %s", DateTimeFormatter::format(now, DateTimeFormat::ISO8601_FORMAT).c_str());
-  LOG(INFO_LOG_LEVEL, "now is %s", DateTimeFormatter::format(now, DateTimeFormat::SORTABLE_FORMAT).c_str());
-
-  Timestamp s;
-  Thread::sleep(5000);
-  Timespan sp = s.elapsed();
-
-  LOG(INFO_LOG_LEVEL, "elapsed:%ld ms", sp.totalMilliseconds());
-}
-
-void testLogCost()
-{
-	Timestamp s;
-	for(int i = 0; i < 1000; i++)
+	std::cout << "Type Ctrl-C to quit" << std::endl;
+	while(true)
 	{
-		LOG(ERROR_LOG_LEVEL, "TEST %s, %f, %d","aeradfa", 234.354, i);
+		FIX::process_sleep(1);
 	}
-	Timespan sp = s.elapsed();
-	LOG(INFO_LOG_LEVEL, "elapsed:%ld ms", sp.totalMilliseconds());
-}
-
-
-
-void testTimer(Util::Timer &timer, TimerTest &tt)
-{
-	LOG(WARN_LOG_LEVEL, "testTimer");
-
-	//Timestamp time;
-	//time += 10;
-
-	//Clock scheduleClock;
-	//scheduleClock += 5 * 1000;
-
-	
-	TimerTask::Ptr pTask = new TimerTaskAdapter<TimerTest>(tt, &TimerTest::onTimer);
-
-	timer.schedule(pTask, 5000, 5000);
-}
-
-void testIniFile(const std::string &file)
-{
-	static const std::string iniFile = 
-		"; comment\n"
-		"  ; comment  \n"
-		"prop1=value1\n"
-		"  prop2 = value2  \n"
-		"[section1]\n"
-		"prop1 = value3\r\n"
-		"\tprop2=value4\r\n"
-		";prop3=value7\r\n"
-		"\n"
-		"  [ section 2 ]\n"
-		"prop1 = value 5\n"
-		"\t   \n"
-		"Prop2 = value6";
-
-	std::istringstream istr(iniFile);	
-	AutoPtr<IniFileConfiguration> pConf = new IniFileConfiguration(istr);
-	LOG(INFO_LOG_LEVEL, pConf->getString("prop1").c_str());
-
-
-	AutoPtr<IniFileConfiguration> pConf2 = new IniFileConfiguration(file);
-	//IniFileConfiguration cfg("E:\\pan\\work\\code\\github\\cpp\\fs\bin\\config\\executor.cfg");
-	LOG(INFO_LOG_LEVEL, pConf2->getString("SESSION.BeginString").c_str());
 }
 
 int main( int argc, char** argv )
@@ -153,8 +65,13 @@ int main( int argc, char** argv )
 
   try
   {
-		InitLog(ssLogCfgPath);
+		//初始化日志
+		initialize ();
+		ConfigureAndWatchThread configureThread(ssLogCfgPath, 5 * 1000);
 		
+		//创建fs的api和回调处理实例，初始化与飞鼠的连接（收到fs的回调信息后，组建相应的fix消息，并找到该userId对应的session，通过fix通道发送回去）
+
+		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）
     FIX::SessionSettings settings( ssFixCfgPath );
 
     Application application;
@@ -180,7 +97,7 @@ int main( int argc, char** argv )
   }
   catch ( std::exception & e )
   {
-		LOG(FATAL_LOG_LEVEL, e.what());
+		std::cout << e.what() << std::endl;
     return 1;
   }
 }
