@@ -1,1 +1,1 @@
-Win32\Release\fs_accepter.exe config\executor.cfg  config\log4cplus.properties
+Win32\Release\fs.exe config\log4cplus.properties config\fix.cfg config\sgit.cfg

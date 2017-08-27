@@ -37,5 +37,12 @@ log4cplus::tstring
   return LOG4CPLUS_TEXT ("log4cplus.properties");
 }
 
+void InitLog(const std::string ssLogCfgPath)
+{
+	initialize ();
+	//LogLog::getLogLog()->setInternalDebugging(true);
+	ConfigureAndWatchThread configureThread(ssLogCfgPath, 5 * 1000);
+}
+
 
 #endif // __LOG_H__
