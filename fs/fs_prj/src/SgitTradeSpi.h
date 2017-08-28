@@ -1,18 +1,23 @@
 #ifndef __SGITTRADESPI_H__
 #define __SGITTRADESPI_H__
 
-#include "sgit/SgitFtdcTraderApi.h"
 
+#include "Poco/Util/IniFileConfiguration.h"
+using namespace Poco;
+using namespace Poco::Util;
+
+#include "sgit/SgitFtdcTraderApi.h"
 using namespace fstech;
+
 
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
-  CSgitTradeSpi(CThostFtdcTraderApi *pReqApi);
+  CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, std::string ssSgitCfgPath);
   ~CSgitTradeSpi();
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
-  virtual void OnFrontConnected(){};
+  virtual void OnFrontConnected();
 
   ///当客户端与交易后台通信连接断开时，该方法被调用。当发生这个情况后，API会自动重新连接，客户端可不做处理。
   ///@param nReason 错误原因
@@ -347,6 +352,7 @@ public:
 
 private:
   CThostFtdcTraderApi *m_pTradeApi;
+	AutoPtr<IniFileConfiguration> m_apSgitConf;
 };
 
 #endif // __SGITTRADESPI_H__

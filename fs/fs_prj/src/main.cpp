@@ -72,16 +72,19 @@ int main( int argc, char** argv )
 		ConfigureAndWatchThread configureThread(ssLogCfgPath, 5 * 1000);
 		
     //创建fs的api和回调处理实例，初始化与飞鼠的连接（收到fs的回调信息后，组建相应的fix消息，并找到该userId对应的session，通过fix通道发送回去）
-    AutoPtr<IniFileConfiguration> pSgitConf = new IniFileConfiguration(ssSgitCfgPath);
+    AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(ssSgitCfgPath);
     CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi();
     
-    SharedPtr<CSgitTradeSpi> pTradeSpi = new CSgitTradeSpi(pTradeApi);
-    pTradeApi->InitLog();
-    pTradeApi->RegisterSpi(pTradeSpi);
+    SharedPtr<CSgitTradeSpi> spTradeSpi = new CSgitTradeSpi(pTradeApi, ssSgitCfgPath);
+    
+		pTradeApi->IsReviveNtyCapital(false);
+		pTradeApi->RegisterSpi(spTradeSpi);
     pTradeApi->SubscribePublicTopic(THOST_TERT_QUICK);
     pTradeApi->SubscribePrivateTopic(THOST_TERT_QUICK);
-    pTradeApi->RegisterFront(const_cast<char*>(pSgitConf->getString("connect.tradeServer").c_str()));
+		std::string ssTradeServer = apSgitConf->getString("connect.tradeServer");
+    pTradeApi->RegisterFront(const_cast<char*>(ssTradeServer.c_str()));
     pTradeApi->Init();
+		LOG(INFO_LOG_LEVEL, "RegisterFront tradeServer:%s", ssTradeServer.c_str());
 
 		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）
     FIX::SessionSettings settings( ssFixCfgPath );
@@ -90,16 +93,16 @@ int main( int argc, char** argv )
     FIX::FileStoreFactory storeFactory( settings );
     FIX::FileLogFactory logFactory( settings );
 
-		AutoPtr<IniFileConfiguration> pFixConf = new IniFileConfiguration(ssFixCfgPath);
+		AutoPtr<IniFileConfiguration> apFixConf = new IniFileConfiguration(ssFixCfgPath);
 
     FIX::ThreadedSocketAcceptor acceptor(application, storeFactory, settings, logFactory );
 		acceptor.start();
-		LOG(INFO_LOG_LEVEL, "ThreadedSocketAcceptor start. SocketAcceptPort:%d", pFixConf->getInt("DEFAULT.SocketAcceptPort"));
+		LOG(INFO_LOG_LEVEL, "ThreadedSocketAcceptor start. SocketAcceptPort:%d", apFixConf->getInt("DEFAULT.SocketAcceptPort"));
 
 		FIX::ThreadedSocketInitiator initiator( application, storeFactory, settings, logFactory );
     initiator.start();
 		LOG(INFO_LOG_LEVEL, "ThreadedSocketInitiator start. SocketConnectHost:%s, SocketConnectPort:%d", 
-			pFixConf->getString("DEFAULT.SocketConnectHost").c_str(), pFixConf->getInt("DEFAULT.SocketConnectPort"));
+			apFixConf->getString("DEFAULT.SocketConnectHost").c_str(), apFixConf->getInt("DEFAULT.SocketConnectPort"));
 
     wait();
 
