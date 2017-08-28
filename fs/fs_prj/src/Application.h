@@ -35,11 +35,13 @@
 #include "quickfix/fix44/NewOrderSingle.h"
 #include "quickfix/fix50/NewOrderSingle.h"
 
+#include "SgitTradeSpi.h"
+
 class Application
 : public FIX::Application, public FIX::MessageCracker
 {
 public:
-  Application() : m_orderID(0), m_execID(0) {}
+  Application(CThostFtdcTraderApi *pTradeApi);
 
   // Application overloads
   void onCreate( const FIX::SessionID& );
@@ -73,6 +75,7 @@ public:
   }
 private:
   int m_orderID, m_execID;
+  CThostFtdcTraderApi *m_pTradeApi;
 };
 
 #endif

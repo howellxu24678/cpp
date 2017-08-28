@@ -33,7 +33,7 @@
 #include "quickfix/fix44/ExecutionReport.h"
 #include "quickfix/fix50/ExecutionReport.h"
 
-#include "log.h"
+#include "Log.h"
 
 void Application::onCreate( const FIX::SessionID& sessionID ) 
 {
@@ -351,4 +351,12 @@ void Application::onMessage( const FIX50::NewOrderSingle& message,
     FIX::Session::sendToTarget( executionReport, sessionID );
   }
   catch ( FIX::SessionNotFound& ) {}
+}
+
+Application::Application(CThostFtdcTraderApi *pTradeApi)
+   : m_orderID(0)
+   , m_execID(0)
+   , m_pTradeApi(pTradeApi)
+{
+
 }

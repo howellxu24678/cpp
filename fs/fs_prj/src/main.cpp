@@ -14,7 +14,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "log.h"
+#include "Log.h"
 
 #include "Poco/Foundation.h"
 #include "Poco/LocalDateTime.h"
@@ -32,6 +32,8 @@
 #include "Poco/Util/IniFileConfiguration.h"
 
 #include "Poco/FileStream.h"
+
+#include "SgitTradeSpi.h"
 
 using namespace Poco;
 using namespace Poco::Util;
@@ -69,12 +71,22 @@ int main( int argc, char** argv )
 		initialize ();
 		ConfigureAndWatchThread configureThread(ssLogCfgPath, 5 * 1000);
 		
-		//创建fs的api和回调处理实例，初始化与飞鼠的连接（收到fs的回调信息后，组建相应的fix消息，并找到该userId对应的session，通过fix通道发送回去）
+    //创建fs的api和回调处理实例，初始化与飞鼠的连接（收到fs的回调信息后，组建相应的fix消息，并找到该userId对应的session，通过fix通道发送回去）
+    AutoPtr<IniFileConfiguration> pSgitConf = new IniFileConfiguration(ssSgitCfgPath);
+    CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi();
+    
+    SharedPtr<CSgitTradeSpi> pTradeSpi = new CSgitTradeSpi(pTradeApi);
+    pTradeApi->InitLog();
+    pTradeApi->RegisterSpi(pTradeSpi);
+    pTradeApi->SubscribePublicTopic(THOST_TERT_QUICK);
+    pTradeApi->SubscribePrivateTopic(THOST_TERT_QUICK);
+    pTradeApi->RegisterFront(const_cast<char*>(pSgitConf->getString("connect.tradeServer").c_str()));
+    pTradeApi->Init();
 
 		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）
     FIX::SessionSettings settings( ssFixCfgPath );
 
-    Application application;
+    Application application(pTradeApi);
     FIX::FileStoreFactory storeFactory( settings );
     FIX::FileLogFactory logFactory( settings );
 
