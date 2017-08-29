@@ -6,6 +6,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerWorkingDirectory>$(SolutionDir)bin</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>config\fix.cfg  config\log4cplus.properties</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>config\log4cplus.properties config\sgit.cfg config\fix.cfg</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

@@ -17,21 +17,21 @@
 #include "Log.h"
 
 #include "Poco/Foundation.h"
-#include "Poco/LocalDateTime.h"
-#include "Poco/DateTimeFormatter.h"
-#include "Poco/DateTimeFormat.h"
-#include "Poco/Timestamp.h"
-#include "Poco/Thread.h"
-#include "Poco/Timespan.h"
+//#include "Poco/LocalDateTime.h"
+//#include "Poco/DateTimeFormatter.h"
+//#include "Poco/DateTimeFormat.h"
+//#include "Poco/Timestamp.h"
+//#include "Poco/Thread.h"
+//#include "Poco/Timespan.h"
 
 #include "Poco/Util/Util.h"
-#include "Poco/Util/Timer.h"
-#include "Poco/Util/TimerTask.h"
-#include "Poco/Util/TimerTaskAdapter.h"
+//#include "Poco/Util/Timer.h"
+//#include "Poco/Util/TimerTask.h"
+//#include "Poco/Util/TimerTaskAdapter.h"
 
 #include "Poco/Util/IniFileConfiguration.h"
 
-#include "Poco/FileStream.h"
+//#include "Poco/FileStream.h"
 
 #include "SgitTradeSpi.h"
 
@@ -62,8 +62,8 @@ int main( int argc, char** argv )
 	}
 
 	std::string ssLogCfgPath = argv[1];
-	std::string ssFixCfgPath = argv[2];
-	std::string ssSgitCfgPath = argv[3];
+	std::string ssSgitCfgPath = argv[2];
+  std::string ssFixCfgPath = argv[3];
 
   try
   {
@@ -73,15 +73,15 @@ int main( int argc, char** argv )
 		
     //创建fs的api和回调处理实例，初始化与飞鼠的连接（收到fs的回调信息后，组建相应的fix消息，并找到该userId对应的session，通过fix通道发送回去）
     AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(ssSgitCfgPath);
-    CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi();
-    
+    CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi(
+      apSgitConf->hasProperty("global.flowPath") ? apSgitConf->getString("global.flowPath").c_str() : "");
     SharedPtr<CSgitTradeSpi> spTradeSpi = new CSgitTradeSpi(pTradeApi, ssSgitCfgPath);
     
 		pTradeApi->IsReviveNtyCapital(false);
 		pTradeApi->RegisterSpi(spTradeSpi);
     pTradeApi->SubscribePublicTopic(THOST_TERT_QUICK);
     pTradeApi->SubscribePrivateTopic(THOST_TERT_QUICK);
-		std::string ssTradeServer = apSgitConf->getString("connect.tradeServer");
+		std::string ssTradeServer = apSgitConf->getString("global.tradeServer");
     pTradeApi->RegisterFront(const_cast<char*>(ssTradeServer.c_str()));
     pTradeApi->Init();
 		LOG(INFO_LOG_LEVEL, "RegisterFront tradeServer:%s", ssTradeServer.c_str());

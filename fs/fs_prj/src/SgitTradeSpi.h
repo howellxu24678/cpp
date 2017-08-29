@@ -36,7 +36,7 @@ public:
   virtual void OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthenticateField, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
   ///登录请求响应
-  virtual void OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///登出请求响应
   virtual void OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
@@ -351,8 +351,9 @@ public:
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
 private:
-  CThostFtdcTraderApi *m_pTradeApi;
-	AutoPtr<IniFileConfiguration> m_apSgitConf;
+  CThostFtdcTraderApi             *m_pTradeApi;
+	AutoPtr<IniFileConfiguration>   m_apSgitConf;
+  AtomicCounter                   m_acRequestId;
 };
 
 #endif // __SGITTRADESPI_H__

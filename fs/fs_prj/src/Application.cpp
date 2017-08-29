@@ -67,24 +67,27 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 void Application::onMessage( const FIX42::NewOrderSingle& message,
                              const FIX::SessionID& sessionID )
 {
-  FIX::Symbol symbol;
-  FIX::Side side;
-  FIX::OrdType ordType;
-  FIX::OrderQty orderQty;
-  FIX::Price price;
-  FIX::ClOrdID clOrdID;
   FIX::Account account;
-
-  message.get( ordType );
-
-  if ( ordType != FIX::OrdType_LIMIT )
-    throw FIX::IncorrectTagValue( ordType.getField() );
-
-  message.get( symbol );
-  message.get( side );
-  message.get( orderQty );
-  message.get( price );
+  FIX::ClOrdID clOrdID;
+  FIX::Symbol symbol;
+  FIX::OrderQty orderQty;
+  FIX::HandlInst handInst;
+  FIX::OrdType ordType;
+  FIX::Price price;
+  FIX::Side side;
+  FIX::OpenClose openClose;
+  FIX::TransactTime transTime;
+  FIX::TimeInForce timeInForce;
+  //if ( ordType != FIX::OrdType_LIMIT )
+  //  throw FIX::IncorrectTagValue( ordType.getField() );
+  message.get( account );
   message.get( clOrdID );
+  message.get( symbol );
+  message.get( orderQty );
+  message.get( handInst );
+  message.get( ordType );
+  message.get( price );
+  message.get( side );
 
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
       ( FIX::OrderID( genOrderID() ),
