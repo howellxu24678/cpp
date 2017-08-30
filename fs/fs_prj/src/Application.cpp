@@ -116,10 +116,10 @@ void Application::onMessage( const FIX42::NewOrderSingle& message,
   catch ( FIX::SessionNotFound& ) {}
 }
 
-Application::Application(CThostFtdcTraderApi *pTradeApi)
+Application::Application(const CSgitApiManager &oSgitApiMngr)
    : m_orderID(0)
    , m_execID(0)
-   , m_pTradeApi(pTradeApi)
+   , m_oSigtApiMngr(oSgitApiMngr)
 {
 
 }
