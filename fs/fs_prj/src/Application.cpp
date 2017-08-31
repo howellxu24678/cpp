@@ -68,45 +68,11 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 void Application::onMessage( const FIX42::NewOrderSingle& message,
                              const FIX::SessionID& sessionID )
 {
-  FIX::SenderCompID senderCompId;
-  FIX::OnBehalfOfCompID  onBehalfOfCompId;
-  FIX::Account account;
-  FIX::ClOrdID clOrdID;
-  FIX::Symbol symbol;
-  FIX::OrderQty orderQty;
-  FIX::HandlInst handInst;
-  FIX::OrdType ordType;
-  FIX::Price price;
-  FIX::Side side;
-  FIX::OpenClose openClose;
-  FIX::TransactTime transTime;
-  FIX::TimeInForce timeInForce;
-  //if ( ordType != FIX::OrdType_LIMIT )
-  //  throw FIX::IncorrectTagValue( ordType.getField() );
-  message.get( account );
-  message.get( clOrdID );
-  message.get( symbol );
-  message.get( orderQty );
-  message.get( handInst );
-  message.get( ordType );
-  message.get( price );
-  message.get( side );
-
-
-  //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Api实例
-  if (CToolkit::isAliasAcct(account.getValue()))
-  {
-  }
-  else
-  {
-
-  }
-
-
-  //如果account为账户别名，即包含字母，则要通过 SenderCompID + OnBehalfOfCompID + 别名 获取对应的Api实例
-  std::string ssSenderCompId = message.getHeader().isSet(senderCompId) ? message.getHeader().get(senderCompId).getValue() : "";
-  std::string ssOnBehalfOfCompID = message.getHeader().isSet(onBehalfOfCompId) ? 
-    message.getHeader().get(onBehalfOfCompId).getValue() : "";
+	SharedPtr<CSgitTradeSpi> spTradeSpi = m_oSigtApiMngr.GetApi(message);
+	if (spTradeSpi)
+	{
+		spTradeSpi->ReqOrderInsert(message);
+	}
 
 
 

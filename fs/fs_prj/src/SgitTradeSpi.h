@@ -9,12 +9,18 @@ using namespace Poco::Util;
 #include "sgit/SgitFtdcTraderApi.h"
 using namespace fstech;
 
+#include "quickfix/fix42/NewOrderSingle.h"
+
 
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
   CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitTradeSpi();
+
+	///报单录入请求
+	virtual int ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMsg);
+
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
   virtual void OnFrontConnected();

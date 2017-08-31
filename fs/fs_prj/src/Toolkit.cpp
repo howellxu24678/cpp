@@ -9,3 +9,15 @@ bool CToolkit::isAliasAcct(const std::string &ssAcct)
   return false;
 }
 
+bool CToolkit::getStrinIfSet(Poco::AutoPtr<Poco::Util::IniFileConfiguration> apCfg, const std::string &ssProperty, std::string &ssValue)
+{
+	ssValue = "";
+	if (apCfg->hasProperty(ssProperty))
+	{
+		ssValue = apCfg->getString(ssProperty);
+		return true;
+	}
+
+	return false;
+}
+

@@ -13,21 +13,20 @@ public:
 
   void Init();
 
-  CThostFtdcTraderApi* CreateApiSpi(const std::string &ssFlowPath, const std::string &ssTradeServer, const std::string ssTradeId);
+  SharedPtr<CSgitTradeSpi> CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string ssTradeId);
 
-  void LinkAcct2Api(CThostFtdcTraderApi* pTradeApi, const std::string ssTradeId);
+  void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string ssTradeId);
 
-  CThostFtdcTraderApi* GetApi(const FIX::Message& oMsg);
+  SharedPtr<CSgitTradeSpi> GetApi(const FIX::Message& oMsg);
 private:
   std::string                           m_ssSgitCfgPath;
+
+	AutoPtr<IniFileConfiguration>					m_apSgitConf;
 
   //账户别名（TargetCompID + OnBehalfOfCompID）对实际账户
   std::map<std::string, std::string>    m_mapAlias2Acct;
 
-  //账户别名->Api实例
-  std::map<std::string,  CThostFtdcTraderApi*>  m_mapAlias2Api;
-
-  //实际账户->Api实例
-  std::map<std::string, CThostFtdcTraderApi*>   m_mapAcct2Api;
+  //实际账户(账户别名)->Spi实例
+  std::map<std::string, SharedPtr<CSgitTradeSpi>>   m_mapAcct2Spi;
 };
 #endif // __SGITAPIMANAGER_H__

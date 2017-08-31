@@ -63,3 +63,36 @@ void CSgitTradeSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
     m_pTradeApi->ReqSettlementInfoConfirm(&stuConfirm, m_acRequestId++);
   }
 }
+
+int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMsg)
+{
+	FIX::SenderCompID senderCompId;
+	FIX::OnBehalfOfCompID  onBehalfOfCompId;
+	FIX::Account account;
+	FIX::ClOrdID clOrdID;
+	FIX::Symbol symbol;
+	FIX::OrderQty orderQty;
+	FIX::HandlInst handInst;
+	FIX::OrdType ordType;
+	FIX::Price price;
+	FIX::Side side;
+	FIX::OpenClose openClose;
+	FIX::TransactTime transTime;
+	FIX::TimeInForce timeInForce;
+	//if ( ordType != FIX::OrdType_LIMIT )
+	//  throw FIX::IncorrectTagValue( ordType.getField() );
+	oNewOrderSingleMsg.get( account );
+	oNewOrderSingleMsg.get( clOrdID );
+	oNewOrderSingleMsg.get( symbol );
+	oNewOrderSingleMsg.get( orderQty );
+	oNewOrderSingleMsg.get( handInst );
+	oNewOrderSingleMsg.get( ordType );
+	oNewOrderSingleMsg.get( price );
+	oNewOrderSingleMsg.get( side );
+
+	CThostFtdcInputOrderField stuInputOrder;
+	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
+
+
+	m_pTradeApi->ReqOrderInsert(&stuInputOrder, m_acRequestId++);
+}
