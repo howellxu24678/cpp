@@ -1,10 +1,18 @@
 #include "SgitTradeSpi.h"
 #include "Log.h"
 
-CSgitTradeSpi::CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, std::string ssSgitCfgPath)
+CSgitTradeSpi::CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
   : m_pTradeApi(pReqApi)
 {
 	m_apSgitConf = new IniFileConfiguration(ssSgitCfgPath);
+
+
+  //FIX::SessionID oSessionID = FIX::SessionID(
+  //  apSgitConf->getString(*it + ".BeginString"), 
+  //  apSgitConf->getString(*it + ".SenderCompID"), 
+  //  apSgitConf->getString(*it + ".TargetCompID"));
+  //std::string ssOnBehalfOfCompID = apSgitConf->hasProperty(*it + ".OnBehalfOfCompID") ? 
+  //  apSgitConf->getString(*it + ".OnBehalfOfCompID") : "";
 }
 
 CSgitTradeSpi::~CSgitTradeSpi()

@@ -34,6 +34,7 @@
 #include "quickfix/fix50/ExecutionReport.h"
 
 #include "Log.h"
+#include "Toolkit.h"
 
 void Application::onCreate( const FIX::SessionID& sessionID ) 
 {
@@ -67,6 +68,8 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 void Application::onMessage( const FIX42::NewOrderSingle& message,
                              const FIX::SessionID& sessionID )
 {
+  FIX::SenderCompID senderCompId;
+  FIX::OnBehalfOfCompID  onBehalfOfCompId;
   FIX::Account account;
   FIX::ClOrdID clOrdID;
   FIX::Symbol symbol;
@@ -89,31 +92,49 @@ void Application::onMessage( const FIX42::NewOrderSingle& message,
   message.get( price );
   message.get( side );
 
-  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-      ( FIX::OrderID( genOrderID() ),
-        FIX::ExecID( genExecID() ),
-        FIX::ExecTransType( FIX::ExecTransType_NEW ),
-        FIX::ExecType( FIX::ExecType_FILL ),
-        FIX::OrdStatus( FIX::OrdStatus_FILLED ),
-        symbol,
-        side,
-        FIX::LeavesQty( 0 ),
-        FIX::CumQty( orderQty ),
-        FIX::AvgPx( price ) );
 
-  executionReport.set( clOrdID );
-  executionReport.set( orderQty );
-  executionReport.set( FIX::LastShares( orderQty ) );
-  executionReport.set( FIX::LastPx( price ) );
-
-  if( message.isSet(account) )
-    executionReport.setField( message.get(account) );
-
-  try
+  //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Api实例
+  if (CToolkit::isAliasAcct(account.getValue()))
   {
-    FIX::Session::sendToTarget( executionReport, sessionID );
   }
-  catch ( FIX::SessionNotFound& ) {}
+  else
+  {
+
+  }
+
+
+  //如果account为账户别名，即包含字母，则要通过 SenderCompID + OnBehalfOfCompID + 别名 获取对应的Api实例
+  std::string ssSenderCompId = message.getHeader().isSet(senderCompId) ? message.getHeader().get(senderCompId).getValue() : "";
+  std::string ssOnBehalfOfCompID = message.getHeader().isSet(onBehalfOfCompId) ? 
+    message.getHeader().get(onBehalfOfCompId).getValue() : "";
+
+
+
+  //FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
+  //    ( FIX::OrderID( genOrderID() ),
+  //      FIX::ExecID( genExecID() ),
+  //      FIX::ExecTransType( FIX::ExecTransType_NEW ),
+  //      FIX::ExecType( FIX::ExecType_FILL ),
+  //      FIX::OrdStatus( FIX::OrdStatus_FILLED ),
+  //      symbol,
+  //      side,
+  //      FIX::LeavesQty( 0 ),
+  //      FIX::CumQty( orderQty ),
+  //      FIX::AvgPx( price ) );
+
+  //executionReport.set( clOrdID );
+  //executionReport.set( orderQty );
+  //executionReport.set( FIX::LastShares( orderQty ) );
+  //executionReport.set( FIX::LastPx( price ) );
+
+  //if( message.isSet(account) )
+  //  executionReport.setField( message.get(account) );
+
+  //try
+  //{
+  //  FIX::Session::sendToTarget( executionReport, sessionID );
+  //}
+  //catch ( FIX::SessionNotFound& ) {}
 }
 
 Application::Application(const CSgitApiManager &oSgitApiMngr)

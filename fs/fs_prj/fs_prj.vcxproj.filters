@@ -24,6 +24,12 @@
     <ClCompile Include="src\SgitTradeSpi.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="src\SgitApiManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Toolkit.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -33,6 +39,12 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\Log.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SgitApiManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Toolkit.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

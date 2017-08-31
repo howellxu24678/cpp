@@ -36,7 +36,6 @@
 
 using namespace Poco;
 using namespace Poco::Util;
-
 /*
 The following table provides examples regarding the use of SenderCompID (49) , TargetCompID (56) , DeliverToCompID (128) , and OnBehalfOfCompID (115) when using a single point-to-point FIX session between two firms. Assumption (A=sellside, B =buyside):
 

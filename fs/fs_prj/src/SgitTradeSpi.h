@@ -13,7 +13,7 @@ using namespace fstech;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
-  CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, std::string ssSgitCfgPath);
+  CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitTradeSpi();
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
