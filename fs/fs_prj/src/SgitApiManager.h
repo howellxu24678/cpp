@@ -3,6 +3,7 @@
 
 
 #include "SgitTradeSpi.h"
+#include "quickfix/Message.h"
 
 class CSgitApiManager
 {
