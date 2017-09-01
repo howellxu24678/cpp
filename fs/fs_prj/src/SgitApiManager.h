@@ -17,7 +17,12 @@ public:
 
   void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string ssTradeId);
 
-  SharedPtr<CSgitTradeSpi> GetApi(const FIX::Message& oMsg);
+  SharedPtr<CSgitTradeSpi> GetSpi(const FIX::Message& oMsg);
+
+  SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
+
+  std::string GetRealAccont(const std::string &ssAcct);
+
 private:
   std::string                           m_ssSgitCfgPath;
 

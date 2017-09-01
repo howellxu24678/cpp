@@ -12,10 +12,12 @@ using namespace fstech;
 #include "quickfix/fix42/NewOrderSingle.h"
 
 
+
+class CSgitApiManager;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
-  CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
+  CSgitTradeSpi(CSgitApiManager *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitTradeSpi();
 
 	///报单录入请求
@@ -358,8 +360,11 @@ public:
 
 private:
   CThostFtdcTraderApi             *m_pTradeApi;
+  CSgitApiManager                 *m_pMgr;
+  std::string                     m_ssTradeID;
 	AutoPtr<IniFileConfiguration>   m_apSgitConf;
   AtomicCounter                   m_acRequestId;
+
 };
 
 #endif // __SGITTRADESPI_H__

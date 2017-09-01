@@ -1,8 +1,11 @@
 #include "SgitTradeSpi.h"
+#include "SgitApiManager.h"
 #include "Log.h"
 
-CSgitTradeSpi::CSgitTradeSpi(CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
-  : m_pTradeApi(pReqApi)
+CSgitTradeSpi::CSgitTradeSpi(CSgitApiManager *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
+  : m_pMgr(pMgr)
+  , m_pTradeApi(pReqApi)
+  , m_ssTradeID(ssTradeId)
 {
 	m_apSgitConf = new IniFileConfiguration(ssSgitCfgPath);
 
@@ -92,7 +95,15 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 
 	CThostFtdcInputOrderField stuInputOrder;
 	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
+  
+  strncpy(stuInputOrder.InvestorID, m_pMgr->GetRealAccont(account.getValue()).c_str(), sizeof(stuInputOrder.InvestorID));
+  strncpy(stuInputOrder.OrderRef, clOrdID.getValue().c_str(), sizeof(stuInputOrder.OrderRef));
+  strncpy(stuInputOrder.InstrumentID, symbol.getValue().c_str(), sizeof(stuInputOrder.InstrumentID));
+  stuInputOrder.VolumeTotalOriginal = orderQty.getValue();
+  stuInputOrder.LimitPrice = price.getValue();
+  strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
 
 
-	m_pTradeApi->ReqOrderInsert(&stuInputOrder, m_acRequestId++);
+
+	return m_pTradeApi->ReqOrderInsert(&stuInputOrder, m_acRequestId++);
 }

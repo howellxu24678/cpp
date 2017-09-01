@@ -21,3 +21,8 @@ bool CToolkit::getStrinIfSet(Poco::AutoPtr<Poco::Util::IniFileConfiguration> apC
 	return false;
 }
 
+std::string CToolkit::GenAcctAliasKey(const std::string &ssTargetCompID, const std::string &ssOnBehalfOfCompID, const std::string &ssTradeID)
+{
+  return ssTargetCompID + "|" + ssOnBehalfOfCompID + "|" + ssTradeID;
+}
+

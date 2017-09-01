@@ -68,7 +68,7 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 void Application::onMessage( const FIX42::NewOrderSingle& message,
                              const FIX::SessionID& sessionID )
 {
-	SharedPtr<CSgitTradeSpi> spTradeSpi = m_oSigtApiMngr.GetApi(message);
+	SharedPtr<CSgitTradeSpi> spTradeSpi = m_oSigtApiMngr.GetSpi(message);
 	if (spTradeSpi)
 	{
 		spTradeSpi->ReqOrderInsert(message);
