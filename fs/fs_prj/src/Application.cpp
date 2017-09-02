@@ -63,7 +63,10 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 void Application::fromApp( const FIX::Message& message,
                            const FIX::SessionID& sessionID )
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::UnsupportedMessageType )
-{ crack( message, sessionID ); }
+{
+	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
+	crack( message, sessionID ); 
+}
 
 void Application::onMessage( const FIX42::NewOrderSingle& message,
                              const FIX::SessionID& sessionID )

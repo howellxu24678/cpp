@@ -18,9 +18,9 @@ CSgitApiManager::~CSgitApiManager()
 
 }
 
-void CSgitApiManager::Init()
+bool CSgitApiManager::Init()
 {
-  AutoPtr<IniFileConfiguration> m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+  m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
   std::string ssFlowPath = "";
   CToolkit::getStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath);
@@ -31,6 +31,7 @@ void CSgitApiManager::Init()
   if (!m_apSgitConf->hasProperty(ssTradeIdListKey))
   {
     LOG(ERROR_LOG_LEVEL, "Can not find property:%s in %s", ssTradeIdListKey.c_str(), m_ssSgitCfgPath.c_str());
+		return false;
   }
 
   StringTokenizer st(m_apSgitConf->getString(ssTradeIdListKey), ",", 
@@ -39,9 +40,11 @@ void CSgitApiManager::Init()
   {
     LinkAcct2Spi(CreateSpi(ssFlowPath, ssTradeServerAddr, *it), *it);
   }
+
+	return true;
 }
 
-SharedPtr<CSgitTradeSpi> CSgitApiManager::CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string ssTradeId)
+SharedPtr<CSgitTradeSpi> CSgitApiManager::CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId)
 {
   CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
   SharedPtr<CSgitTradeSpi> spTradeSpi = new CSgitTradeSpi(this, pTradeApi, m_ssSgitCfgPath, ssTradeId);
@@ -60,7 +63,7 @@ SharedPtr<CSgitTradeSpi> CSgitApiManager::CreateSpi(const std::string &ssFlowPat
   return spTradeSpi;
 }
 
-void CSgitApiManager::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string ssTradeId)
+void CSgitApiManager::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId)
 {
   StringTokenizer stAccounts(m_apSgitConf->getString(ssTradeId + ".Accounts"), ",", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
@@ -84,7 +87,7 @@ void CSgitApiManager::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const st
   for(StringTokenizer::Iterator it = stAccountAlias.begin(); it != stAccountAlias.end(); it++)
   {
     std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(ssTargetCompID, ssOnBehalfOfCompID, *it);
-    std::string ssAcctValue = m_apSgitConf->getString(ssTradeId + *it);
+    std::string ssAcctValue = m_apSgitConf->getString(ssTradeId + "."+ *it);
 
     LOG(DEBUG_LOG_LEVEL, "AccountAlias:%s, Account:%s", ssAcctAliasKey.c_str(), ssAcctValue.c_str());
 
@@ -102,12 +105,7 @@ SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const FIX::Message& oMsg)
   if (!CToolkit::isAliasAcct(account.getValue())) return GetSpi(account.getValue());
 
   //如果account为账户别名，即包含字母，则要通过 SenderCompID + OnBehalfOfCompID + 别名 获取对应的Spi实例
-  FIX::SenderCompID senderCompId;
-  FIX::OnBehalfOfCompID onBehalfOfCompId;
-  std::string ssSenderCompId = oMsg.getHeader().getFieldIfSet(senderCompId) ? senderCompId.getValue() : "";
-  std::string ssOnBehalfOfCompID = oMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
-
-  return GetSpi(CToolkit::GenAcctAliasKey(ssSenderCompId, ssOnBehalfOfCompID, account.getValue()));
+	return GetSpi(CToolkit::GetAcctAliasKey(account.getValue(), oMsg));
 }
 
 SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const std::string &ssKey)
@@ -122,17 +120,21 @@ SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const std::string &ssKey)
   return nullptr;
 }
 
-std::string CSgitApiManager::GetRealAccont(const std::string &ssAcct)
+std::string CSgitApiManager::GetRealAccont(const FIX::Message& oMsg)
 {
-  if(!CToolkit::isAliasAcct(ssAcct)) return ssAcct;
+	FIX::Account account;
+	oMsg.getField(account);
 
-  std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcct);
-  if (cit != m_mapAlias2Acct.end())
-  {
-    return cit->second;
-  }
+	if(!CToolkit::isAliasAcct(account.getValue())) return account.getValue();
 
-  LOG(ERROR_LOG_LEVEL, "Can not find Real Account by key:%s", ssAcct.c_str());
-  return "";
+	std::string ssAcctAliasKey = CToolkit::GetAcctAliasKey(account.getValue(), oMsg);
+	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
+	if (cit != m_mapAlias2Acct.end())
+	{
+		return cit->second;
+	}
+
+	LOG(ERROR_LOG_LEVEL, "Can not find Real Account by key:%s", ssAcctAliasKey.c_str());
+	return "";
 }
 

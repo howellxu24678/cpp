@@ -11,17 +11,17 @@ public:
   CSgitApiManager(const std::string &ssSgitCfgPath);
   ~CSgitApiManager();
 
-  void Init();
+  bool Init();
 
-  SharedPtr<CSgitTradeSpi> CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string ssTradeId);
+  SharedPtr<CSgitTradeSpi> CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
 
-  void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string ssTradeId);
+  void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId);
 
   SharedPtr<CSgitTradeSpi> GetSpi(const FIX::Message& oMsg);
 
   SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
 
-  std::string GetRealAccont(const std::string &ssAcct);
+  std::string GetRealAccont(const FIX::Message& oMsg);
 
 private:
   std::string                           m_ssSgitCfgPath;

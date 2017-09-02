@@ -26,3 +26,13 @@ std::string CToolkit::GenAcctAliasKey(const std::string &ssTargetCompID, const s
   return ssTargetCompID + "|" + ssOnBehalfOfCompID + "|" + ssTradeID;
 }
 
+std::string CToolkit::GetAcctAliasKey(const std::string &ssAccount, const FIX::Message& oMsg)
+{
+	FIX::SenderCompID senderCompId;
+	FIX::OnBehalfOfCompID onBehalfOfCompId;
+	std::string ssSenderCompId = oMsg.getHeader().getFieldIfSet(senderCompId) ? senderCompId.getValue() : "";
+	std::string ssOnBehalfOfCompID = oMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
+
+	return CToolkit::GenAcctAliasKey(ssSenderCompId, ssOnBehalfOfCompID, ssAccount);
+}
+

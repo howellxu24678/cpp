@@ -33,18 +33,13 @@ void CSgitTradeSpi::OnFrontConnected()
 {
 	LOG(INFO_LOG_LEVEL, __FUNCTION__);
 
-  AbstractConfiguration::Keys keys;
-  m_apSgitConf->keys("account",keys);
+	CThostFtdcReqUserLoginField stuLogin;
+	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
+	strncpy(stuLogin.UserID, m_ssTradeID.c_str(), sizeof(stuLogin.UserID));
+	strncpy(stuLogin.Password, m_apSgitConf->getString(m_ssTradeID + ".PassWord").c_str(), sizeof(stuLogin.Password));
+	m_pTradeApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
-  CThostFtdcReqUserLoginField stuLogin;
-  for (AbstractConfiguration::Keys::iterator it = keys.begin(); it != keys.end(); it++)
-  {
-    memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
-    strncpy(stuLogin.UserID, it->c_str(), sizeof(stuLogin.UserID));
-    strncpy(stuLogin.Password, m_apSgitConf->getString("account." + *it).c_str(), sizeof(stuLogin.Password));
-    m_pTradeApi->ReqUserLogin(&stuLogin, m_acRequestId++);
-    LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s",stuLogin.UserID);
-  }
+	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s",stuLogin.UserID);
 }
 
 void CSgitTradeSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, 
@@ -73,9 +68,10 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 	FIX::OnBehalfOfCompID  onBehalfOfCompId;
 	FIX::Account account;
 	FIX::ClOrdID clOrdID;
+	//FIX::SecurityExchange securityExchange;
 	FIX::Symbol symbol;
 	FIX::OrderQty orderQty;
-	FIX::HandlInst handInst;
+	//FIX::HandlInst handInst;
 	FIX::OrdType ordType;
 	FIX::Price price;
 	FIX::Side side;
@@ -84,26 +80,74 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 	FIX::TimeInForce timeInForce;
 	//if ( ordType != FIX::OrdType_LIMIT )
 	//  throw FIX::IncorrectTagValue( ordType.getField() );
-	oNewOrderSingleMsg.get( account );
-	oNewOrderSingleMsg.get( clOrdID );
-	oNewOrderSingleMsg.get( symbol );
-	oNewOrderSingleMsg.get( orderQty );
-	oNewOrderSingleMsg.get( handInst );
-	oNewOrderSingleMsg.get( ordType );
-	oNewOrderSingleMsg.get( price );
-	oNewOrderSingleMsg.get( side );
+	oNewOrderSingleMsg.get(account);
+	oNewOrderSingleMsg.get(clOrdID);
+	//oNewOrderSingleMsg.get(securityExchange);
+	oNewOrderSingleMsg.get(symbol);
+	oNewOrderSingleMsg.get(orderQty);
+	//oNewOrderSingleMsg.get(handInst);
+	oNewOrderSingleMsg.get(ordType);
+	oNewOrderSingleMsg.get(price);
+	oNewOrderSingleMsg.get(side);
+	oNewOrderSingleMsg.get(openClose);
+	oNewOrderSingleMsg.get(transTime);
+	//oNewOrderSingleMsg.get(timeInForce);
 
 	CThostFtdcInputOrderField stuInputOrder;
 	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
   
-  strncpy(stuInputOrder.InvestorID, m_pMgr->GetRealAccont(account.getValue()).c_str(), sizeof(stuInputOrder.InvestorID));
+	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
+  strncpy(stuInputOrder.InvestorID, m_pMgr->GetRealAccont(oNewOrderSingleMsg).c_str(), sizeof(stuInputOrder.InvestorID));
   strncpy(stuInputOrder.OrderRef, clOrdID.getValue().c_str(), sizeof(stuInputOrder.OrderRef));
+	
   strncpy(stuInputOrder.InstrumentID, symbol.getValue().c_str(), sizeof(stuInputOrder.InstrumentID));
   stuInputOrder.VolumeTotalOriginal = orderQty.getValue();
+	stuInputOrder.OrderPriceType = ordType.getValue();
   stuInputOrder.LimitPrice = price.getValue();
-  strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
+	stuInputOrder.Direction = side.getValue();
+	//stuInputOrder.CombOffsetFlag[0] = openClose.getValue();
+  stuInputOrder.CombOffsetFlag[0] = '0';
+	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
+	stuInputOrder.MinVolume = 1;
+	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
+	stuInputOrder.ContingentCondition = THOST_FTDC_CC_Immediately;
+	stuInputOrder.StopPrice = 0.0;
+	stuInputOrder.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
+	stuInputOrder.IsAutoSuspend = false;
+	stuInputOrder.UserForceClose = false;
+	stuInputOrder.IsSwapOrder = false;
+	stuInputOrder.CombHedgeFlag[0] = '0'; 
+	
+	stuInputOrder.RequestID = m_acRequestId++;
+	return m_pTradeApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
+}
 
+void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+}
 
+void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+}
 
-	return m_pTradeApi->ReqOrderInsert(&stuInputOrder, m_acRequestId++);
+void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
+{
+	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+}
+
+void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
+{
+	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+}
+
+void CSgitTradeSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
+{
+	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+}
+
+void CSgitTradeSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
+{
+	LOG(INFO_LOG_LEVEL, __FUNCTION__);
 }

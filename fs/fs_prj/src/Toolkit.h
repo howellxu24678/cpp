@@ -3,6 +3,7 @@
 
 #include <string>
 #include "Poco/Util/IniFileConfiguration.h"
+#include "quickfix/Message.h"
 
 class CToolkit
 {
@@ -18,5 +19,7 @@ public:
     const std::string &ssTargetCompID, 
     const std::string &ssOnBehalfOfCompID, 
     const std::string &ssTradeID); 
+
+	static std::string GetAcctAliasKey(const std::string &ssAccount, const FIX::Message& oMsg);
 };
 #endif // __TOOLKIT_H__
