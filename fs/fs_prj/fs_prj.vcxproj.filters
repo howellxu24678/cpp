@@ -47,5 +47,8 @@
     <ClInclude Include="src\Toolkit.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\Const.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

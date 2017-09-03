@@ -21,5 +21,7 @@ public:
     const std::string &ssTradeID); 
 
 	static std::string GetAcctAliasKey(const std::string &ssAccount, const FIX::Message& oMsg);
+
+	static bool isExist(const std::string &ssFilePath);
 };
 #endif // __TOOLKIT_H__

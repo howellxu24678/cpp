@@ -1,5 +1,6 @@
 #include "Toolkit.h"
 #include <cctype>
+#include "Poco/File.h"
 
 bool CToolkit::isAliasAcct(const std::string &ssAcct)
 {
@@ -34,5 +35,11 @@ std::string CToolkit::GetAcctAliasKey(const std::string &ssAccount, const FIX::M
 	std::string ssOnBehalfOfCompID = oMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
 
 	return CToolkit::GenAcctAliasKey(ssSenderCompId, ssOnBehalfOfCompID, ssAccount);
+}
+
+bool CToolkit::isExist(const std::string &ssFilePath)
+{
+	Poco::File file = Poco::File(ssFilePath);
+	return file.exists();
 }
 
