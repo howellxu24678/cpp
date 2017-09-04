@@ -1,6 +1,7 @@
 #include "SgitApiManager.h"
 #include "Poco/StringTokenizer.h"
 #include "Poco/Util/IniFileConfiguration.h"
+#include "Poco/File.h"
 #include "Log.h"
 #include "quickfix/SessionID.h"
 #include "Toolkit.h"
