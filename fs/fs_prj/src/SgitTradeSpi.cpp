@@ -124,7 +124,9 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 
 void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+	LOG(INFO_LOG_LEVEL, "%s, ErrorID:%d, ErrorMsg:%s,OrderRef:%s, OrderSysID:%s, ExchangeID:%s", 
+		__FUNCTION__, pRspInfo->ErrorID, pRspInfo->ErrorMsg, 
+		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID);
 }
 
 void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -134,7 +136,7 @@ void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 
 void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+	LOG(INFO_LOG_LEVEL, "%s", __FUNCTION__, pOrder);
 }
 
 void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
