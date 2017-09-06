@@ -1,6 +1,7 @@
 #include "SgitApiManager.h"
 #include "Poco/StringTokenizer.h"
 #include "Poco/Util/IniFileConfiguration.h"
+#include "Poco/Util/JSONConfiguration.h"
 #include "Poco/File.h"
 #include "Log.h"
 #include "quickfix/SessionID.h"
@@ -21,6 +22,9 @@ CSgitApiManager::~CSgitApiManager()
 
 bool CSgitApiManager::Init()
 {
+	AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(".\\config\\dict.json");
+	LOG(INFO_LOG_LEVEL, "url[1]:%s", apJsonConf->getString("sites.url[1]").c_str());
+
   m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
   std::string ssFlowPath = "";
