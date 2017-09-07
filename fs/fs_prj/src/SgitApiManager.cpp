@@ -9,8 +9,9 @@
 
 using namespace Poco::Util;
 
-CSgitApiManager::CSgitApiManager(const std::string &ssSgitCfgPath)
+CSgitApiManager::CSgitApiManager(const std::string &ssSgitCfgPath, const std::string &ssDictCfgPath)
   : m_ssSgitCfgPath(ssSgitCfgPath)
+  , m_ssDictCfgPath(ssDictCfgPath)
 {
 
 }
@@ -22,31 +23,19 @@ CSgitApiManager::~CSgitApiManager()
 
 bool CSgitApiManager::Init()
 {
-	AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(".\\config\\dict.json");
-	LOG(INFO_LOG_LEVEL, "url[1]:%s", apJsonConf->getString("sites.url[1]").c_str());
-
-  m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
-
-  std::string ssFlowPath = "";
-  CToolkit::getStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath);
-
-  std::string ssTradeServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
-
-  std::string ssTradeIdListKey = "global.TradeIDList";
-  if (!m_apSgitConf->hasProperty(ssTradeIdListKey))
+  try
   {
-    LOG(ERROR_LOG_LEVEL, "Can not find property:%s in %s", ssTradeIdListKey.c_str(), m_ssSgitCfgPath.c_str());
-		return false;
+    if(!InitDict()) return false;
+
+    if(!InitSgit()) return false;
+  }
+  catch ( std::exception & e)
+  {
+  	LOG(FATAL_LOG_LEVEL, "%s", e.what());
+    return false;
   }
 
-  StringTokenizer st(m_apSgitConf->getString(ssTradeIdListKey), ",", 
-    StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-  for(StringTokenizer::Iterator it = st.begin(); it != st.end(); it++)
-  {
-    LinkAcct2Spi(CreateSpi(ssFlowPath, ssTradeServerAddr, *it), *it);
-  }
-
-	return true;
+  return true;
 }
 
 SharedPtr<CSgitTradeSpi> CSgitApiManager::CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId)
@@ -141,5 +130,47 @@ std::string CSgitApiManager::GetRealAccont(const FIX::Message& oMsg)
 
 	LOG(ERROR_LOG_LEVEL, "Can not find Real Account by key:%s", ssAcctAliasKey.c_str());
 	return "";
+}
+
+bool CSgitApiManager::InitSgit()
+{
+  m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+
+  std::string ssFlowPath = "";
+  CToolkit::getStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath); 
+
+  std::string ssTradeServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
+
+  std::string ssTradeIdListKey = "global.TradeIDList";
+  if (!m_apSgitConf->hasProperty(ssTradeIdListKey))
+  {
+    LOG(ERROR_LOG_LEVEL, "Can not find property:%s in %s", ssTradeIdListKey.c_str(), m_ssSgitCfgPath.c_str());
+    return false;
+  }
+
+  StringTokenizer st(m_apSgitConf->getString(ssTradeIdListKey), ",", 
+    StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+  for(StringTokenizer::Iterator it = st.begin(); it != st.end(); it++)
+  {
+    LinkAcct2Spi(CreateSpi(ssFlowPath, ssTradeServerAddr, *it), *it);
+  }
+
+  return true;
+}
+
+bool CSgitApiManager::InitDict()
+{
+  AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
+  AbstractConfiguration::Keys ks;
+  apJsonConf->keys("symbols", ks);
+
+  for(AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
+  {
+    LOG(INFO_LOG_LEVEL, "json %s", it->c_str());
+  }
+
+  LOG(INFO_LOG_LEVEL, "prop3:%s", apJsonConf->getString("symbols.prop4").c_str());
+
+  return true;
 }
 

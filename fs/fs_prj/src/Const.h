@@ -7,5 +7,6 @@ const std::string G_CONFIG_GLOBAL_SECTION = "global";
 const std::string G_CONFIG_LOG = "log";
 const std::string G_CONFIG_SGIT = "sgit";
 const std::string G_CONFIG_FIX = "fix";
+const std::string G_CONFIG_DICT = "dict";
 
 #endif // __CONST_H__

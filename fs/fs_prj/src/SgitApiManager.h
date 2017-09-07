@@ -8,10 +8,14 @@
 class CSgitApiManager
 {
 public:
-  CSgitApiManager(const std::string &ssSgitCfgPath);
+  CSgitApiManager(const std::string &ssSgitCfgPath, const std::string &ssDictCfgPath);
   ~CSgitApiManager();
 
   bool Init();
+
+  bool InitDict();
+
+  bool InitSgit();
 
   SharedPtr<CSgitTradeSpi> CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
 
@@ -25,6 +29,7 @@ public:
 
 private:
   std::string                           m_ssSgitCfgPath;
+  std::string                           m_ssDictCfgPath;
 
 	AutoPtr<IniFileConfiguration>					m_apSgitConf;
 

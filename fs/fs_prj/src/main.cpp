@@ -106,11 +106,13 @@ int main( int argc, char** argv )
 		std::string ssLogCfgPath = "";
 		std::string ssSgitCfgPath = "";
 		std::string ssFixCfgPath = "";
+    std::string ssDictCfgPath = "";
 
 		AutoPtr<IniFileConfiguration> apGlobalConf = new IniFileConfiguration(ssConfigPath);
 		if (!checkCfgPath(apGlobalConf, G_CONFIG_LOG, ssLogCfgPath)) return 0;
 		if (!checkCfgPath(apGlobalConf, G_CONFIG_SGIT, ssSgitCfgPath)) return 0;
 		if (!checkCfgPath(apGlobalConf, G_CONFIG_FIX, ssFixCfgPath)) return 0;
+    if (!checkCfgPath(apGlobalConf, G_CONFIG_DICT, ssDictCfgPath)) return 0;
 
 		//初始化日志
 		initialize ();
@@ -124,7 +126,7 @@ int main( int argc, char** argv )
 		2. fix application 中 onMessage收到消息后，解析消息，根据  XXX 找到对应的 api实例提交请求
 		3. api实例回调后，组包，找到对应的fix sessionID 发送回去
 		*/
-		CSgitApiManager oSigtApiMngr = CSgitApiManager(ssSgitCfgPath);
+		CSgitApiManager oSigtApiMngr = CSgitApiManager(ssSgitCfgPath, ssDictCfgPath);
 		if(!oSigtApiMngr.Init())
 		{
 			LOG(FATAL_LOG_LEVEL, "Failed to Init CSgitApiManager");
