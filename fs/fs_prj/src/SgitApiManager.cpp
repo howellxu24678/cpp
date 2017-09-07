@@ -162,14 +162,14 @@ bool CSgitApiManager::InitDict()
 {
   AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
   AbstractConfiguration::Keys ks;
-  apJsonConf->keys("symbols", ks);
+  apJsonConf->keys("symbols.IF[0]", ks);
 
   for(AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
   {
     LOG(INFO_LOG_LEVEL, "json %s", it->c_str());
   }
 
-  LOG(INFO_LOG_LEVEL, "prop3:%s", apJsonConf->getString("symbols.prop4").c_str());
+  //LOG(INFO_LOG_LEVEL, "prop3:%s", apJsonConf->getString("symbols").c_str());
 
   return true;
 }

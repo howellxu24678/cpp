@@ -1,8 +1,44 @@
 {
-  "symbols" : {
-     "prop4" : {
-       "prop5" : false,
-       "prop6" : null
-     }
-  }
+    "symbols":{
+        "IF":[
+            {
+                "type":"org",
+                "format":"IF**??",
+                "yearpos":"2",
+                "yearlen":"2",
+                "monthpos":"4",
+                "monthlen":"2"
+            },
+            {
+                "type":"Bloomberg",
+                "format":"IFB?* Index",
+                "yearpos":"2",
+                "yearlen":"2",
+                "monthpos":"4",
+                "monthlen":"2"
+            }
+        ],
+        "WH":[
+            {
+                "type":"org",
+                "format":"WH*??",
+                "yearpos":"2",
+                "yearlen":"2",
+                "monthpos":"4",
+                "monthlen":"2"
+            },
+            {
+                "type":"Bloomberg",
+                "format":"VN?* Comdty",
+                "yearpos":"2",
+                "yearlen":"2",
+                "monthpos":"4",
+                "monthlen":"2"
+            }
+        ],
+        "prop4":{
+            "prop5":false,
+            "prop6":null
+        }
+    }
 }
