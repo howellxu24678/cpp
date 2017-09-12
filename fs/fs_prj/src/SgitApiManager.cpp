@@ -162,11 +162,26 @@ bool CSgitApiManager::InitDict()
 {
   AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
   AbstractConfiguration::Keys ks;
-  apJsonConf->keys("symbols.IF[0]", ks);
+  apJsonConf->keys("symbols", ks);
 
+  std::string sskey = "", ssIndex = "";
+  
   for(AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
   {
-    LOG(INFO_LOG_LEVEL, "json %s", it->c_str());
+    LOG(INFO_LOG_LEVEL, "json it:%s", it->c_str());
+    for (int i = 0; i < 10; i ++)
+    {
+      intToStr(i, 10, ssIndex);
+      sskey = "symbols." +  *it + "[" + ssIndex + "]";
+      LOG(INFO_LOG_LEVEL, "sskey:%s", sskey.c_str());
+      if (apJsonConf->hasOption(sskey))
+      {
+        LOG(INFO_LOG_LEVEL, "key:%s,value:%s", sskey.c_str(), apJsonConf->getString(sskey).c_str());
+      }
+      else
+        break;
+    }
+    
   }
 
   //LOG(INFO_LOG_LEVEL, "prop3:%s", apJsonConf->getString("symbols").c_str());
