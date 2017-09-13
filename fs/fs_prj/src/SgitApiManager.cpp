@@ -1,13 +1,13 @@
 #include "SgitApiManager.h"
 #include "Poco/StringTokenizer.h"
 #include "Poco/Util/IniFileConfiguration.h"
-#include "Poco/Util/JSONConfiguration.h"
+
 #include "Poco/File.h"
 #include "Log.h"
 #include "quickfix/SessionID.h"
 #include "Toolkit.h"
 
-using namespace Poco::Util;
+
 
 CSgitApiManager::CSgitApiManager(const std::string &ssSgitCfgPath, const std::string &ssDictCfgPath)
   : m_ssSgitCfgPath(ssSgitCfgPath)
@@ -161,31 +161,25 @@ bool CSgitApiManager::InitSgit()
 bool CSgitApiManager::InitDict()
 {
   AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
-  AbstractConfiguration::Keys ks;
-  apJsonConf->keys("symbols", ks);
-
-  std::string sskey = "", ssIndex = "";
-  
-  for(AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
-  {
-    LOG(INFO_LOG_LEVEL, "json it:%s", it->c_str());
-    for (int i = 0; i < 10; i ++)
-    {
-      intToStr(i, 10, ssIndex);
-      sskey = "symbols." +  *it + "[" + ssIndex + "]";
-      LOG(INFO_LOG_LEVEL, "sskey:%s", sskey.c_str());
-      if (apJsonConf->hasOption(sskey))
-      {
-        LOG(INFO_LOG_LEVEL, "key:%s,value:%s", sskey.c_str(), apJsonConf->getString(sskey).c_str());
-      }
-      else
-        break;
-    }
-    
-  }
-
-  //LOG(INFO_LOG_LEVEL, "prop3:%s", apJsonConf->getString("symbols").c_str());
+  PrintJsonValue("symbols", apJsonConf);
 
   return true;
+}
+
+void CSgitApiManager::PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson)
+{
+  AbstractConfiguration::Keys ks;
+  apJson->keys(ssKey, ks);
+
+  if (ks.size() < 2)
+  {
+    LOG(INFO_LOG_LEVEL, "ssKey:%s, value:%s", ssKey.c_str(), apJson->getString(ssKey).c_str());
+    return;
+  }
+
+  for (AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
+  {
+    PrintJsonValue(ssKey + "." + *it, apJson);
+  }
 }
 

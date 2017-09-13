@@ -4,6 +4,8 @@
 
 #include "SgitTradeSpi.h"
 #include "quickfix/Message.h"
+#include "Poco/Util/JSONConfiguration.h"
+using namespace Poco::Util;
 
 class CSgitApiManager
 {
@@ -26,6 +28,8 @@ public:
   SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
 
   std::string GetRealAccont(const FIX::Message& oMsg);
+
+  void PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson);
 
 private:
   std::string                           m_ssSgitCfgPath;
