@@ -1,0 +1,17 @@
+<config>
+	<prop1>value1</prop1>
+	<symbols>
+		<symbol s="IF">
+			<code type="org" format="IF**??" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<code type="Bloomberg" format="IFB?* Index" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+		</symbol>
+		<symbol s="WH">
+			<code type="org" format="WH*??" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<code type="Bloomberg" format="VN?* Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		</symbol>
+		<symbol s="tt">
+			<code type="org" format="tt*??" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<code type="Bloomberg" format="fN?* Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		</symbol>
+	</symbols>
+</config>

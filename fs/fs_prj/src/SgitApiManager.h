@@ -5,6 +5,8 @@
 #include "SgitTradeSpi.h"
 #include "quickfix/Message.h"
 #include "Poco/Util/JSONConfiguration.h"
+#include "Poco/Util/XMLConfiguration.h"
+
 using namespace Poco::Util;
 
 class CSgitApiManager

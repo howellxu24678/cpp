@@ -160,8 +160,19 @@ bool CSgitApiManager::InitSgit()
 
 bool CSgitApiManager::InitDict()
 {
-  AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
-  PrintJsonValue("symbols", apJsonConf);
+  //AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
+  //PrintJsonValue("symbols", apJsonConf);
+
+	AutoPtr<XMLConfiguration> apXmlConf = new XMLConfiguration(m_ssDictCfgPath);
+	AbstractConfiguration::Keys ks;
+	apXmlConf->keys("symbols", ks);
+	LOG(INFO_LOG_LEVEL, "ks size:%d", ks.size());
+	for (AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
+	{
+		LOG(INFO_LOG_LEVEL, "xml it:%s", it->c_str());
+	}
+	//LOG(INFO_LOG_LEVEL, "xml1:%s", apXmlConf->getString("symbols.symbol").c_str());
+	//LOG(INFO_LOG_LEVEL, "xml2:%s", apXmlConf->getString("prop1").c_str());
 
   return true;
 }
