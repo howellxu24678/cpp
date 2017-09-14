@@ -35,6 +35,7 @@
 #include "Poco/Util/IniFileConfiguration.h"
 
 #include "SgitApiManager.h"
+#include "Convert.h"
 
 #include "Toolkit.h"
 //#include "Poco/FileStream.h"
@@ -126,10 +127,16 @@ int main( int argc, char** argv )
 		2. fix application 中 onMessage收到消息后，解析消息，根据  XXX 找到对应的 api实例提交请求
 		3. api实例回调后，组包，找到对应的fix sessionID 发送回去
 		*/
-		CSgitApiManager oSigtApiMngr = CSgitApiManager(ssSgitCfgPath, ssDictCfgPath);
+		CSgitApiManager oSigtApiMngr = CSgitApiManager(ssSgitCfgPath);
 		if(!oSigtApiMngr.Init())
 		{
 			LOG(FATAL_LOG_LEVEL, "Failed to Init CSgitApiManager");
+		}
+
+		Convert oConvert = Convert(ssDictCfgPath);
+		if (!oConvert.Init())
+		{
+			LOG(FATAL_LOG_LEVEL, "Failed to Init Convert");
 		}
 
 		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）

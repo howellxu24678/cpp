@@ -1,0 +1,32 @@
+<config>
+	<dicts>
+	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 bothside="0"-->
+		<dict number='77' name='OpenClose'>
+			<item in="O" out="0" description='OPEN'/>
+			<item in="C" out="1" description='CLOSE'/>
+			<!-- 还有平今平昨？-->
+		</dict>		
+		<dict number='40' name='OrdType'>
+			<item in="1" out="1"  description='MARKET'/>
+			<item in="2" out="2" description='LIMIT'/>
+		</dict>
+		<dict number='54' name='Side'>
+			<item in="1" out="0"  description='BUY'/>
+			<item in="2" out="1" description='SELL'/>
+		</dict>
+	</dicts>
+	<symbols>
+		<symbol s="IF">
+			<item type="org" format="IF**??" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="Bloomberg" format="IFB?* Index" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+		</symbol>
+		<symbol s="WH">
+			<item type="org" format="WH*??" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="Bloomberg" format="VN?* Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		</symbol>
+		<symbol s="tt">
+			<item type="org" format="tt*??" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="Bloomberg" format="fN?* Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		</symbol>
+	</symbols>
+</config>

@@ -9,9 +9,8 @@
 
 
 
-CSgitApiManager::CSgitApiManager(const std::string &ssSgitCfgPath, const std::string &ssDictCfgPath)
+CSgitApiManager::CSgitApiManager(const std::string &ssSgitCfgPath)
   : m_ssSgitCfgPath(ssSgitCfgPath)
-  , m_ssDictCfgPath(ssDictCfgPath)
 {
 
 }

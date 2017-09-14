@@ -12,7 +12,7 @@ using namespace Poco::Util;
 class CSgitApiManager
 {
 public:
-  CSgitApiManager(const std::string &ssSgitCfgPath, const std::string &ssDictCfgPath);
+  CSgitApiManager(const std::string &ssSgitCfgPath);
   ~CSgitApiManager();
 
   bool Init();
