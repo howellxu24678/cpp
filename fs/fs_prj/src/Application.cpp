@@ -106,7 +106,7 @@ void Application::onMessage( const FIX42::NewOrderSingle& message,
   //catch ( FIX::SessionNotFound& ) {}
 }
 
-Application::Application(const CSgitApiManager &oSgitApiMngr)
+Application::Application(const CSgitContext &oSgitApiMngr)
    : m_orderID(0)
    , m_execID(0)
    , m_oSigtApiMngr(oSgitApiMngr)

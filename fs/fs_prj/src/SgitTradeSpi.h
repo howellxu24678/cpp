@@ -13,11 +13,11 @@ using namespace fstech;
 
 
 
-class CSgitApiManager;
+class CSgitContext;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
-  CSgitTradeSpi(CSgitApiManager *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
+  CSgitTradeSpi(CSgitContext *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitTradeSpi();
 
 	///报单录入请求
@@ -360,7 +360,7 @@ public:
 
 private:
   CThostFtdcTraderApi             *m_pTradeApi;
-  CSgitApiManager                 *m_pMgr;
+  CSgitContext                 *m_pMgr;
   std::string                     m_ssTradeID;
 	AutoPtr<IniFileConfiguration>   m_apSgitConf;
   AtomicCounter                   m_acRequestId;

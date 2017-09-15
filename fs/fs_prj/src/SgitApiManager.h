@@ -3,39 +3,43 @@
 
 
 #include "SgitTradeSpi.h"
+#include "Convert.h"
 #include "quickfix/Message.h"
 #include "Poco/Util/JSONConfiguration.h"
 #include "Poco/Util/XMLConfiguration.h"
 
 using namespace Poco::Util;
 
-class CSgitApiManager
+class CSgitContext
 {
 public:
-  CSgitApiManager(const std::string &ssSgitCfgPath);
-  ~CSgitApiManager();
+  CSgitContext(const std::string &ssSgitCfgPath, const std::string &ssCvtCfgPath);
+  ~CSgitContext();
 
   bool Init();
 
-  bool InitDict();
+  SharedPtr<CSgitTradeSpi> GetSpi(const FIX::Message& oMsg);
 
-  bool InitSgit();
+  std::string GetRealAccont(const FIX::Message& oMsg);
+
+  char GetCvt(const int iField,const char cValue);
+
+protected:
+  bool InitConvert();
+
+  bool InitSgitApi();
 
   SharedPtr<CSgitTradeSpi> CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
 
   void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId);
 
-  SharedPtr<CSgitTradeSpi> GetSpi(const FIX::Message& oMsg);
-
   SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
 
-  std::string GetRealAccont(const FIX::Message& oMsg);
-
-  void PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson);
-
+  //void PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson);
 private:
   std::string                           m_ssSgitCfgPath;
-  std::string                           m_ssDictCfgPath;
+  Convert                               m_oConvert;
+  std::string                           m_ssCvtCfgPath;
 
 	AutoPtr<IniFileConfiguration>					m_apSgitConf;
 

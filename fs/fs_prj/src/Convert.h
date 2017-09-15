@@ -6,10 +6,14 @@
 class Convert
 {
 public:
+  enum EnDirect { Fix2Fs, Fs2Fix };
+
 	Convert(const std::string ssCfgPath);
 	~Convert();
 
 	bool Init();
+
+  char GetCvt(const int iField,const char cValue);
 
 private:
 	std::string		m_ssCfgPath;

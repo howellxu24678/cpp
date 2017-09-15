@@ -1,6 +1,10 @@
 <config>
 	<dicts>
-	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 bothside="0"-->
+	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 way="1":从in到out；way="-1":从out到in-->
+		<dict number='8008' name='testSide'>
+			<item in="A" out="0" way="1"/>
+			<item in="B" out="1" way="-1"/>
+		</dict>	
 		<dict number='77' name='OpenClose'>
 			<item in="O" out="0" description='OPEN'/>
 			<item in="C" out="1" description='CLOSE'/>

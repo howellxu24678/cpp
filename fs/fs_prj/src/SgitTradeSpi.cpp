@@ -2,7 +2,7 @@
 #include "SgitApiManager.h"
 #include "Log.h"
 
-CSgitTradeSpi::CSgitTradeSpi(CSgitApiManager *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
+CSgitTradeSpi::CSgitTradeSpi(CSgitContext *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
   : m_pMgr(pMgr)
   , m_pTradeApi(pReqApi)
   , m_ssTradeID(ssTradeId)
@@ -102,7 +102,7 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 	
   strncpy(stuInputOrder.InstrumentID, symbol.getValue().c_str(), sizeof(stuInputOrder.InstrumentID));
   stuInputOrder.VolumeTotalOriginal = orderQty.getValue();
-	stuInputOrder.OrderPriceType = ordType.getValue();
+	stuInputOrder.OrderPriceType = m_pMgr->GetCvt(ordType.getField(), ordType.getValue());
   stuInputOrder.LimitPrice = price.getValue();
 	stuInputOrder.Direction = side.getValue();
 	//stuInputOrder.CombOffsetFlag[0] = openClose.getValue();

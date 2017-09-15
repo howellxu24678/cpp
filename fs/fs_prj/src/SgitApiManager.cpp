@@ -9,24 +9,26 @@
 
 
 
-CSgitApiManager::CSgitApiManager(const std::string &ssSgitCfgPath)
+CSgitContext::CSgitContext(const std::string &ssSgitCfgPath, const std::string &ssCvtCfgPath)
   : m_ssSgitCfgPath(ssSgitCfgPath)
+  , m_oConvert(ssCvtCfgPath)
+  , m_ssCvtCfgPath(ssCvtCfgPath)
 {
 
 }
 
-CSgitApiManager::~CSgitApiManager()
+CSgitContext::~CSgitContext()
 {
 
 }
 
-bool CSgitApiManager::Init()
+bool CSgitContext::Init()
 {
   try
   {
-    if(!InitDict()) return false;
+    if(!InitConvert()) return false;
 
-    if(!InitSgit()) return false;
+    if(!InitSgitApi()) return false;
   }
   catch ( std::exception & e)
   {
@@ -37,7 +39,7 @@ bool CSgitApiManager::Init()
   return true;
 }
 
-SharedPtr<CSgitTradeSpi> CSgitApiManager::CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId)
+SharedPtr<CSgitTradeSpi> CSgitContext::CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId)
 {
   CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
   SharedPtr<CSgitTradeSpi> spTradeSpi = new CSgitTradeSpi(this, pTradeApi, m_ssSgitCfgPath, ssTradeId);
@@ -56,7 +58,7 @@ SharedPtr<CSgitTradeSpi> CSgitApiManager::CreateSpi(const std::string &ssFlowPat
   return spTradeSpi;
 }
 
-void CSgitApiManager::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId)
+void CSgitContext::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId)
 {
   StringTokenizer stAccounts(m_apSgitConf->getString(ssTradeId + ".Accounts"), ",", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
@@ -89,7 +91,7 @@ void CSgitApiManager::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const st
   }
 }
 
-SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const FIX::Message& oMsg)
+SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const FIX::Message& oMsg)
 {
   FIX::Account account;
   oMsg.getField(account);
@@ -101,7 +103,7 @@ SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const FIX::Message& oMsg)
 	return GetSpi(CToolkit::GetAcctAliasKey(account.getValue(), oMsg));
 }
 
-SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const std::string &ssKey)
+SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const std::string &ssKey)
 {
   std::map<std::string, SharedPtr<CSgitTradeSpi>>::const_iterator cit = m_mapAcct2Spi.find(ssKey);
   if (cit != m_mapAcct2Spi.end())
@@ -113,7 +115,7 @@ SharedPtr<CSgitTradeSpi> CSgitApiManager::GetSpi(const std::string &ssKey)
   return nullptr;
 }
 
-std::string CSgitApiManager::GetRealAccont(const FIX::Message& oMsg)
+std::string CSgitContext::GetRealAccont(const FIX::Message& oMsg)
 {
 	FIX::Account account;
 	oMsg.getField(account);
@@ -131,7 +133,7 @@ std::string CSgitApiManager::GetRealAccont(const FIX::Message& oMsg)
 	return "";
 }
 
-bool CSgitApiManager::InitSgit()
+bool CSgitContext::InitSgitApi()
 {
   m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
@@ -157,39 +159,30 @@ bool CSgitApiManager::InitSgit()
   return true;
 }
 
-bool CSgitApiManager::InitDict()
+bool CSgitContext::InitConvert()
 {
-  //AutoPtr<JSONConfiguration> apJsonConf = new JSONConfiguration(m_ssDictCfgPath);
-  //PrintJsonValue("symbols", apJsonConf);
-
-	AutoPtr<XMLConfiguration> apXmlConf = new XMLConfiguration(m_ssDictCfgPath);
-	AbstractConfiguration::Keys ks;
-	apXmlConf->keys("symbols", ks);
-	LOG(INFO_LOG_LEVEL, "ks size:%d", ks.size());
-	for (AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
-	{
-		LOG(INFO_LOG_LEVEL, "xml it:%s", it->c_str());
-	}
-	//LOG(INFO_LOG_LEVEL, "xml1:%s", apXmlConf->getString("symbols.symbol").c_str());
-	//LOG(INFO_LOG_LEVEL, "xml2:%s", apXmlConf->getString("prop1").c_str());
-
-  return true;
+  return m_oConvert.Init();
 }
 
-void CSgitApiManager::PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson)
+char CSgitContext::GetCvt(const int iField,const char cValue)
 {
-  AbstractConfiguration::Keys ks;
-  apJson->keys(ssKey, ks);
-
-  if (ks.size() < 2)
-  {
-    LOG(INFO_LOG_LEVEL, "ssKey:%s, value:%s", ssKey.c_str(), apJson->getString(ssKey).c_str());
-    return;
-  }
-
-  for (AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
-  {
-    PrintJsonValue(ssKey + "." + *it, apJson);
-  }
+  return m_oConvert.GetCvt(iField, cValue);
 }
+
+//void CSgitContext::PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson)
+//{
+//  AbstractConfiguration::Keys ks;
+//  apJson->keys(ssKey, ks);
+//
+//  if (ks.size() < 2)
+//  {
+//    LOG(INFO_LOG_LEVEL, "ssKey:%s, value:%s", ssKey.c_str(), apJson->getString(ssKey).c_str());
+//    return;
+//  }
+//
+//  for (AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
+//  {
+//    PrintJsonValue(ssKey + "." + *it, apJson);
+//  }
+//}
 
