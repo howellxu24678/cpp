@@ -1,6 +1,6 @@
 <config>
 	<dicts>
-	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 way="1":从in到out；way="-1":从out到in-->
+	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 way="1":从in到out(正向)；way="-1":从out到in(反向)-->
 		<dict number='8008' name='testSide'>
 			<item in="A" out="0" way="1"/>
 			<item in="B" out="1" way="-1"/>
@@ -19,18 +19,34 @@
 			<item in="2" out="1" description='SELL'/>
 		</dict>
 	</dicts>
-	<symbols>
-		<symbol s="IF">
-			<item type="org" format="IF**??" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
-			<item type="Bloomberg" format="IFB?* Index" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+	<symbols desc="type 0:交易所原始代码 1:彭博代码">
+		<!-- 中金所品种 -->
+		<symbol name="IF" desc="股指期货">
+			<item type="0" format="IF\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2" desc="正则表达式匹配IF后4个数字，年月开始位置(从0开始)，年月长度"/>
+			<item type="1" format="IFB[A-Z]{1}\d{1} Index" yearpos="4" yearlen="1" monthpos="3" monthlen="1" desc="正则表达式匹配IFB后1个英文字符、1个数字"/>
 		</symbol>
-		<symbol s="WH">
-			<item type="org" format="WH*??" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
-			<item type="Bloomberg" format="VN?* Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		
+		<!-- 上期所品种-->
+		<symbol name="au" desc="股指期货">
+			<item type="0" format="au\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="1" format="AUA[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
 		</symbol>
-		<symbol s="tt">
-			<item type="org" format="tt*??" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
-			<item type="Bloomberg" format="fN?* Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		
+		<!-- 大商所品种-->
+		<symbol name="m" desc="豆粕">
+			<item type="0" format="m\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="1" format="AE[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+		</symbol>
+		
+		<!-- 郑商所品种-->
+		<symbol name="FG" desc="玻璃">
+			<item type="0" format="FG\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="1" format="FGL[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
+		</symbol>
+		<symbol name="WH" desc="强麦">
+			<item type="0" format="WH\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="1" format="VN[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
 		</symbol>
 	</symbols>
 </config>
+

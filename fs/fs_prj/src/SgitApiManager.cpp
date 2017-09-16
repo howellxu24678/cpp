@@ -28,6 +28,10 @@ bool CSgitContext::Init()
   {
     if(!InitConvert()) return false;
 
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.GetCvtSymbol("IF1712", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.GetCvtSymbol("IF112", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.GetCvtSymbol("FG801", Convert::Bloomberg).c_str());
+
     if(!InitSgitApi()) return false;
   }
   catch ( std::exception & e)
@@ -164,9 +168,9 @@ bool CSgitContext::InitConvert()
   return m_oConvert.Init();
 }
 
-char CSgitContext::GetCvt(const int iField,const char cValue)
+char CSgitContext::GetCvtDict(const int iField, const char cValue, const Convert::EnWay enWay)
 {
-  return m_oConvert.GetCvt(iField, cValue);
+  return m_oConvert.GetCvtDict(iField, cValue, enWay);
 }
 
 //void CSgitContext::PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson)

@@ -101,8 +101,8 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
   strncpy(stuInputOrder.OrderRef, clOrdID.getValue().c_str(), sizeof(stuInputOrder.OrderRef));
 	
   strncpy(stuInputOrder.InstrumentID, symbol.getValue().c_str(), sizeof(stuInputOrder.InstrumentID));
-  stuInputOrder.VolumeTotalOriginal = orderQty.getValue();
-	stuInputOrder.OrderPriceType = m_pMgr->GetCvt(ordType.getField(), ordType.getValue());
+  stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
+	stuInputOrder.OrderPriceType = m_pMgr->GetCvtDict(ordType.getField(), ordType.getValue(), Convert::Normal);
   stuInputOrder.LimitPrice = price.getValue();
 	stuInputOrder.Direction = side.getValue();
 	//stuInputOrder.CombOffsetFlag[0] = openClose.getValue();

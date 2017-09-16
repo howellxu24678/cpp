@@ -22,7 +22,7 @@ public:
 
   std::string GetRealAccont(const FIX::Message& oMsg);
 
-  char GetCvt(const int iField,const char cValue);
+  char GetCvtDict(const int iField, const char cValue, const Convert::EnWay enWay);
 
 protected:
   bool InitConvert();
