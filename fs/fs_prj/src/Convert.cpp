@@ -292,6 +292,11 @@ std::string Convert::CvtYearDigitFrom1To2(const std::string &ssSrcYear) const
 	DateTime now;
 	int iYear = now.year() % 100;
 	int iSrcYear = ssSrcYear[0] - '0';
+	if (iSrcYear >= 10)
+	{
+		LOG(ERROR_LOG_LEVEL, "srcYear %s invalid", ssSrcYear.c_str());
+		return "unknown";
+	}
 
 	//有合约是跨年的，所以这里要加到最后一位与原始的一致才正确
 	while(iYear % 10 != iSrcYear) 
