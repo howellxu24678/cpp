@@ -28,9 +28,13 @@ bool CSgitContext::Init()
   {
     if(!InitConvert()) return false;
 
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.GetCvtSymbol("IF1712", Convert::Bloomberg).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.GetCvtSymbol("IF112", Convert::Bloomberg).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.GetCvtSymbol("FG801", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg), Convert::Original).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF112", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("FG801", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("FG801", Convert::Bloomberg), Convert::Original).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("au1801", Convert::Bloomberg).c_str());
+		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("au1801", Convert::Bloomberg), Convert::Original).c_str());
 
     if(!InitSgitApi()) return false;
   }
@@ -170,7 +174,7 @@ bool CSgitContext::InitConvert()
 
 char CSgitContext::GetCvtDict(const int iField, const char cValue, const Convert::EnWay enWay)
 {
-  return m_oConvert.GetCvtDict(iField, cValue, enWay);
+  return m_oConvert.CvtDict(iField, cValue, enWay);
 }
 
 //void CSgitContext::PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson)

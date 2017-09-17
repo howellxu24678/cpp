@@ -19,33 +19,49 @@
 			<item in="2" out="1" description='SELL'/>
 		</dict>
 	</dicts>
-	<symbols desc="type 0:交易所原始代码 1:彭博代码">
+	
+	<month desc="一位月份和两位月份的相互转化">
+		<item in="01" out="F" />
+		<item in="02" out="G" />
+		<item in="03" out="H" />
+		<item in="04" out="J" />
+		<item in="05" out="K" />
+		<item in="06" out="M" />
+		<item in="07" out="N" />
+		<item in="08" out="Q" />
+		<item in="09" out="U" />
+		<item in="10" out="V" />
+		<item in="11" out="X" />
+		<item in="12" out="Z" />
+	</month>
+	
+	<symbols desc="type 0:交易所原始代码 1:彭博代码，*:年份 ?:月份">
 		<!-- 中金所品种 -->
 		<symbol name="IF" desc="股指期货">
-			<item type="0" format="IF\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2" desc="正则表达式匹配IF后4个数字，年月开始位置(从0开始)，年月长度"/>
-			<item type="1" format="IFB[A-Z]{1}\d{1} Index" yearpos="4" yearlen="1" monthpos="3" monthlen="1" desc="正则表达式匹配IFB后1个英文字符、1个数字"/>
+			<item type="0" format="IF**??" re="IF\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2" desc="正则表达式匹配IF后4个数字，年月开始位置(从0开始)，年月长度"/>
+			<item type="1" format="IFB?* Index" re="IFB[A-Z]{1}\d{1} Index" yearpos="4" yearlen="1" monthpos="3" monthlen="1" desc="正则表达式匹配IFB后1个英文字符、1个数字"/>
 		</symbol>
 		
 		<!-- 上期所品种-->
-		<symbol name="au" desc="股指期货">
-			<item type="0" format="au\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
-			<item type="1" format="AUA[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
+		<symbol name="au" desc="沪金">
+			<item type="0" format="au**??" re="au\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="1" format="AUA?* Comdty" re="AUA[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
 		</symbol>
 		
 		<!-- 大商所品种-->
 		<symbol name="m" desc="豆粕">
-			<item type="0" format="m\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
-			<item type="1" format="AE[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+			<item type="0" format="m**??" re="m\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="1" format="AE?* Comdty" re="AE[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
 		</symbol>
 		
 		<!-- 郑商所品种-->
 		<symbol name="FG" desc="玻璃">
-			<item type="0" format="FG\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
-			<item type="1" format="FGL[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
+			<item type="0" format="FG*??" re="FG\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="1" format="FGL?* Comdty" re="FGL[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
 		</symbol>
 		<symbol name="WH" desc="强麦">
-			<item type="0" format="WH\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
-			<item type="1" format="VN[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+			<item type="0" format="WH*??" re="WH\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="1" format="VN?* Comdty" re="VN[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
 		</symbol>
 	</symbols>
 </config>

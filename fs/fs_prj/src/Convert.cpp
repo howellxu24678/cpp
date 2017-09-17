@@ -2,6 +2,7 @@
 #include "Log.h"
 
 #include "Poco/Format.h"
+#include "Poco/DateTime.h"
 
 
 
@@ -20,7 +21,13 @@ Convert::~Convert()
 bool Convert::Init()
 {
   AutoPtr<XMLConfiguration> apXmlConf = new XMLConfiguration(m_ssCfgPath);
-	
+
+	if (!InitMonthMap(apXmlConf))
+	{
+		LOG(ERROR_LOG_LEVEL, "Failed to InitMonthMap");
+		return false;
+	}
+
 	if(!InitDict(apXmlConf))
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to InitDict");
@@ -36,13 +43,13 @@ bool Convert::Init()
 	return true;
 }
 
-char Convert::GetCvtDict(const int iField, const char cValue, const EnWay enWay)
+char Convert::CvtDict(const int iField, const char cValue, const EnWay enWay)
 {
 	std::string ssKey = GetDictKey(format("%d", iField), format("%c", cValue), enWay);
-	std::map<std::string, std::string>::iterator itFind = m_mapDict.find(ssKey);
-	if (itFind != m_mapDict.end())
+	std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
+	if (citFind != m_mapDict.end())
 	{
-		return itFind->second[0];
+		return citFind->second[0];
 	}
 	else
 	{
@@ -82,6 +89,7 @@ bool Convert::InitDict(AutoPtr<XMLConfiguration> apXmlConf)
 	std::string ssDicts = "dicts", ssDictKey = "", ssItemKey = "", ssField = "", ssIn = "", ssOut = "";
 
 	apXmlConf->keys(ssDicts, kDict);
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssDicts.c_str(), kDict.size());
 
 	for (AbstractConfiguration::Keys::iterator itDict = kDict.begin(); itDict != kDict.end(); itDict++)
 	{
@@ -118,7 +126,7 @@ bool Convert::InitSymbol(AutoPtr<XMLConfiguration> apXmlConf)
 	std::string ssSymbols = "symbols", ssSymbolKey = "", ssItemKey = "", ssName = "", ssIn = "", ssOut = "";
 
 	apXmlConf->keys(ssSymbols, kSymbol);
-	LOG(DEBUG_LOG_LEVEL, "symbols size:%d", kSymbol.size());
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssSymbols.c_str(), kSymbol.size());
 
 	for (AbstractConfiguration::Keys::iterator itSymbol = kSymbol.begin(); itSymbol != kSymbol.end(); itSymbol++)
 	{
@@ -134,19 +142,19 @@ bool Convert::InitSymbol(AutoPtr<XMLConfiguration> apXmlConf)
 			stuSymbol.m_ssName = ssName;
 			stuSymbol.m_enSymbolType = (EnSymbolType)apXmlConf->getUInt(ssItemKey + "[@type]");
 			stuSymbol.m_ssFormat = apXmlConf->getString(ssItemKey + "[@format]");
-			stuSymbol.m_spRe = new RegularExpression(stuSymbol.m_ssFormat);
+			stuSymbol.m_spRe = new RegularExpression(apXmlConf->getString(ssItemKey + "[@re]"));
 			stuSymbol.m_iYearPos = apXmlConf->getUInt(ssItemKey + "[@yearpos]");
 			stuSymbol.m_iYearLen = apXmlConf->getUInt(ssItemKey + "[@yearlen]");
 			stuSymbol.m_iMonthPos = apXmlConf->getUInt(ssItemKey + "[@monthpos]");
 			stuSymbol.m_iMonthLen = apXmlConf->getUInt(ssItemKey + "[@monthlen]");
 
-			if(!AddSymbol(ssName + "." + GetStrType(stuSymbol.m_enSymbolType), stuSymbol)) return false;
+			if(!AddSymbol(GetSymbolKey(stuSymbol.m_ssName, stuSymbol.m_enSymbolType), stuSymbol)) return false;
 		}
 	}
 	return true;
 }
 
-bool Convert::AddSymbol(const std::string ssKey, const STUSymbol &stuSymbol)
+bool Convert::AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol)
 {
 	LOG(DEBUG_LOG_LEVEL, "%s ssKey:%s,format:%s", __FUNCTION__, ssKey.c_str(), stuSymbol.m_ssFormat.c_str());
 
@@ -170,19 +178,125 @@ std::string Convert::GetStrType(EnSymbolType enSymbolType) const
 	case Bloomberg:
 		return "blg";
 	default:
-		return "unknow";
+		return "unknown";
 	}
 }
 
-std::string Convert::GetCvtSymbol(const std::string &ssSymbol, EnSymbolType enTargetType)
+std::string Convert::CvtSymbol(const std::string &ssSymbol, EnSymbolType enDstType)
 {
-	for (std::map<std::string, STUSymbol>::iterator it = m_mapSymbol.begin(); it != m_mapSymbol.end(); it++)
+	for (std::map<std::string, STUSymbol>::const_iterator cit = m_mapSymbol.begin(); cit != m_mapSymbol.end(); cit++)
 	{
-		if (it->second.m_spRe->match(ssSymbol))
+		if (cit->second.m_spRe->match(ssSymbol))
 		{
-			return "found " + it->second.m_ssFormat;
+			const STUSymbol &stuSymbol = cit->second;
+
+			if(stuSymbol.m_enSymbolType == enDstType) return ssSymbol;
+
+			std::map<std::string, STUSymbol>::const_iterator citFind = m_mapSymbol.find(GetSymbolKey(stuSymbol.m_ssName, enDstType));
+			if (citFind != m_mapSymbol.end())
+			{
+				return CvtSymbol(ssSymbol, stuSymbol, citFind->second);
+			}
 		}
 	}
 
-	return "unknow" + ssSymbol;
+	return "unknown" + ssSymbol;
 }
+
+std::string Convert::GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType) const
+{
+	return ssName + "." + GetStrType(enSymbolType);
+}
+
+std::string Convert::CvtSymbol(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const
+{
+	std::string ssDstSymbol = stuDstSymbol.m_ssFormat;
+
+	ssDstSymbol.replace(stuDstSymbol.m_iYearPos, stuDstSymbol.m_iYearLen, CvtYear(ssSrcSymbol, stuSrcSymbol, stuDstSymbol));
+	ssDstSymbol.replace(stuDstSymbol.m_iMonthPos, stuDstSymbol.m_iMonthLen, CvtMonth(ssSrcSymbol, stuSrcSymbol, stuDstSymbol));
+
+	return ssDstSymbol;
+}
+
+std::string Convert::CvtYear(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const
+{
+	std::string ssSrcYear = ssSrcSymbol.substr(stuSrcSymbol.m_iYearPos, stuSrcSymbol.m_iYearLen);
+	//长度相同时用原始代码的年份替代目的代码的年份
+	if (stuSrcSymbol.m_iYearLen == stuDstSymbol.m_iYearLen) return ssSrcYear;
+
+	if (stuSrcSymbol.m_iYearLen > stuDstSymbol.m_iYearLen && stuSrcSymbol.m_iYearLen == 2) return format("%c", ssSrcYear[1]);
+
+	if (stuSrcSymbol.m_iYearLen < stuDstSymbol.m_iYearLen && stuSrcSymbol.m_iYearLen == 1) return CvtYearDigitFrom1To2(ssSrcYear);
+
+	return "**";
+}
+
+std::string Convert::CvtMonth(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const
+{
+	std::string ssSrcMonth = ssSrcSymbol.substr(stuSrcSymbol.m_iMonthPos, stuSrcSymbol.m_iMonthLen);
+	
+	//长度相同时用原始代码的月份替代目的代码的月份
+	if (stuSrcSymbol.m_iMonthLen == stuDstSymbol.m_iMonthLen) return ssSrcMonth;
+
+	return CvtMonth(ssSrcMonth);
+}
+
+std::string Convert::CvtMonth(const std::string &ssSrcMonth) const
+{
+	std::map<std::string, std::string>::const_iterator citFind = m_mapMonth.find(ssSrcMonth);
+	if (citFind != m_mapMonth.end())
+	{
+		return citFind->second;
+	}
+
+	return "unknown";
+}
+
+bool Convert::InitMonthMap(AutoPtr<XMLConfiguration> apXmlConf)
+{
+	AbstractConfiguration::Keys kItem;
+
+	std::string ssMonth = "month", ssItemKey = "", ssIn = "", ssOut = "";
+
+	apXmlConf->keys(ssMonth, kItem);
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssMonth.c_str(), kItem.size());
+
+	for (AbstractConfiguration::Keys::iterator it = kItem.begin(); it != kItem.end(); it++)
+	{
+		ssItemKey = ssMonth + "." + *it;
+		ssIn = apXmlConf->getString(ssItemKey + "[@in]");
+		ssOut = apXmlConf->getString(ssItemKey + "[@out]");
+
+		if (!AddMonth(ssIn, ssOut)) return false;
+		if (!AddMonth(ssOut, ssIn)) return false;
+	}
+
+	return true;
+}
+
+bool Convert::AddMonth(const std::string &ssKey, const std::string &ssValue)
+{
+	std::pair<std::map<std::string, std::string>::iterator, bool> ret = 
+		m_mapMonth.insert(std::pair<std::string, std::string>(ssKey, ssValue));
+
+	if (!ret.second)
+	{
+		LOG(ERROR_LOG_LEVEL, "Failed to insert month key:%s value:%s, may be repeated", ssKey.c_str(), ssValue.c_str());
+	}
+
+	return ret.second;
+}
+
+std::string Convert::CvtYearDigitFrom1To2(const std::string &ssSrcYear) const
+{
+	DateTime now;
+	int iYear = now.year() % 100;
+	int iSrcYear = ssSrcYear[0] - '0';
+
+	//有合约是跨年的，所以这里要加到最后一位与原始的一致才正确
+	while(iYear % 10 != iSrcYear) 
+		iYear++;
+
+	return format("%d", iYear);
+}
+

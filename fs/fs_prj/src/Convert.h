@@ -34,11 +34,17 @@ public:
 
 	bool Init();
 
-  char GetCvtDict(const int iField, const char cValue, const EnWay enWay);
+  char CvtDict(const int iField, const char cValue, const EnWay enWay);
 
-	std::string GetCvtSymbol(const std::string &ssSymbol, EnSymbolType enTargetType);
+	std::string CvtSymbol(const std::string &ssSymbol, EnSymbolType enDstType);
 
 protected:
+	bool InitMonthMap(AutoPtr<XMLConfiguration> apXmlConf);
+
+	std::string CvtMonth(const std::string &ssSrcMonth) const;
+
+	bool AddMonth(const std::string &ssKey, const std::string &ssValue);
+
 	bool InitDict(AutoPtr<XMLConfiguration> apXmlConf);
 
 	bool InitSymbol(AutoPtr<XMLConfiguration> apXmlConf);
@@ -47,14 +53,25 @@ protected:
 
 	std::string GetDictKey(const std::string &ssField, const std::string &ssFrom, EnWay enWay) const;
 
-	bool AddSymbol(const std::string ssKey, const STUSymbol &stuSymbol);
+	bool AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol);
 
 	std::string GetStrType(EnSymbolType enSymbolType) const;
+
+	std::string GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType) const;
+
+	std::string CvtSymbol(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const;
+
+	std::string CvtYear(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const;
+
+	std::string CvtMonth(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const;
+
+	std::string CvtYearDigitFrom1To2(const std::string &ssSrcYear) const;
 
 private:
 	std::string														m_ssCfgPath;
 	std::map<std::string, std::string>		m_mapDict;
 	std::map<std::string, STUSymbol>			m_mapSymbol;
+	std::map<std::string, std::string>		m_mapMonth;
 };
 
 #endif // __CONVERT_H__
