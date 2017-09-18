@@ -79,8 +79,11 @@ void CSgitContext::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::
   std::string ssAccountAliasKey = ssTradeId + ".AccountAlias";
   if (!m_apSgitConf->hasProperty(ssAccountAliasKey)) return;
 
-  //TargetCompID + OnBehalfOfCompID(如有)
+  //SessionID + OnBehalfOfCompID(如有,彭博通过第三方hub过来的需要这个值)
+  std::string ssBeginString = m_apSgitConf->getString(ssTradeId + ".BeginString");
+  std::string ssSenderCompID = m_apSgitConf->getString(ssTradeId + ".SenderCompID");
   std::string ssTargetCompID = m_apSgitConf->getString(ssTradeId + ".TargetCompID");
+  FIX::SessionID oSessionID = FIX::SessionID(ssBeginString, ssSenderCompID, ssTargetCompID);
   std::string ssOnBehalfOfCompID = "";
   CToolkit::getStrinIfSet(m_apSgitConf, ssTradeId + ".OnBehalfOfCompID", ssOnBehalfOfCompID);
 
@@ -89,7 +92,7 @@ void CSgitContext::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::
 
   for(StringTokenizer::Iterator it = stAccountAlias.begin(); it != stAccountAlias.end(); it++)
   {
-    std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(ssTargetCompID, ssOnBehalfOfCompID, *it);
+    std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(oSessionID, ssOnBehalfOfCompID, *it);
     std::string ssAcctValue = m_apSgitConf->getString(ssTradeId + "."+ *it);
 
     LOG(DEBUG_LOG_LEVEL, "AccountAlias:%s, Account:%s", ssAcctAliasKey.c_str(), ssAcctValue.c_str());
@@ -172,25 +175,13 @@ bool CSgitContext::InitConvert()
   return m_oConvert.Init();
 }
 
-char CSgitContext::GetCvtDict(const int iField, const char cValue, const Convert::EnWay enWay)
+char CSgitContext::CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType)
 {
-  return m_oConvert.CvtDict(iField, cValue, enWay);
+  return m_oConvert.CvtDict(iField, cValue, enDstDictType);
 }
 
-//void CSgitContext::PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson)
-//{
-//  AbstractConfiguration::Keys ks;
-//  apJson->keys(ssKey, ks);
-//
-//  if (ks.size() < 2)
-//  {
-//    LOG(INFO_LOG_LEVEL, "ssKey:%s, value:%s", ssKey.c_str(), apJson->getString(ssKey).c_str());
-//    return;
-//  }
-//
-//  for (AbstractConfiguration::Keys::iterator it = ks.begin(); it != ks.end(); it++)
-//  {
-//    PrintJsonValue(ssKey + "." + *it, apJson);
-//  }
-//}
+std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::EnSymbolType enDstType)
+{
+  return m_oConvert.CvtSymbol(ssSymbol, enDstType);
+}
 

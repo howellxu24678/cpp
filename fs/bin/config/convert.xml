@@ -1,22 +1,22 @@
 <config>
 	<dicts>
-	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 way="1":从in到out(正向)；way="-1":从out到in(反向)-->
+	<!-- 默认字典转换是双向的，如果是单向的话，需要特别注明 way="1":从fix到sgit(正向)；way="-1":从sgit到fix(反向)-->
 		<dict number='8008' name='testSide'>
-			<item in="A" out="0" way="1"/>
-			<item in="B" out="1" way="-1"/>
+			<item fix="A" sgit="0" way="1"/>
+			<item fix="B" sgit="1" way="-1"/>
 		</dict>	
 		<dict number='77' name='OpenClose'>
-			<item in="O" out="0" description='OPEN'/>
-			<item in="C" out="1" description='CLOSE'/>
+			<item fix="O" sgit="0" description='OPEN'/>
+			<item fix="C" sgit="1" description='CLOSE'/>
 			<!-- 还有平今平昨？-->
 		</dict>		
 		<dict number='40' name='OrdType'>
-			<item in="1" out="1"  description='MARKET'/>
-			<item in="2" out="2" description='LIMIT'/>
+			<item fix="1" sgit="1"  description='MARKET'/>
+			<item fix="2" sgit="2" description='LIMIT'/>
 		</dict>
 		<dict number='54' name='Side'>
-			<item in="1" out="0"  description='BUY'/>
-			<item in="2" out="1" description='SELL'/>
+			<item fix="1" sgit="0"  description='BUY'/>
+			<item fix="2" sgit="1" description='SELL'/>
 		</dict>
 	</dicts>
 	

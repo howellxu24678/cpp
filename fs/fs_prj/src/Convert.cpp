@@ -43,9 +43,9 @@ bool Convert::Init()
 	return true;
 }
 
-char Convert::CvtDict(const int iField, const char cValue, const EnWay enWay)
+char Convert::CvtDict(const int iField, const char cValue, const EnDictType enDstDictType)
 {
-	std::string ssKey = GetDictKey(format("%d", iField), format("%c", cValue), enWay);
+	std::string ssKey = GetDictKey(format("%d", iField), format("%c", cValue), enDstDictType);
 	std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
 	if (citFind != m_mapDict.end())
 	{
@@ -58,10 +58,10 @@ char Convert::CvtDict(const int iField, const char cValue, const EnWay enWay)
 	}
 }
 
-bool Convert::AddDict(const std::string &ssField, const std::string &ssIn, const std::string &ssOut, EnWay enWay)
+bool Convert::AddDict(const std::string &ssField, const std::string &ssFix, const std::string &ssSgit, EnDictType enDstDictType)
 {
-	std::string ssKey = GetDictKey(ssField, enWay == Normal ? ssIn : ssOut, enWay);
-	std::string ssValue = enWay == Normal ? ssOut : ssIn;
+	std::string ssKey = GetDictKey(ssField, enDstDictType == Sgit ? ssFix : ssSgit, enDstDictType);
+	std::string ssValue = enDstDictType == Sgit ? ssSgit : ssFix;
 
 	LOG(DEBUG_LOG_LEVEL, "%s key:%s,value:%s", __FUNCTION__, ssKey.c_str(), ssValue.c_str());
 
@@ -71,14 +71,14 @@ bool Convert::AddDict(const std::string &ssField, const std::string &ssIn, const
 	if (!ret.second)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to insert dict field:%s,in:%s,out:%s,way:%d, may be repeated", 
-			ssField.c_str(), ssIn.c_str(), ssOut.c_str(), enWay);
+			ssField.c_str(), ssFix.c_str(), ssSgit.c_str(), enDstDictType);
 	}
 	return ret.second;
 }
 
-std::string Convert::GetDictKey(const std::string &ssField, const std::string &ssFrom, EnWay enWay) const
+std::string Convert::GetDictKey(const std::string &ssField, const std::string &ssFrom, EnDictType enDstDictType)
 {
-	std::string ssPrefix = enWay == Normal ? "N." : "R.";
+	std::string ssPrefix = enDstDictType == Sgit ? "F->S." : "S->F.";
 	return ssPrefix + ssField + "." + ssFrom;
 }
 
@@ -86,7 +86,7 @@ bool Convert::InitDict(AutoPtr<XMLConfiguration> apXmlConf)
 {
 	AbstractConfiguration::Keys kDict, kItem;
 
-	std::string ssDicts = "dicts", ssDictKey = "", ssItemKey = "", ssField = "", ssIn = "", ssOut = "";
+	std::string ssDicts = "dicts", ssDictKey = "", ssItemKey = "", ssField = "", ssFix = "", ssSgit = "";
 
 	apXmlConf->keys(ssDicts, kDict);
 	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssDicts.c_str(), kDict.size());
@@ -101,17 +101,17 @@ bool Convert::InitDict(AutoPtr<XMLConfiguration> apXmlConf)
 		{
 			ssItemKey = ssDictKey + "." + *itItem;
 
-			ssIn = apXmlConf->getString(ssItemKey + "[@in]");
-			ssOut = apXmlConf->getString(ssItemKey + "[@out]");
+			ssFix = apXmlConf->getString(ssItemKey + "[@fix]");
+			ssSgit = apXmlConf->getString(ssItemKey + "[@sgit]");
 
 			if (apXmlConf->hasOption(ssItemKey + "[@way]"))
 			{
-				if(!AddDict(ssField, ssIn, ssOut, apXmlConf->getInt(ssItemKey + "[@way]") > 0 ? Normal : Reverse)) return false;
+				if(!AddDict(ssField, ssFix, ssSgit, apXmlConf->getInt(ssItemKey + "[@way]") > 0 ? Sgit : Fix)) return false;
 			}
 			else
 			{
-				if(!AddDict(ssField, ssIn, ssOut, Normal)) return false;
-				if(!AddDict(ssField, ssIn, ssOut, Reverse)) return false;
+				if(!AddDict(ssField, ssFix, ssSgit, Sgit)) return false;
+				if(!AddDict(ssField, ssFix, ssSgit, Fix)) return false;
 			}
 		}
 	}
@@ -169,7 +169,7 @@ bool Convert::AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol)
 	return ret.second;
 }
 
-std::string Convert::GetStrType(EnSymbolType enSymbolType) const
+std::string Convert::GetStrType(EnSymbolType enSymbolType)
 {
 	switch(enSymbolType)
 	{
@@ -182,7 +182,7 @@ std::string Convert::GetStrType(EnSymbolType enSymbolType) const
 	}
 }
 
-std::string Convert::CvtSymbol(const std::string &ssSymbol, EnSymbolType enDstType)
+std::string Convert::CvtSymbol(const std::string &ssSymbol, const EnSymbolType enDstType)
 {
 	for (std::map<std::string, STUSymbol>::const_iterator cit = m_mapSymbol.begin(); cit != m_mapSymbol.end(); cit++)
 	{
@@ -203,7 +203,7 @@ std::string Convert::CvtSymbol(const std::string &ssSymbol, EnSymbolType enDstTy
 	return "unknown" + ssSymbol;
 }
 
-std::string Convert::GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType) const
+std::string Convert::GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType)
 {
 	return ssName + "." + GetStrType(enSymbolType);
 }
@@ -228,7 +228,7 @@ std::string Convert::CvtYear(const std::string &ssSrcSymbol, const STUSymbol &st
 
 	if (stuSrcSymbol.m_iYearLen < stuDstSymbol.m_iYearLen && stuSrcSymbol.m_iYearLen == 1) return CvtYearDigitFrom1To2(ssSrcYear);
 
-	return "**";
+	return "unknown";
 }
 
 std::string Convert::CvtMonth(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const
@@ -287,12 +287,12 @@ bool Convert::AddMonth(const std::string &ssKey, const std::string &ssValue)
 	return ret.second;
 }
 
-std::string Convert::CvtYearDigitFrom1To2(const std::string &ssSrcYear) const
+std::string Convert::CvtYearDigitFrom1To2(const std::string &ssSrcYear)
 {
 	DateTime now;
 	int iYear = now.year() % 100;
 	int iSrcYear = ssSrcYear[0] - '0';
-	if (iSrcYear >= 10)
+	if (iSrcYear < 0 || iSrcYear >= 10)
 	{
 		LOG(ERROR_LOG_LEVEL, "srcYear %s invalid", ssSrcYear.c_str());
 		return "unknown";

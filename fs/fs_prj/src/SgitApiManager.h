@@ -22,7 +22,9 @@ public:
 
   std::string GetRealAccont(const FIX::Message& oMsg);
 
-  char GetCvtDict(const int iField, const char cValue, const Convert::EnWay enWay);
+  char CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType);
+
+  std::string CvtSymbol(const std::string &ssSymbol, const Convert::EnSymbolType enDstType);
 
 protected:
   bool InitConvert();
@@ -34,8 +36,6 @@ protected:
   void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId);
 
   SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
-
-  //void PrintJsonValue(const std::string &ssKey, AutoPtr<JSONConfiguration> apJson);
 private:
   std::string                           m_ssSgitCfgPath;
   Convert                               m_oConvert;

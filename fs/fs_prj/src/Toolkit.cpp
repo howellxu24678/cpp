@@ -22,19 +22,17 @@ bool CToolkit::getStrinIfSet(Poco::AutoPtr<Poco::Util::IniFileConfiguration> apC
 	return false;
 }
 
-std::string CToolkit::GenAcctAliasKey(const std::string &ssTargetCompID, const std::string &ssOnBehalfOfCompID, const std::string &ssTradeID)
+std::string CToolkit::GenAcctAliasKey(const FIX::SessionID &oSessionID, const std::string &ssOnBehalfOfCompID, const std::string &ssTradeID)
 {
-  return ssTargetCompID + "|" + ssOnBehalfOfCompID + "|" + ssTradeID;
+  return oSessionID.toString() + "|" + ssOnBehalfOfCompID + "|" + ssTradeID;
 }
 
 std::string CToolkit::GetAcctAliasKey(const std::string &ssAccount, const FIX::Message& oMsg)
 {
-	FIX::SenderCompID senderCompId;
 	FIX::OnBehalfOfCompID onBehalfOfCompId;
-	std::string ssSenderCompId = oMsg.getHeader().getFieldIfSet(senderCompId) ? senderCompId.getValue() : "";
 	std::string ssOnBehalfOfCompID = oMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
 
-	return CToolkit::GenAcctAliasKey(ssSenderCompId, ssOnBehalfOfCompID, ssAccount);
+	return CToolkit::GenAcctAliasKey(oMsg.getSessionID(), ssOnBehalfOfCompID, ssAccount);
 }
 
 bool CToolkit::isExist(const std::string &ssFilePath)

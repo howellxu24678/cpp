@@ -80,16 +80,16 @@ void Application::onMessage( const FIX42::NewOrderSingle& message,
 
 
   //FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-  //    ( FIX::OrderID( genOrderID() ),
-  //      FIX::ExecID( genExecID() ),
-  //      FIX::ExecTransType( FIX::ExecTransType_NEW ),
-  //      FIX::ExecType( FIX::ExecType_FILL ),
-  //      FIX::OrdStatus( FIX::OrdStatus_FILLED ),
-  //      symbol,
-  //      side,
-  //      FIX::LeavesQty( 0 ),
-  //      FIX::CumQty( orderQty ),
-  //      FIX::AvgPx( price ) );
+  //  ( FIX::OrderID( genOrderID() ),
+  //  FIX::ExecID( genExecID() ),
+  //  FIX::ExecTransType( FIX::ExecTransType_NEW ),
+  //  FIX::ExecType( FIX::ExecType_FILL ),
+  //  FIX::OrdStatus( FIX::OrdStatus_FILLED ),
+  //  symbol,
+  //  side,
+  //  FIX::LeavesQty( 0 ),
+  //  FIX::CumQty( orderQty ),
+  //  FIX::AvgPx( price ) );
 
   //executionReport.set( clOrdID );
   //executionReport.set( orderQty );

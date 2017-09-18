@@ -14,7 +14,9 @@ using namespace Poco::Util;
 class Convert
 {
 public:
-  enum EnWay { Normal, Reverse };
+  //字典转换方向：Sgit，Fix
+  enum EnDictType { Sgit, Fix };
+  //代码类别：交易所原始代码，彭博代码
 	enum EnSymbolType { Original, Bloomberg};
 
 	struct STUSymbol
@@ -34,9 +36,9 @@ public:
 
 	bool Init();
 
-  char CvtDict(const int iField, const char cValue, const EnWay enWay);
+  char CvtDict(const int iField, const char cValue, const EnDictType enDstDictType);
 
-	std::string CvtSymbol(const std::string &ssSymbol, EnSymbolType enDstType);
+	std::string CvtSymbol(const std::string &ssSymbol, const EnSymbolType enDstType);
 
 protected:
 	bool InitMonthMap(AutoPtr<XMLConfiguration> apXmlConf);
@@ -49,15 +51,9 @@ protected:
 
 	bool InitSymbol(AutoPtr<XMLConfiguration> apXmlConf);
 
-	bool AddDict(const std::string &ssField, const std::string &ssIn, const std::string &ssOut, EnWay enWay);
-
-	std::string GetDictKey(const std::string &ssField, const std::string &ssFrom, EnWay enWay) const;
+	bool AddDict(const std::string &ssField, const std::string &ssFix, const std::string &ssSgit, EnDictType enDstDictType);
 
 	bool AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol);
-
-	std::string GetStrType(EnSymbolType enSymbolType) const;
-
-	std::string GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType) const;
 
 	std::string CvtSymbol(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const;
 
@@ -65,7 +61,13 @@ protected:
 
 	std::string CvtMonth(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const;
 
-	std::string CvtYearDigitFrom1To2(const std::string &ssSrcYear) const;
+  static std::string GetDictKey(const std::string &ssField, const std::string &ssFrom, EnDictType enDstDictType);
+
+  static std::string GetStrType(EnSymbolType enSymbolType);
+
+  static std::string GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType);
+
+	static std::string CvtYearDigitFrom1To2(const std::string &ssSrcYear);
 
 private:
 	std::string														m_ssCfgPath;

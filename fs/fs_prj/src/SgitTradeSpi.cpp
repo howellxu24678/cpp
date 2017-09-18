@@ -64,8 +64,8 @@ void CSgitTradeSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
 
 int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMsg)
 {
-	FIX::SenderCompID senderCompId;
-	FIX::OnBehalfOfCompID  onBehalfOfCompId;
+	//FIX::SenderCompID senderCompId;
+	//FIX::OnBehalfOfCompID  onBehalfOfCompId;
 	FIX::Account account;
 	FIX::ClOrdID clOrdID;
 	//FIX::SecurityExchange securityExchange;
@@ -99,14 +99,14 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
   strncpy(stuInputOrder.InvestorID, m_pMgr->GetRealAccont(oNewOrderSingleMsg).c_str(), sizeof(stuInputOrder.InvestorID));
   strncpy(stuInputOrder.OrderRef, clOrdID.getValue().c_str(), sizeof(stuInputOrder.OrderRef));
-	
-  strncpy(stuInputOrder.InstrumentID, symbol.getValue().c_str(), sizeof(stuInputOrder.InstrumentID));
+  strncpy(stuInputOrder.InstrumentID, m_pMgr->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), sizeof(stuInputOrder.InstrumentID));
+  
   stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
-	stuInputOrder.OrderPriceType = m_pMgr->GetCvtDict(ordType.getField(), ordType.getValue(), Convert::Normal);
+	stuInputOrder.OrderPriceType = m_pMgr->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
   stuInputOrder.LimitPrice = price.getValue();
-	stuInputOrder.Direction = side.getValue();
-	//stuInputOrder.CombOffsetFlag[0] = openClose.getValue();
-  stuInputOrder.CombOffsetFlag[0] = '0';
+	stuInputOrder.Direction = m_pMgr->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
+  stuInputOrder.CombOffsetFlag[0] = m_pMgr->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+
 	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
 	stuInputOrder.MinVolume = 1;
 	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;

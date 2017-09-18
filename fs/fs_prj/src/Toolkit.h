@@ -16,7 +16,7 @@ public:
     std::string &ssValue);
   
   static std::string GenAcctAliasKey(
-    const std::string &ssTargetCompID, 
+    const FIX::SessionID &ssTargetCompID, 
     const std::string &ssOnBehalfOfCompID, 
     const std::string &ssTradeID); 
 
