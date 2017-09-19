@@ -1,6 +1,7 @@
 #include "SgitTradeSpi.h"
-#include "SgitApiManager.h"
+#include "SgitContext.h"
 #include "Log.h"
+#include "quickfix/fix42/ExecutionReport.h"
 
 CSgitTradeSpi::CSgitTradeSpi(CSgitContext *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
   : m_pMgr(pMgr)
@@ -127,6 +128,33 @@ void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 	LOG(INFO_LOG_LEVEL, "%s, ErrorID:%d, ErrorMsg:%s,OrderRef:%s, OrderSysID:%s, ExchangeID:%s", 
 		__FUNCTION__, pRspInfo->ErrorID, pRspInfo->ErrorMsg, 
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID);
+
+
+	FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
+	  ( FIX::OrderID( pInputOrder->OrderSysID),
+	  FIX::ExecID( "" ),
+	  FIX::ExecTransType( FIX::ExecTransType_NEW ),
+	  FIX::ExecType( FIX::ExecType_FILL ),
+	  FIX::OrdStatus( FIX::OrdStatus_FILLED ),
+	  FIX::Symbol(pInputOrder->InstrumentID),
+	  FIX::Side(pInputOrder->Direction),
+	  FIX::LeavesQty( pInputOrder->VolumeTotalOriginal ),
+	  FIX::CumQty( 0),
+	  FIX::AvgPx( 0 );
+
+	executionReport.set( clOrdID );
+	executionReport.set( orderQty );
+	executionReport.set( FIX::LastShares( orderQty ) );
+	executionReport.set( FIX::LastPx( price ) );
+
+	if( message.isSet(account) )
+	  executionReport.setField( message.get(account) );
+
+	try
+	{
+	  FIX::Session::sendToTarget( executionReport, sessionID );
+	}
+	catch ( FIX::SessionNotFound& ) {}
 }
 
 void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)

@@ -35,7 +35,7 @@
 #include "quickfix/fix44/NewOrderSingle.h"
 #include "quickfix/fix50/NewOrderSingle.h"
 
-#include "SgitApiManager.h"
+#include "SgitContext.h"
 
 class Application
 : public FIX::Application, public FIX::MessageCracker

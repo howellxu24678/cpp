@@ -34,7 +34,7 @@
 
 #include "Poco/Util/IniFileConfiguration.h"
 
-#include "SgitApiManager.h"
+#include "SgitContext.h"
 
 #include "Toolkit.h"
 //#include "Poco/FileStream.h"

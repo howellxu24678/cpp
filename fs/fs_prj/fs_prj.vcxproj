@@ -119,7 +119,7 @@
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Convert.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\SgitApiManager.cpp" />
+    <ClCompile Include="src\SgitContext.cpp" />
     <ClCompile Include="src\SgitTradeSpi.cpp" />
     <ClCompile Include="src\Toolkit.cpp" />
   </ItemGroup>
@@ -128,7 +128,7 @@
     <ClInclude Include="src\Const.h" />
     <ClInclude Include="src\Convert.h" />
     <ClInclude Include="src\Log.h" />
-    <ClInclude Include="src\SgitApiManager.h" />
+    <ClInclude Include="src\SgitContext.h" />
     <ClInclude Include="src\SgitTradeSpi.h" />
     <ClInclude Include="src\Toolkit.h" />
   </ItemGroup>

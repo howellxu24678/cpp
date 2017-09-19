@@ -36,6 +36,8 @@ protected:
   void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId);
 
   SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
+
+	void AddHeader(const std::string &ssAccount, const FIX::Header &header);
 private:
   std::string                           m_ssSgitCfgPath;
   Convert                               m_oConvert;
@@ -48,5 +50,7 @@ private:
 
   //实际账户(账户别名)->Spi实例
   std::map<std::string, SharedPtr<CSgitTradeSpi>>   m_mapAcct2Spi;
+
+	std::map<std::string, FIX::Header>		m_mapAcct2Header;
 };
 #endif // __SGITAPIMANAGER_H__

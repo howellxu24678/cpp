@@ -24,13 +24,13 @@
     <ClCompile Include="src\SgitTradeSpi.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="src\SgitApiManager.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="src\Toolkit.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="src\Convert.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SgitContext.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -44,9 +44,6 @@
     <ClInclude Include="src\Log.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\SgitApiManager.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="src\Toolkit.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -54,6 +51,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\Convert.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SgitContext.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

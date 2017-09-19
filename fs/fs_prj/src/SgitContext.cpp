@@ -1,4 +1,4 @@
-#include "SgitApiManager.h"
+#include "SgitContext.h"
 #include "Poco/StringTokenizer.h"
 #include "Poco/Util/IniFileConfiguration.h"
 
@@ -107,6 +107,8 @@ SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const FIX::Message& oMsg)
   FIX::Account account;
   oMsg.getField(account);
 
+	AddHeader(account.getValue(), oMsg.getHeader());
+
   //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Spi实例
   if (!CToolkit::isAliasAcct(account.getValue())) return GetSpi(account.getValue());
 
@@ -183,5 +185,12 @@ char CSgitContext::CvtDict(const int iField, const char cValue, const Convert::E
 std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::EnSymbolType enDstType)
 {
   return m_oConvert.CvtSymbol(ssSymbol, enDstType);
+}
+
+void CSgitContext::AddHeader(const std::string &ssAccount, const FIX::Header &header)
+{
+	if (m_mapAcct2Header.count(ssAccount) > 0) return;
+
+	m_mapAcct2Header[ssAccount] = header;
 }
 
