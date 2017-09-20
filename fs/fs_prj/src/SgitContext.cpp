@@ -6,6 +6,7 @@
 #include "Log.h"
 #include "quickfix/SessionID.h"
 #include "Toolkit.h"
+#include "quickfix/Session.h"
 
 
 
@@ -51,6 +52,7 @@ SharedPtr<CSgitTradeSpi> CSgitContext::CreateSpi(const std::string &ssFlowPath, 
 {
   CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
   SharedPtr<CSgitTradeSpi> spTradeSpi = new CSgitTradeSpi(this, pTradeApi, m_ssSgitCfgPath, ssTradeId);
+  spTradeSpi->Init();
 
   pTradeApi->IsReviveNtyCapital(false);
   pTradeApi->RegisterSpi(spTradeSpi);
@@ -107,13 +109,11 @@ SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const FIX::Message& oMsg)
   FIX::Account account;
   oMsg.getField(account);
 
-	AddHeader(account.getValue(), oMsg.getHeader());
-
   //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Spi实例
   if (!CToolkit::isAliasAcct(account.getValue())) return GetSpi(account.getValue());
 
-  //如果account为账户别名，即包含字母，则要通过 SenderCompID + OnBehalfOfCompID + 别名 获取对应的Spi实例
-	return GetSpi(CToolkit::GetAcctAliasKey(account.getValue(), oMsg));
+  //如果account为账户别名，即包含字母，则要通过 SessionID + OnBehalfOfCompID + 别名 获取对应的Spi实例
+	return GetSpi(CToolkit::GenAcctAliasKey(account.getValue(), oMsg));
 }
 
 SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const std::string &ssKey)
@@ -128,14 +128,14 @@ SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const std::string &ssKey)
   return nullptr;
 }
 
-std::string CSgitContext::GetRealAccont(const FIX::Message& oMsg)
+std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
 {
 	FIX::Account account;
-	oMsg.getField(account);
+	oRecvMsg.getField(account);
 
 	if(!CToolkit::isAliasAcct(account.getValue())) return account.getValue();
 
-	std::string ssAcctAliasKey = CToolkit::GetAcctAliasKey(account.getValue(), oMsg);
+	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(account.getValue(), oRecvMsg);
 	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
 	if (cit != m_mapAlias2Acct.end())
 	{
@@ -187,10 +187,83 @@ std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::
   return m_oConvert.CvtSymbol(ssSymbol, enDstType);
 }
 
-void CSgitContext::AddHeader(const std::string &ssAccount, const FIX::Header &header)
+void CSgitContext::Send(const std::string &ssAcct, FIX::Message &oMsg)
 {
-	if (m_mapAcct2Header.count(ssAccount) > 0) return;
+  /*
+  1. 找到原始送入的账户（真名？别名？）
+  2. 原始SessionID
+  3. header中的信息
+  */
+  STUFixInfo stuFixInfo;
+  if(!GetFixInfo(ssAcct, stuFixInfo))
+  {
+    LOG(ERROR_LOG_LEVEL, "Failed to get fixinto by account:%s", ssAcct.c_str());
+    return;
+  }
 
-	m_mapAcct2Header[ssAccount] = header;
+  SetFixInfo(stuFixInfo, oMsg);
+  try
+  {
+    FIX::Session::sendToTarget( oMsg, stuFixInfo.m_oSessionID );
+  }
+  catch ( FIX::SessionNotFound& e) 
+  {
+    LOG(ERROR_LOG_LEVEL, "%s", e.what());
+  }
+}
+
+void CSgitContext::AddFixInfo(const FIX::Message& oMsg, const FIX::SessionID& sessionID)
+{
+  std::string ssRealAccount = GetRealAccont(oMsg); 
+  if(m_mapAcct2FixInfo.count(ssRealAccount) > 0) return;
+
+  FIX::Account account;
+  oMsg.getField(account);
+
+  STUFixInfo stuFixInfo;
+  stuFixInfo.m_ssAcctRecv = account.getValue();
+  stuFixInfo.m_oSessionID = sessionID;
+  stuFixInfo.m_oHeader = oMsg.getHeader();
+
+  m_mapAcct2FixInfo[ssRealAccount] = stuFixInfo;
+}
+
+bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
+{
+  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapAcct2FixInfo.find(ssAcct);
+  if(cit != m_mapAcct2FixInfo.end())
+  {
+    stuFixInfo = cit->second;
+    return true;
+  }
+
+  return false;
+}
+
+void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
+{
+  oMsg.setField(FIX::Account(stuFixInfo.m_ssAcctRecv));
+
+  
+  FIX::OnBehalfOfCompID onBehalfOfCompID;
+  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfCompID.getField()))
+  {
+    FIX::DeliverToCompID deliverToCompID(stuFixInfo.m_oHeader.getField(onBehalfOfCompID.getField()));
+    oMsg.setField(deliverToCompID);
+  }
+
+  FIX::SenderSubID senderSubID;
+  if (stuFixInfo.m_oHeader.isSetField(senderSubID.getField()))
+  {
+    FIX::TargetSubID targetSubID(stuFixInfo.m_oHeader.getField(senderSubID.getField()));
+    oMsg.setField(targetSubID);
+  }
+
+  FIX::OnBehalfOfSubID onBehalfOfSubID;
+  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfSubID.getField()))
+  {
+    FIX::DeliverToSubID deliverToSubID(stuFixInfo.m_oHeader.getField(onBehalfOfSubID.getField()));
+    oMsg.setField(deliverToSubID);
+  }
 }
 

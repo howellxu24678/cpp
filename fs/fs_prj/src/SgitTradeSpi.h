@@ -10,15 +10,17 @@ using namespace Poco::Util;
 using namespace fstech;
 
 #include "quickfix/fix42/NewOrderSingle.h"
-
+#include "Convert.h"
 
 
 class CSgitContext;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
-  CSgitTradeSpi(CSgitContext *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
+  CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitTradeSpi();
+
+  void Init();
 
 	///报单录入请求
 	virtual int ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMsg);
@@ -360,11 +362,13 @@ public:
 
 private:
   CThostFtdcTraderApi             *m_pTradeApi;
-  CSgitContext                 *m_pMgr;
+  CSgitContext                    *m_pSgitCtx;
+  std::string                     m_ssSgitCfgPath;
   std::string                     m_ssTradeID;
-	AutoPtr<IniFileConfiguration>   m_apSgitConf;
+  std::string                     m_ssPassword;
   AtomicCounter                   m_acRequestId;
 
+  Convert::EnSymbolType           m_enSymbolType;
 };
 
 #endif // __SGITTRADESPI_H__

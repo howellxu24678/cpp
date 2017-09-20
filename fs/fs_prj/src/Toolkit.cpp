@@ -27,12 +27,20 @@ std::string CToolkit::GenAcctAliasKey(const FIX::SessionID &oSessionID, const st
   return oSessionID.toString() + "|" + ssOnBehalfOfCompID + "|" + ssTradeID;
 }
 
-std::string CToolkit::GetAcctAliasKey(const std::string &ssAccount, const FIX::Message& oMsg)
+std::string CToolkit::GenAcctAliasKey(const std::string &ssAccount, const FIX::Message& oRecvMsg)
 {
 	FIX::OnBehalfOfCompID onBehalfOfCompId;
-	std::string ssOnBehalfOfCompID = oMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
+	std::string ssOnBehalfOfCompID = oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
 
-	return CToolkit::GenAcctAliasKey(oMsg.getSessionID(), ssOnBehalfOfCompID, ssAccount);
+  FIX::BeginString beginString;
+  FIX::SenderCompID senderCompID;
+  FIX::TargetCompID targetCompID;
+
+  oRecvMsg.getHeader().getField(beginString);
+  oRecvMsg.getHeader().getField(senderCompID);
+  oRecvMsg.getHeader().getField(targetCompID);
+
+	return CToolkit::GenAcctAliasKey(FIX::SessionID(beginString, targetCompID, senderCompID), ssOnBehalfOfCompID, ssAccount);
 }
 
 bool CToolkit::isExist(const std::string &ssFilePath)

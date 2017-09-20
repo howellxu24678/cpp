@@ -3,20 +3,14 @@
 #include "Log.h"
 #include "quickfix/fix42/ExecutionReport.h"
 
-CSgitTradeSpi::CSgitTradeSpi(CSgitContext *pMgr, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId)
-  : m_pMgr(pMgr)
+CSgitTradeSpi::CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId) 
+  : m_pSgitCtx(pSgitCtx)
   , m_pTradeApi(pReqApi)
+  , m_ssSgitCfgPath(ssSgitCfgPath)
   , m_ssTradeID(ssTradeId)
+  , m_enSymbolType(Convert::Original)
 {
-	m_apSgitConf = new IniFileConfiguration(ssSgitCfgPath);
 
-
-  //FIX::SessionID oSessionID = FIX::SessionID(
-  //  apSgitConf->getString(*it + ".BeginString"), 
-  //  apSgitConf->getString(*it + ".SenderCompID"), 
-  //  apSgitConf->getString(*it + ".TargetCompID"));
-  //std::string ssOnBehalfOfCompID = apSgitConf->hasProperty(*it + ".OnBehalfOfCompID") ? 
-  //  apSgitConf->getString(*it + ".OnBehalfOfCompID") : "";
 }
 
 CSgitTradeSpi::~CSgitTradeSpi()
@@ -37,7 +31,7 @@ void CSgitTradeSpi::OnFrontConnected()
 	CThostFtdcReqUserLoginField stuLogin;
 	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
 	strncpy(stuLogin.UserID, m_ssTradeID.c_str(), sizeof(stuLogin.UserID));
-	strncpy(stuLogin.Password, m_apSgitConf->getString(m_ssTradeID + ".PassWord").c_str(), sizeof(stuLogin.Password));
+	strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
 	m_pTradeApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
 	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s",stuLogin.UserID);
@@ -98,15 +92,19 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
   
 	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
-  strncpy(stuInputOrder.InvestorID, m_pMgr->GetRealAccont(oNewOrderSingleMsg).c_str(), sizeof(stuInputOrder.InvestorID));
+  strncpy(stuInputOrder.InvestorID, m_pSgitCtx->GetRealAccont(oNewOrderSingleMsg).c_str(), sizeof(stuInputOrder.InvestorID));
   strncpy(stuInputOrder.OrderRef, clOrdID.getValue().c_str(), sizeof(stuInputOrder.OrderRef));
-  strncpy(stuInputOrder.InstrumentID, m_pMgr->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), sizeof(stuInputOrder.InstrumentID));
+  strncpy(
+    stuInputOrder.InstrumentID, 
+    m_enSymbolType == Convert::Original ? 
+    symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+    sizeof(stuInputOrder.InstrumentID));
   
   stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
-	stuInputOrder.OrderPriceType = m_pMgr->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
+	stuInputOrder.OrderPriceType = m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
   stuInputOrder.LimitPrice = price.getValue();
-	stuInputOrder.Direction = m_pMgr->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
-  stuInputOrder.CombOffsetFlag[0] = m_pMgr->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+	stuInputOrder.Direction = m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
+  stuInputOrder.CombOffsetFlag[0] = m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
 
 	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
 	stuInputOrder.MinVolume = 1;
@@ -130,31 +128,34 @@ void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID);
 
 
-	FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-	  ( FIX::OrderID( pInputOrder->OrderSysID),
-	  FIX::ExecID( "" ),
-	  FIX::ExecTransType( FIX::ExecTransType_NEW ),
-	  FIX::ExecType( FIX::ExecType_FILL ),
-	  FIX::OrdStatus( FIX::OrdStatus_FILLED ),
-	  FIX::Symbol(pInputOrder->InstrumentID),
-	  FIX::Side(pInputOrder->Direction),
-	  FIX::LeavesQty( pInputOrder->VolumeTotalOriginal ),
-	  FIX::CumQty( 0),
-	  FIX::AvgPx( 0 );
+  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
+    ( FIX::OrderID( pInputOrder->OrderSysID),
+    FIX::ExecID(""),
+    FIX::ExecTransType(FIX::ExecTransType_NEW),
+    FIX::ExecType(FIX::ExecType_FILL),
+    FIX::OrdStatus(FIX::OrdStatus_FILLED),
+    FIX::Symbol(m_enSymbolType == Convert::Original ? 
+    pInputOrder->InstrumentID : m_pSgitCtx->CvtSymbol(pInputOrder->InstrumentID, m_enSymbolType).c_str()),
+    FIX::Side(pInputOrder->Direction),
+    FIX::LeavesQty(pInputOrder->VolumeTotalOriginal),
+    FIX::CumQty(0),
+    FIX::AvgPx(0));
 
-	executionReport.set( clOrdID );
-	executionReport.set( orderQty );
-	executionReport.set( FIX::LastShares( orderQty ) );
-	executionReport.set( FIX::LastPx( price ) );
+  executionReport.set(FIX::ClOrdID(pInputOrder->OrderRef));
+  executionReport.set(FIX::OrderQty(pInputOrder->VolumeTotalOriginal));
+  executionReport.set(FIX::LastShares(0));
+  executionReport.set(FIX::LastPx(0));
 
-	if( message.isSet(account) )
-	  executionReport.setField( message.get(account) );
+  m_pSgitCtx->Send(pInputOrder->InvestorID, executionReport);
 
-	try
-	{
-	  FIX::Session::sendToTarget( executionReport, sessionID );
-	}
-	catch ( FIX::SessionNotFound& ) {}
+  //if( message.isSet(account) )
+  //  executionReport.setField( message.get(account) );
+
+  //try
+  //{
+  //  FIX::Session::sendToTarget( executionReport, sessionID );
+  //}
+  //catch ( FIX::SessionNotFound& ) {}
 }
 
 void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -164,7 +165,7 @@ void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 
 void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
-	LOG(INFO_LOG_LEVEL, "%s", __FUNCTION__, pOrder);
+	LOG(INFO_LOG_LEVEL, "%s", __FUNCTION__);
 }
 
 void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
@@ -180,4 +181,11 @@ void CSgitTradeSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, 
 void CSgitTradeSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+}
+
+void CSgitTradeSpi::Init()
+{
+  AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+  m_ssPassword = apSgitConf->getString(m_ssTradeID + ".PassWord");
+  m_enSymbolType = (Convert::EnSymbolType)apSgitConf->getInt(m_ssTradeID + ".SymbolType");
 }

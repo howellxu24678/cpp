@@ -35,7 +35,7 @@
 		<item in="12" out="Z" />
 	</month>
 	
-	<symbols desc="type 0:交易所原始代码 1:彭博代码，*:年份 ?:月份">
+	<symbols desc="type 0:交易所原始代码;1:彭博代码，*:年份 ?:月份">
 		<!-- 中金所品种 -->
 		<symbol name="IF" desc="股指期货">
 			<item type="0" format="IF**??" re="IF\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2" desc="正则表达式匹配IF后4个数字，年月开始位置(从0开始)，年月长度"/>

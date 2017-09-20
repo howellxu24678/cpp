@@ -12,6 +12,14 @@ using namespace Poco::Util;
 
 class CSgitContext
 {
+  struct STUFixInfo{
+    //收到的原始资金账号
+    std::string     m_ssAcctRecv;
+    FIX::Header     m_oHeader;
+
+    FIX::SessionID  m_oSessionID;
+  };
+
 public:
   CSgitContext(const std::string &ssSgitCfgPath, const std::string &ssCvtCfgPath);
   ~CSgitContext();
@@ -20,11 +28,15 @@ public:
 
   SharedPtr<CSgitTradeSpi> GetSpi(const FIX::Message& oMsg);
 
-  std::string GetRealAccont(const FIX::Message& oMsg);
+  std::string GetRealAccont(const FIX::Message& oRecvMsg);
 
   char CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType);
 
   std::string CvtSymbol(const std::string &ssSymbol, const Convert::EnSymbolType enDstType);
+
+  void Send(const std::string &ssAcct, FIX::Message &oMsg);
+
+  void AddFixInfo(const FIX::Message& oMsg, const FIX::SessionID& sessionID);
 
 protected:
   bool InitConvert();
@@ -37,7 +49,9 @@ protected:
 
   SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
 
-	void AddHeader(const std::string &ssAccount, const FIX::Header &header);
+  bool GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo);
+
+  void SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg);
 private:
   std::string                           m_ssSgitCfgPath;
   Convert                               m_oConvert;
@@ -51,6 +65,7 @@ private:
   //实际账户(账户别名)->Spi实例
   std::map<std::string, SharedPtr<CSgitTradeSpi>>   m_mapAcct2Spi;
 
-	std::map<std::string, FIX::Header>		m_mapAcct2Header;
+  //资金账号真名->Fix相关信息(用于应答和推送)
+  std::map<std::string, STUFixInfo>     m_mapAcct2FixInfo;
 };
 #endif // __SGITAPIMANAGER_H__

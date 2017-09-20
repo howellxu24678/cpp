@@ -51,7 +51,7 @@ void Application::toApp( FIX::Message& message,
                          const FIX::SessionID& sessionID )
 throw( FIX::DoNotSend ) 
 {
-
+  LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
 }
 
 void Application::fromAdmin( const FIX::Message& message,
@@ -65,13 +65,14 @@ void Application::fromApp( const FIX::Message& message,
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::UnsupportedMessageType )
 {
 	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
+  m_pSigtCtx->AddFixInfo(message, sessionID);
 	crack( message, sessionID ); 
 }
 
 void Application::onMessage( const FIX42::NewOrderSingle& message,
                              const FIX::SessionID& sessionID )
 {
-	SharedPtr<CSgitTradeSpi> spTradeSpi = m_oSigtApiMngr.GetSpi(message);
+	SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(message);
 	if (spTradeSpi)
 	{
 		spTradeSpi->ReqOrderInsert(message);
@@ -79,37 +80,30 @@ void Application::onMessage( const FIX42::NewOrderSingle& message,
 
 
 
-  //FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-  //  ( FIX::OrderID( genOrderID() ),
-  //  FIX::ExecID( genExecID() ),
-  //  FIX::ExecTransType( FIX::ExecTransType_NEW ),
-  //  FIX::ExecType( FIX::ExecType_FILL ),
-  //  FIX::OrdStatus( FIX::OrdStatus_FILLED ),
-  //  symbol,
-  //  side,
-  //  FIX::LeavesQty( 0 ),
-  //  FIX::CumQty( orderQty ),
-  //  FIX::AvgPx( price ) );
+  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
+    ( FIX::OrderID( genOrderID() ),
+    FIX::ExecID( genExecID() ),
+    FIX::ExecTransType( FIX::ExecTransType_NEW ),
+    FIX::ExecType( FIX::ExecType_FILL ),
+    FIX::OrdStatus( FIX::OrdStatus_FILLED ),
+    FIX::Symbol("testSymbol"),
+    FIX::Side('0'),
+    FIX::LeavesQty( 0 ),
+    FIX::CumQty( 0 ),
+    FIX::AvgPx( 0 ) );
 
-  //executionReport.set( clOrdID );
-  //executionReport.set( orderQty );
-  //executionReport.set( FIX::LastShares( orderQty ) );
-  //executionReport.set( FIX::LastPx( price ) );
 
-  //if( message.isSet(account) )
-  //  executionReport.setField( message.get(account) );
-
-  //try
-  //{
-  //  FIX::Session::sendToTarget( executionReport, sessionID );
-  //}
-  //catch ( FIX::SessionNotFound& ) {}
+  try
+  {
+    FIX::Session::sendToTarget( executionReport, sessionID );
+  }
+  catch ( FIX::SessionNotFound& ) {}
 }
 
-Application::Application(const CSgitContext &oSgitApiMngr)
+Application::Application(CSgitContext* pSgitCtx)
    : m_orderID(0)
    , m_execID(0)
-   , m_oSigtApiMngr(oSgitApiMngr)
+   , m_pSigtCtx(pSgitCtx)
 {
 
 }

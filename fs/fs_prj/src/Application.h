@@ -41,7 +41,7 @@ class Application
 : public FIX::Application, public FIX::MessageCracker
 {
 public:
-  Application(const CSgitContext &oSgitApiMngr);
+  Application(CSgitContext* pSgitCtx);
 
   // Application overloads
   void onCreate( const FIX::SessionID& );
@@ -70,7 +70,7 @@ public:
   }
 private:
   int m_orderID, m_execID;
-  CSgitContext       m_oSigtApiMngr;
+  CSgitContext*       m_pSigtCtx;
   //CThostFtdcTraderApi *m_pTradeApi;
 };
 

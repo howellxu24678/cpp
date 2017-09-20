@@ -16,11 +16,11 @@ public:
     std::string &ssValue);
   
   static std::string GenAcctAliasKey(
-    const FIX::SessionID &ssTargetCompID, 
+    const FIX::SessionID &oSessionID, 
     const std::string &ssOnBehalfOfCompID, 
     const std::string &ssTradeID); 
 
-	static std::string GetAcctAliasKey(const std::string &ssAccount, const FIX::Message& oMsg);
+	static std::string GenAcctAliasKey(const std::string &ssAccount, const FIX::Message& oRecvMsg);
 
 	static bool isExist(const std::string &ssFilePath);
 };
