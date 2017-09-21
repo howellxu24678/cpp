@@ -78,26 +78,24 @@ void Application::onMessage( const FIX42::NewOrderSingle& message,
 		spTradeSpi->ReqOrderInsert(message);
 	}
 
+  //FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
+  //  ( FIX::OrderID( genOrderID() ),
+  //  FIX::ExecID( genExecID() ),
+  //  FIX::ExecTransType( FIX::ExecTransType_NEW ),
+  //  FIX::ExecType( FIX::ExecType_FILL ),
+  //  FIX::OrdStatus( FIX::OrdStatus_FILLED ),
+  //  FIX::Symbol("testSymbol"),
+  //  FIX::Side(FIX::Side_BUY),
+  //  FIX::LeavesQty( 0 ),
+  //  FIX::CumQty( 0 ),
+  //  FIX::AvgPx( 0 ) );
 
 
-  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-    ( FIX::OrderID( genOrderID() ),
-    FIX::ExecID( genExecID() ),
-    FIX::ExecTransType( FIX::ExecTransType_NEW ),
-    FIX::ExecType( FIX::ExecType_FILL ),
-    FIX::OrdStatus( FIX::OrdStatus_FILLED ),
-    FIX::Symbol("testSymbol"),
-    FIX::Side('0'),
-    FIX::LeavesQty( 0 ),
-    FIX::CumQty( 0 ),
-    FIX::AvgPx( 0 ) );
-
-
-  try
-  {
-    FIX::Session::sendToTarget( executionReport, sessionID );
-  }
-  catch ( FIX::SessionNotFound& ) {}
+  //try
+  //{
+  //  FIX::Session::sendToTarget( executionReport, sessionID );
+  //}
+  //catch ( FIX::SessionNotFound& ) {}
 }
 
 Application::Application(CSgitContext* pSgitCtx)

@@ -249,21 +249,21 @@ void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
   if (stuFixInfo.m_oHeader.isSetField(onBehalfOfCompID.getField()))
   {
     FIX::DeliverToCompID deliverToCompID(stuFixInfo.m_oHeader.getField(onBehalfOfCompID.getField()));
-    oMsg.setField(deliverToCompID);
+    oMsg.getHeader().setField(deliverToCompID);
   }
 
   FIX::SenderSubID senderSubID;
   if (stuFixInfo.m_oHeader.isSetField(senderSubID.getField()))
   {
     FIX::TargetSubID targetSubID(stuFixInfo.m_oHeader.getField(senderSubID.getField()));
-    oMsg.setField(targetSubID);
+    oMsg.getHeader().setField(targetSubID);
   }
 
   FIX::OnBehalfOfSubID onBehalfOfSubID;
   if (stuFixInfo.m_oHeader.isSetField(onBehalfOfSubID.getField()))
   {
     FIX::DeliverToSubID deliverToSubID(stuFixInfo.m_oHeader.getField(onBehalfOfSubID.getField()));
-    oMsg.setField(deliverToSubID);
+    oMsg.getHeader().setField(deliverToSubID);
   }
 }
 

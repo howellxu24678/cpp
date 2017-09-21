@@ -26,7 +26,7 @@ CSgitTradeSpi::~CSgitTradeSpi()
 
 void CSgitTradeSpi::OnFrontConnected()
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+	LOG(INFO_LOG_LEVEL, "");
 
 	CThostFtdcReqUserLoginField stuLogin;
 	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
@@ -123,64 +123,83 @@ int CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMs
 
 void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	LOG(INFO_LOG_LEVEL, "%s, ErrorID:%d, ErrorMsg:%s,OrderRef:%s, OrderSysID:%s, ExchangeID:%s", 
-		__FUNCTION__, pRspInfo->ErrorID, pRspInfo->ErrorMsg, 
+	LOG(INFO_LOG_LEVEL, "ErrorID:%d, ErrorMsg:%s,OrderRef:%s, OrderSysID:%s, ExchangeID:%s", 
+		pRspInfo->ErrorID, pRspInfo->ErrorMsg, 
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID);
 
+  bool isSuccess = pRspInfo->ErrorID == 0;
 
-  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-    ( FIX::OrderID( pInputOrder->OrderSysID),
-    FIX::ExecID(""),
-    FIX::ExecTransType(FIX::ExecTransType_NEW),
-    FIX::ExecType(FIX::ExecType_FILL),
-    FIX::OrdStatus(FIX::OrdStatus_FILLED),
-    FIX::Symbol(m_enSymbolType == Convert::Original ? 
-    pInputOrder->InstrumentID : m_pSgitCtx->CvtSymbol(pInputOrder->InstrumentID, m_enSymbolType).c_str()),
-    FIX::Side(pInputOrder->Direction),
-    FIX::LeavesQty(pInputOrder->VolumeTotalOriginal),
-    FIX::CumQty(0),
-    FIX::AvgPx(0));
+  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport();
 
+  executionReport.set(FIX::OrderID( strlen(pInputOrder->OrderSysID) < 1 ? " " : pInputOrder->OrderSysID));
+  executionReport.set(FIX::ExecID(" "));
+  executionReport.set(FIX::Symbol(m_enSymbolType == Convert::Original ? 
+    pInputOrder->InstrumentID : m_pSgitCtx->CvtSymbol(pInputOrder->InstrumentID, m_enSymbolType).c_str()));
+  executionReport.set(FIX::Side(m_pSgitCtx->CvtDict(FIX::FIELD::Side, pInputOrder->Direction, Convert::Fix)));
+  executionReport.set(FIX::LeavesQty(pInputOrder->VolumeTotalOriginal));
+  executionReport.set(FIX::CumQty(0));
+  executionReport.set(FIX::AvgPx(0));
   executionReport.set(FIX::ClOrdID(pInputOrder->OrderRef));
   executionReport.set(FIX::OrderQty(pInputOrder->VolumeTotalOriginal));
   executionReport.set(FIX::LastShares(0));
   executionReport.set(FIX::LastPx(0));
 
+  executionReport.set(FIX::ExecTransType(FIX::ExecTransType_NEW));
+  executionReport.set(FIX::OrdStatus(isSuccess ? FIX::OrdStatus_NEW : FIX::OrdStatus_REJECTED));
+  executionReport.set(FIX::ExecType(isSuccess ? FIX::ExecType_NEW : FIX::ExecType_REJECTED));
+
+  if(!isSuccess)
+  {
+    executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_DUPLICATE_ORDER));
+  }
+    
+  //FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
+  //  ( FIX::OrderID( strlen(pInputOrder->OrderSysID) < 1 ? " " : pInputOrder->OrderSysID),
+  //  FIX::ExecID(" "),
+  //  FIX::ExecTransType(FIX::ExecTransType_NEW),
+  //  FIX::ExecType(FIX::ExecType_FILL),
+  //  FIX::OrdStatus(FIX::OrdStatus_FILLED),
+  //  FIX::Symbol(m_enSymbolType == Convert::Original ? 
+  //  pInputOrder->InstrumentID : m_pSgitCtx->CvtSymbol(pInputOrder->InstrumentID, m_enSymbolType).c_str()),
+  //  FIX::Side(m_pSgitCtx->CvtDict(FIX::FIELD::Side, pInputOrder->Direction, Convert::Fix)),
+  //  FIX::LeavesQty(pInputOrder->VolumeTotalOriginal),
+  //  FIX::CumQty(0),
+  //  FIX::AvgPx(0));
+
   m_pSgitCtx->Send(pInputOrder->InvestorID, executionReport);
-
-  //if( message.isSet(account) )
-  //  executionReport.setField( message.get(account) );
-
-  //try
-  //{
-  //  FIX::Session::sendToTarget( executionReport, sessionID );
-  //}
-  //catch ( FIX::SessionNotFound& ) {}
 }
 
 void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+	LOG(INFO_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,OrderActionRef:%s,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d", 
+    pRspInfo->ErrorID, pRspInfo->ErrorMsg, pInputOrderAction->OrderActionRef, pInputOrderAction->OrderRef, 
+    pInputOrderAction->OrderSysID, pInputOrderAction->ActionFlag, pInputOrderAction->VolumeChange);
 }
 
 void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
-	LOG(INFO_LOG_LEVEL, "%s", __FUNCTION__);
+	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderLocalID:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d",
+    pOrder->OrderRef, pOrder->OrderLocalID, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded);
 }
 
 void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+	LOG(INFO_LOG_LEVEL, "OrderRef:%s,TradeID:%s,OrderSysID:%s,Price:%f,Volume:%d", 
+    pTrade->OrderRef, pTrade->TradeID, pTrade->OrderSysID, pTrade->Price, pTrade->Volume);
 }
 
 void CSgitTradeSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+  LOG(INFO_LOG_LEVEL, "ErrorID:%d, ErrorMsg:%s,OrderRef:%s, OrderSysID:%s, ExchangeID:%s", 
+    pRspInfo->ErrorID, pRspInfo->ErrorMsg, 
+    pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID);
 }
 
 void CSgitTradeSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
-	LOG(INFO_LOG_LEVEL, __FUNCTION__);
+  LOG(INFO_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,OrderActionRef:%s,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d", 
+    pRspInfo->ErrorID, pRspInfo->ErrorMsg, pOrderAction->OrderActionRef, pOrderAction->OrderRef, 
+    pOrderAction->OrderSysID, pOrderAction->ActionFlag, pOrderAction->VolumeChange);
 }
 
 void CSgitTradeSpi::Init()

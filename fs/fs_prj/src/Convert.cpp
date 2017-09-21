@@ -63,7 +63,7 @@ bool Convert::AddDict(const std::string &ssField, const std::string &ssFix, cons
 	std::string ssKey = GetDictKey(ssField, enDstDictType == Sgit ? ssFix : ssSgit, enDstDictType);
 	std::string ssValue = enDstDictType == Sgit ? ssSgit : ssFix;
 
-	LOG(DEBUG_LOG_LEVEL, "%s key:%s,value:%s", __FUNCTION__, ssKey.c_str(), ssValue.c_str());
+	LOG(DEBUG_LOG_LEVEL, "key:%s,value:%s", ssKey.c_str(), ssValue.c_str());
 
 	std::pair<std::map<std::string, std::string>::iterator, bool> ret = 
 		m_mapDict.insert(std::pair<std::string, std::string>(ssKey, ssValue));
@@ -156,7 +156,7 @@ bool Convert::InitSymbol(AutoPtr<XMLConfiguration> apXmlConf)
 
 bool Convert::AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol)
 {
-	LOG(DEBUG_LOG_LEVEL, "%s ssKey:%s,format:%s", __FUNCTION__, ssKey.c_str(), stuSymbol.m_ssFormat.c_str());
+	LOG(DEBUG_LOG_LEVEL, "ssKey:%s,format:%s", ssKey.c_str(), stuSymbol.m_ssFormat.c_str());
 
 	std::pair<std::map<std::string, STUSymbol>::iterator, bool> ret = 
 		m_mapSymbol.insert(std::pair<std::string, STUSymbol>(ssKey, stuSymbol));
