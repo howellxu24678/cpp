@@ -10,6 +10,23 @@
 			<item fix="C" sgit="1" description='CLOSE'/>
 			<!-- 还有平今平昨？-->
 		</dict>		
+		<dict number='39' name='OrdStatus'>
+			<!-- <item fix='0' sgit="" description='NEW' /> -->
+			<item fix='1' sgit="1" description='PARTIALLY_FILLED' />
+			<item fix='2' sgit="0" description='FILLED' />
+			<!-- <item fix='3' sgit="" description='DONE_FOR_DAY' /> -->
+			<item fix='4' sgit="5" description='CANCELED' />
+			<!-- <item fix='5' sgit="" description='REPLACED' />
+			<item fix='6' sgit="" description='PENDING_CANCEL' />
+			<item fix='7' sgit="" description='STOPPED' />
+			<item fix='8' sgit="" description='REJECTED' />
+			<item fix='9' sgit="" description='SUSPENDED' /> -->
+			<item fix='A' sgit="3" description='PENDING_NEW' />
+			<!--<item fix='B' sgit="" description='CALCULATED' />
+			<item fix='C' sgit="" description='EXPIRED' />
+			<item fix='D' sgit="" description='ACCEPTED_FOR_BIDDING' />
+			<item fix='E' sgit="" description='PENDING_REPLACE' /> -->
+		</dict>
 		<dict number='40' name='OrdType'>
 			<item fix="1" sgit="1"  description='MARKET'/>
 			<item fix="2" sgit="2" description='LIMIT'/>

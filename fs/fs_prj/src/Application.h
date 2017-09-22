@@ -28,12 +28,8 @@
 #include "quickfix/Utility.h"
 #include "quickfix/Mutex.h"
 
-#include "quickfix/fix40/NewOrderSingle.h"
-#include "quickfix/fix41/NewOrderSingle.h"
 #include "quickfix/fix42/NewOrderSingle.h"
-#include "quickfix/fix43/NewOrderSingle.h"
-#include "quickfix/fix44/NewOrderSingle.h"
-#include "quickfix/fix50/NewOrderSingle.h"
+#include "quickfix/fix42/OrderCancelRequest.h"
 
 #include "SgitContext.h"
 
@@ -56,22 +52,11 @@ public:
     throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::UnsupportedMessageType );
 
   // MessageCracker overloads
-  void onMessage( const FIX42::NewOrderSingle&, const FIX::SessionID& );
+  void onMessage(const FIX42::NewOrderSingle&, const FIX::SessionID&);
+  void onMessage(const FIX42::OrderCancelRequest&, const FIX::SessionID&);
 
-  std::string genOrderID() {
-    std::stringstream stream;
-    stream << ++m_orderID;
-    return stream.str();
-  }
-  std::string genExecID() {
-    std::stringstream stream;
-    stream << ++m_execID;
-    return stream.str();
-  }
 private:
-  int m_orderID, m_execID;
   CSgitContext*       m_pSigtCtx;
-  //CThostFtdcTraderApi *m_pTradeApi;
 };
 
 #endif

@@ -69,39 +69,26 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 	crack( message, sessionID ); 
 }
 
-void Application::onMessage( const FIX42::NewOrderSingle& message,
-                             const FIX::SessionID& sessionID )
+void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID& oSessionID)
 {
-	SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(message);
+	SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
 	if (spTradeSpi)
 	{
-		spTradeSpi->ReqOrderInsert(message);
+		spTradeSpi->ReqOrderInsert(oMsg);
 	}
+}
 
-  //FIX42::ExecutionReport executionReport = FIX42::ExecutionReport
-  //  ( FIX::OrderID( genOrderID() ),
-  //  FIX::ExecID( genExecID() ),
-  //  FIX::ExecTransType( FIX::ExecTransType_NEW ),
-  //  FIX::ExecType( FIX::ExecType_FILL ),
-  //  FIX::OrdStatus( FIX::OrdStatus_FILLED ),
-  //  FIX::Symbol("testSymbol"),
-  //  FIX::Side(FIX::Side_BUY),
-  //  FIX::LeavesQty( 0 ),
-  //  FIX::CumQty( 0 ),
-  //  FIX::AvgPx( 0 ) );
-
-
-  //try
-  //{
-  //  FIX::Session::sendToTarget( executionReport, sessionID );
-  //}
-  //catch ( FIX::SessionNotFound& ) {}
+void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::SessionID& oSessionID)
+{
+  SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
+  if (spTradeSpi)
+  {
+    spTradeSpi->ReqOrderInsert(oMsg);
+  }
 }
 
 Application::Application(CSgitContext* pSgitCtx)
-   : m_orderID(0)
-   , m_execID(0)
-   , m_pSigtCtx(pSgitCtx)
+   : m_pSigtCtx(pSgitCtx)
 {
 
 }

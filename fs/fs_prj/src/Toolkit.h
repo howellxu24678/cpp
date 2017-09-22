@@ -23,5 +23,7 @@ public:
 	static std::string GenAcctAliasKey(const std::string &ssAccount, const FIX::Message& oRecvMsg);
 
 	static bool isExist(const std::string &ssFilePath);
+
+  static std::string GetUuid();
 };
 #endif // __TOOLKIT_H__

@@ -2,6 +2,9 @@
 #include <cctype>
 #include "Poco/File.h"
 
+#include "Poco/DateTimeFormat.h"
+#include "Poco/DateTimeFormatter.h"
+
 bool CToolkit::isAliasAcct(const std::string &ssAcct)
 {
   for (std::string::const_iterator cit = ssAcct.begin(); cit != ssAcct.end(); cit++)
@@ -47,5 +50,11 @@ bool CToolkit::isExist(const std::string &ssFilePath)
 {
 	Poco::File file = Poco::File(ssFilePath);
 	return file.exists();
+}
+
+std::string CToolkit::GetUuid()
+{
+  Poco::LocalDateTime now;
+  return Poco::DateTimeFormatter::format(now, Poco::DateTimeFormat::ISO8601_FRAC_FORMAT);
 }
 

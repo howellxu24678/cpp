@@ -10,6 +10,7 @@ using namespace Poco::Util;
 using namespace fstech;
 
 #include "quickfix/fix42/NewOrderSingle.h"
+#include "quickfix/fix42/OrderCancelRequest.h"
 #include "Convert.h"
 
 
@@ -23,7 +24,10 @@ public:
   void Init();
 
 	///报单录入请求
-	virtual int ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingleMsg);
+	virtual int ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
+
+
+  virtual int ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
 
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
