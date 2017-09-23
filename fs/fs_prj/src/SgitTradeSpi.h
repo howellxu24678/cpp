@@ -3,16 +3,22 @@
 
 
 #include "Poco/Util/IniFileConfiguration.h"
-using namespace Poco;
-using namespace Poco::Util;
+#include "Poco/ExpireCache.h"
+#include "Poco/RWLock.h"
 
 #include "sgit/SgitFtdcTraderApi.h"
-using namespace fstech;
 
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
+
 #include "Convert.h"
 
+using namespace fstech;
+
+using namespace Poco;
+using namespace Poco::Util;
+
+const std::string ssOrderRefFormat = "%012d";
 
 class CSgitContext;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
@@ -24,10 +30,10 @@ public:
   void Init();
 
 	///报单录入请求
-	virtual int ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
+	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 
 
-  virtual int ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
+  void ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
 
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
@@ -364,15 +370,35 @@ public:
   /// 当收到合约价位查询应答时回调该函数
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
-private:
-  CThostFtdcTraderApi             *m_pTradeApi;
-  CSgitContext                    *m_pSgitCtx;
-  std::string                     m_ssSgitCfgPath;
-  std::string                     m_ssTradeID;
-  std::string                     m_ssPassword;
-  AtomicCounter                   m_acRequestId;
+	protected:
+		bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
 
-  Convert::EnSymbolType           m_enSymbolType;
+		void SendExecutionReport(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo);
+
+		void SendOrderCancelReject(
+			CThostFtdcOrderActionField *pOrderAction, 
+			CThostFtdcRspInfoField *pRspInfo, 
+			const std::string& ssClOrdID, 
+			const std::string& ssOrigClOrdID);
+
+		void SendOrderCancelReject(
+			CThostFtdcInputOrderActionField *pInputOrderAction, 
+			CThostFtdcRspInfoField *pRspInfo, 
+			const std::string& ssClOrdID, 
+			const std::string& ssOrigClOrdID);
+
+private:
+  CThostFtdcTraderApi											*m_pTradeApi;
+  CSgitContext														*m_pSgitCtx;
+  std::string															m_ssSgitCfgPath;
+  std::string															m_ssTradeID;
+  std::string															m_ssPassword;
+  AtomicCounter														m_acRequestId;
+
+  Convert::EnSymbolType										m_enSymbolType;
+
+	AtomicCounter														m_acOrderRef;
+	ExpireCache<std::string, std::string>		m_chOrderRef2OrderID;//超时设为12小时
 };
 
 #endif // __SGITTRADESPI_H__

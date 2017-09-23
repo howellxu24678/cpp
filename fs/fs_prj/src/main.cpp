@@ -126,8 +126,8 @@ int main( int argc, char** argv )
 		2. fix application 中 onMessage收到消息后，解析消息，根据  XXX 找到对应的 api实例提交请求
 		3. api实例回调后，组包，找到对应的fix sessionID 发送回去
 		*/
-		CSgitContext* pSigtCtx = new CSgitContext(ssSgitCfgPath, ssDictCfgPath);
-		if(!pSigtCtx->Init())
+		SharedPtr<CSgitContext> apSigtCtx = new CSgitContext(ssSgitCfgPath, ssDictCfgPath);
+		if(!apSigtCtx->Init())
 		{
 			LOG(FATAL_LOG_LEVEL, "Failed to Init CSgitApiManager");
 		}
@@ -135,7 +135,7 @@ int main( int argc, char** argv )
 		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）
 		FIX::SessionSettings settings( ssFixCfgPath );
 
-		Application application(pSigtCtx);
+		Application application(apSigtCtx);
 		FIX::FileStoreFactory storeFactory( settings );
 		FIX::FileLogFactory logFactory( settings );
 
@@ -162,3 +162,11 @@ int main( int argc, char** argv )
 		return 1;
 	}
 }
+
+
+/*
+遗留问题：
+1. 上期所平今平昨
+2. 执行回报成交价格
+3. 
+*/
