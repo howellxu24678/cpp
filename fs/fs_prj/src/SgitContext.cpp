@@ -182,7 +182,7 @@ char CSgitContext::CvtDict(const int iField, const char cValue, const Convert::E
   return m_oConvert.CvtDict(iField, cValue, enDstDictType);
 }
 
-std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::EnSymbolType enDstType)
+std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::EnCvtType enDstType)
 {
   return m_oConvert.CvtSymbol(ssSymbol, enDstType);
 }
@@ -265,5 +265,10 @@ void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
     FIX::DeliverToSubID deliverToSubID(stuFixInfo.m_oHeader.getField(onBehalfOfSubID.getField()));
     oMsg.getHeader().setField(deliverToSubID);
   }
+}
+
+std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enSrcType, const Convert::EnCvtType enDstType)
+{
+	return m_oConvert.CvtExchange(ssExchange, enSrcType, enDstType);
 }
 

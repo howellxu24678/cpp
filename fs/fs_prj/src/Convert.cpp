@@ -40,6 +40,12 @@ bool Convert::Init()
 		return false;
 	}
 
+	if (!InitExchange(apXmlConf))
+	{
+		LOG(ERROR_LOG_LEVEL, "Failed to InitExchange");
+		return false;
+	}
+
 	return true;
 }
 
@@ -140,7 +146,7 @@ bool Convert::InitSymbol(AutoPtr<XMLConfiguration> apXmlConf)
 
 			STUSymbol stuSymbol;
 			stuSymbol.m_ssName = ssName;
-			stuSymbol.m_enSymbolType = (EnSymbolType)apXmlConf->getUInt(ssItemKey + "[@type]");
+			stuSymbol.m_enSymbolType = (EnCvtType)apXmlConf->getUInt(ssItemKey + "[@type]");
 			stuSymbol.m_ssFormat = apXmlConf->getString(ssItemKey + "[@format]");
 			stuSymbol.m_spRe = new RegularExpression(apXmlConf->getString(ssItemKey + "[@re]"));
 			stuSymbol.m_iYearPos = apXmlConf->getUInt(ssItemKey + "[@yearpos]");
@@ -169,7 +175,7 @@ bool Convert::AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol)
 	return ret.second;
 }
 
-std::string Convert::GetStrType(EnSymbolType enSymbolType)
+std::string Convert::GetStrType(EnCvtType enSymbolType)
 {
 	switch(enSymbolType)
 	{
@@ -182,7 +188,7 @@ std::string Convert::GetStrType(EnSymbolType enSymbolType)
 	}
 }
 
-std::string Convert::CvtSymbol(const std::string &ssSymbol, const EnSymbolType enDstType)
+std::string Convert::CvtSymbol(const std::string &ssSymbol, const EnCvtType enDstType)
 {
 	for (std::map<std::string, STUSymbol>::const_iterator cit = m_mapSymbol.begin(); cit != m_mapSymbol.end(); cit++)
 	{
@@ -203,9 +209,9 @@ std::string Convert::CvtSymbol(const std::string &ssSymbol, const EnSymbolType e
 	return "unknown" + ssSymbol;
 }
 
-std::string Convert::GetSymbolKey(const std::string &ssName, EnSymbolType enSymbolType)
+std::string Convert::GetSymbolKey(const std::string &ssName, EnCvtType enCvtType)
 {
-	return ssName + "." + GetStrType(enSymbolType);
+	return ssName + "." + GetStrType(enCvtType);
 }
 
 std::string Convert::CvtSymbol(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const
@@ -303,5 +309,70 @@ std::string Convert::CvtYearDigitFrom1To2(const std::string &ssSrcYear)
 		iYear++;
 
 	return format("%d", iYear);
+}
+
+bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)
+{
+	AbstractConfiguration::Keys kExchange, kItem;
+
+	std::string ssExchanges = "exchanges", ssSymbolKey = "", ssItemKey = "", ssName = "", ssValue = "";
+	EnCvtType enCvtType;
+
+
+	apXmlConf->keys(ssExchanges, kExchange);
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssExchanges.c_str(), kExchange.size());
+
+	for (AbstractConfiguration::Keys::iterator itExchange = kExchange.begin(); itExchange != kExchange.end(); itExchange++)
+	{
+		ssSymbolKey = ssExchanges + "." + *itExchange;
+		ssName = apXmlConf->getString(ssSymbolKey + "[@name]");
+
+		apXmlConf->keys(ssSymbolKey, kItem);
+		for (AbstractConfiguration::Keys::iterator itItem = kItem.begin(); itItem != kItem.end(); itItem++)
+		{
+			ssItemKey = ssSymbolKey + "." + *itItem;
+
+			enCvtType = (EnCvtType)apXmlConf->getUInt(ssItemKey + "[@type]");
+			ssValue = apXmlConf->getString(ssItemKey + "[@value]");
+
+			if(!AddExchange(GetExchangeKey(ssName, enCvtType), ssValue)) return false;
+		}
+	}
+	return true;
+}
+
+std::string Convert::CvtExchange(const std::string &ssExchange, const EnCvtType enSrcType, const EnCvtType enDstType)
+{
+	std::string ssKey = GetExchangeKey(ssExchange, enSrcType);
+	std::map<std::string, std::string>::const_iterator citFind = m_mapExchange.find(ssKey);
+	if (citFind != m_mapExchange.end())
+	{
+		return citFind->second;
+	}
+	else
+	{
+		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in Exchange", ssKey.c_str());
+		return "unknow";
+	}
+}
+
+std::string Convert::GetExchangeKey(const std::string &ssName, EnCvtType enCvtType)
+{
+	return ssName + "." + GetStrType(enCvtType);
+}
+
+bool Convert::AddExchange(const std::string &ssKey, const std::string &ssValue)
+{
+	LOG(DEBUG_LOG_LEVEL, "ssKey:%s,ssValue:%s", ssKey.c_str(), ssValue.c_str());
+
+	std::pair<std::map<std::string, std::string>::iterator, bool> ret = 
+		m_mapExchange.insert(std::pair<std::string, std::string>(ssKey, ssValue));
+
+	if (!ret.second)
+	{
+		LOG(ERROR_LOG_LEVEL, "Failed to insert exchange, key:%s may be repeated", ssKey.c_str());
+	}
+
+	return ret.second;
 }
 

@@ -32,7 +32,9 @@ public:
 
   char CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType);
 
-  std::string CvtSymbol(const std::string &ssSymbol, const Convert::EnSymbolType enDstType);
+  std::string CvtSymbol(const std::string &ssSymbol, const Convert::EnCvtType enDstType);
+
+	std::string CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enSrcType, const Convert::EnCvtType enDstType);
 
   void Send(const std::string &ssAcct, FIX::Message &oMsg);
 

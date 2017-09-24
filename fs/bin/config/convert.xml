@@ -52,6 +52,25 @@
 		<item in="12" out="Z" />
 	</month>
 	
+	<exchanges desc="交易所代码转换 type 0:交易所原始代码;1:彭博代码">
+		<exchange name="CFFEX">
+			<item type="0" value="CFFEX" />
+			<item type="1" value="CFF" />
+		</exchange>
+		<exchange name="CZCE">
+			<item type="0" value="CZCE" />
+			<item type="1" value="ZCE" />
+		</exchange>
+		<exchange name="DCE">
+			<item type="0" value="DCE" />
+			<item type="1" value="DCE" />
+		</exchange>
+		<exchange name="SHFE">
+			<item type="0" value="SHFE" />
+			<item type="1" value="SHF" />
+		</exchange>
+	</exchanges>
+	
 	<symbols desc="type 0:交易所原始代码;1:彭博代码，*:年份 ?:月份">
 		<!-- 中金所品种 -->
 		<symbol name="IF" desc="股指期货">

@@ -83,7 +83,7 @@ void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::Se
   SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
   if (spTradeSpi)
   {
-    spTradeSpi->ReqOrderInsert(oMsg);
+    spTradeSpi->ReqOrderAction(oMsg);
   }
 }
 

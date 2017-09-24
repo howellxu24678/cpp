@@ -15,7 +15,8 @@ CSgitTradeSpi::CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqAp
   , m_enSymbolType(Convert::Original)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
-	, m_chOrderRef2OrderID(12*60*60*1000)
+	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
+	, m_chClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
 {
 
 }
@@ -99,7 +100,7 @@ void CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
 
 	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);
-	m_chOrderRef2OrderID.add(ssOrderRef, clOrdID.getValue());
+	AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue());
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s", ssOrderRef.c_str(), clOrdID.getValue().c_str());
   
 	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
@@ -144,33 +145,63 @@ void CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 
 void CSgitTradeSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
 {
+	//两种撤单组合：1.OrderSysID+ExchangeID 2.OrderRef+UserID+InstrumentID
+
 	//本地号
 	FIX::ClOrdID clOrdID;
 	//被撤单本地号
 	FIX::OrigClOrdID origClOrdID;
 	//被撤单系统报单号
   FIX::OrderID orderID;
-  FIX::Side side;
+	FIX::SecurityExchange securityExchange;
+  //FIX::Side side;
   FIX::Symbol symbol;
-  FIX::Account account;
+  //FIX::Account account;
 
 	oOrderCancel.get(clOrdID);
 	oOrderCancel.get(origClOrdID);
-	oOrderCancel.get(orderID);
-  oOrderCancel.get(side);
+	oOrderCancel.getIfSet(orderID);
+	oOrderCancel.getIfSet(securityExchange);
+  //oOrderCancel.get(side);
   oOrderCancel.get(symbol);
-  oOrderCancel.get(account);
+  //oOrderCancel.get(account);
 
   CThostFtdcInputOrderActionField stuInputOrderAction;
   memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
 
 	stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
 	std::string ssOrderActionRef = format(ssOrderRefFormat, stuInputOrderAction.OrderActionRef);
-	m_chOrderRef2OrderID.add(ssOrderActionRef, clOrdID.getValue());
 	LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,ClOrdID:%s", ssOrderActionRef.c_str(), clOrdID.getValue().c_str());
+	AddOrderRefClOrdID(ssOrderActionRef, clOrdID.getValue());
 
-  strncpy(stuInputOrderAction.OrderRef, origClOrdID.getValue().c_str(), sizeof(stuInputOrderAction.OrderRef));
-  strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
+	//1.OrderSysID+ExchangeID
+	if (!orderID.getValue().empty() && securityExchange.getValue().empty())
+	{
+		strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
+		strncpy(
+			stuInputOrderAction.ExchangeID, 
+			m_enSymbolType == Convert::Original ? 
+			securityExchange.getValue().c_str() : m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
+			sizeof(stuInputOrderAction.ExchangeID));
+	}
+	//2.OrderRef+UserID+InstrumentID
+	else
+	{
+		std::string ssClOrdId = "";
+		if(!GetOrderRef(origClOrdID.getValue(), ssClOrdId))
+		{
+			//回复撤单拒绝
+			//SendOrderCancelReject(&stuInputOrderAction, &stuRspInfo);
+			return;
+		}
+		strncpy(stuInputOrderAction.OrderRef, ssClOrdId.c_str(), sizeof(stuInputOrderAction.OrderRef));
+		strncpy(stuInputOrderAction.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrderAction.UserID));
+		strncpy(
+			stuInputOrderAction.InstrumentID, 
+			m_enSymbolType == Convert::Original ? 
+			symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), m_enSymbolType, Convert::Original).c_str(), 
+			sizeof(stuInputOrderAction.InstrumentID));
+	}
 
   stuInputOrderAction.RequestID = m_acRequestId++;
   int iRet = m_pTradeApi->ReqOrderAction(&stuInputOrderAction, stuInputOrderAction.RequestID);
@@ -189,15 +220,15 @@ void CSgitTradeSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel
 
 void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	LOG(INFO_LOG_LEVEL, "ErrorID:%d, ErrorMsg:%s,OrderRef:%s,OrderSysID:%s", 
-		pRspInfo->ErrorID, pRspInfo->ErrorMsg, pInputOrder->OrderRef, pInputOrder->OrderSysID);
+	LOG(INFO_LOG_LEVEL, "ErrorID:%d, ErrorMsg:%s,OrderRef:%s,OrderSysID:%s,ExchangeID:%s", 
+		pRspInfo->ErrorID, pRspInfo->ErrorMsg, pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID);
 
 	SendExecutionReport(pInputOrder, pRspInfo);
 }
 
 void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	LOG(INFO_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,OrderActionRef:%s,OrderRef:%s,OrderSysID:%s,VolumeChange:%d", 
+	LOG(INFO_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,OrderActionRef:%d,OrderRef:%s,OrderSysID:%s,VolumeChange:%d", 
     pRspInfo->ErrorID, pRspInfo->ErrorMsg, pInputOrderAction->OrderActionRef, pInputOrderAction->OrderRef, 
     pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange);
 
@@ -205,26 +236,24 @@ void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 	if (!GetClOrdID(format(ssOrderRefFormat, pInputOrderAction->OrderActionRef), ssClOrdID)) return;
 
 	std::string ssOrigClOrdID = "";
-	if (!GetClOrdID(format(ssOrderRefFormat, (std::string)pInputOrderAction->OrderRef), ssOrigClOrdID)) return;
+	if (strlen(pInputOrderAction->OrderRef) > 0 && 
+		!GetClOrdID(format(ssOrderRefFormat, (std::string)pInputOrderAction->OrderRef), ssOrigClOrdID)) return;
+
+	LOG(INFO_LOG_LEVEL, "OrderActionRef:%d,ClOrdID:%s,OrigClOrdID:%s",
+		pInputOrderAction->OrderActionRef, ssClOrdID.c_str(), ssOrigClOrdID.c_str());
 
 	if (pRspInfo->ErrorID != 0)
 	{
 		return SendOrderCancelReject(pInputOrderAction, pRspInfo, ssClOrdID, ssOrigClOrdID);
 	}
 
-
-
-	std::string& ssUUid = CToolkit::GetUuid();
-	LOG(INFO_LOG_LEVEL, "OrderActionRef:%d,OrderRef:%s,ClOrdID:%s,uuid:%s", 
-		pInputOrderAction->OrderActionRef, ssClOrdID.c_str(), ssUUid.c_str());
-
-
+	//std::string& ssUUid = CToolkit::GetUuid();
 	//FIX42::ExecutionReport executionReport = FIX42::ExecutionReport();
-	//executionReport.set(FIX::OrderID( strlen(pInputOrder->OrderSysID) < 1 ? " " : pInputOrder->OrderSysID));
+	//executionReport.set(FIX::OrderID( strlen(pInputOrderAction->OrderSysID) < 1 ? " " : pInputOrderAction->OrderSysID));
 	//executionReport.set(FIX::ExecID(ssUUid));
 	//executionReport.set(FIX::Symbol(m_enSymbolType == Convert::Original ? 
-	//	pInputOrder->InstrumentID : m_pSgitCtx->CvtSymbol(pInputOrder->InstrumentID, m_enSymbolType).c_str()));
-	//executionReport.set(FIX::Side(m_pSgitCtx->CvtDict(FIX::FIELD::Side, pInputOrder->Direction, Convert::Fix)));
+	//	pInputOrderAction->InstrumentID : m_pSgitCtx->CvtSymbol(pInputOrderAction->InstrumentID, m_enSymbolType).c_str()));
+	///*executionReport.set(FIX::Side(m_pSgitCtx->CvtDict(FIX::FIELD::Side, pInputOrderAction->Direction, Convert::Fix)));*/
 	//executionReport.set(FIX::LeavesQty(pInputOrder->VolumeTotalOriginal));
 	//executionReport.set(FIX::CumQty(0));
 	//executionReport.set(FIX::AvgPx(0));
@@ -266,9 +295,11 @@ void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   executionReport.set(FIX::LeavesQty(pOrder->VolumeTotalOriginal));
   executionReport.set(FIX::CumQty(pOrder->VolumeTotalOriginal - pOrder->VolumeTotal));
   executionReport.set(FIX::AvgPx(0));
-  executionReport.set(FIX::ClOrdID(pOrder->OrderRef));
-  if (strlen(pOrder->RelativeOrderSysID) > 1 )
-    executionReport.set(FIX::OrigClOrdID(pOrder->RelativeOrderSysID));
+  executionReport.set(FIX::ClOrdID(ssClOrdID.c_str()));
+
+  //if (strlen(pOrder->RelativeOrderSysID) > 1 )
+  //  executionReport.set(FIX::OrigClOrdID(pOrder->RelativeOrderSysID));
+
   executionReport.set(FIX::OrderQty(pOrder->VolumeTotalOriginal));
   executionReport.set(FIX::LastShares(pOrder->VolumeTraded));
   executionReport.set(FIX::LastPx(pOrder->LimitPrice));
@@ -310,19 +341,7 @@ void CSgitTradeSpi::Init()
 {
   AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
   m_ssPassword = apSgitConf->getString(m_ssTradeID + ".PassWord");
-  m_enSymbolType = (Convert::EnSymbolType)apSgitConf->getInt(m_ssTradeID + ".SymbolType");
-}
-
-bool CSgitTradeSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
-{
-	if(!m_chOrderRef2OrderID.has(ssOrderRef))
-	{
-		LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in ExpireCache", ssOrderRef.c_str());
-		return false;
-	}
-		
-	ssClOrdID = *m_chOrderRef2OrderID.get(ssOrderRef);
-	return true;
+  m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssTradeID + ".SymbolType");
 }
 
 void CSgitTradeSpi::SendExecutionReport(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
@@ -387,4 +406,32 @@ void CSgitTradeSpi::SendOrderCancelReject(CThostFtdcInputOrderActionField *pInpu
 	const std::string& ssOrigClOrdID)
 {
 
+}
+
+bool CSgitTradeSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
+{
+	return Get(m_chOrderRef2ClOrderID, ssOrderRef, ssClOrdID);
+}
+
+bool CSgitTradeSpi::GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef)
+{
+	return Get(m_chClOrderID2OrderRef, ssClOrdID, ssOrderRef);
+}
+
+bool CSgitTradeSpi::Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue)
+{
+	if(!oExpCache.has(ssKey))
+	{
+		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in ExpireCache", ssKey.c_str());
+		return false;
+	}
+
+	ssValue = *oExpCache.get(ssKey);
+	return true;
+}
+
+void CSgitTradeSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID)
+{
+	m_chOrderRef2ClOrderID.add(ssOrderRef, ssClOrdID);
+	m_chClOrderID2OrderRef.add(ssClOrdID, ssOrderRef);
 }

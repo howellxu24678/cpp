@@ -371,7 +371,13 @@ public:
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
 	protected:
+		void AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID);
+
 		bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
+
+		bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
+
+		bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
 
 		void SendExecutionReport(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo);
 
@@ -395,10 +401,13 @@ private:
   std::string															m_ssPassword;
   AtomicCounter														m_acRequestId;
 
-  Convert::EnSymbolType										m_enSymbolType;
+  Convert::EnCvtType										m_enSymbolType;
 
 	AtomicCounter														m_acOrderRef;
-	ExpireCache<std::string, std::string>		m_chOrderRef2OrderID;//超时设为12小时
+	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
+	ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
+	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
+	ExpireCache<std::string, std::string>		m_chClOrderID2OrderRef;
 };
 
 #endif // __SGITTRADESPI_H__
