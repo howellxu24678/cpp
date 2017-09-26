@@ -24,6 +24,17 @@ class CSgitContext;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
+	struct STUOrder
+	{
+		std::string		m_ssClOrdID;//11
+		char					m_cOrderStatus;//39
+		std::string		m_ssSymbol;//55
+		char					m_cSide;//54
+		int						m_iLeavesQty;//151
+		int						m_iCumQty;//14
+		double				m_dAvgPx;//6
+	};
+
   CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitTradeSpi();
 

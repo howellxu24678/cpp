@@ -175,7 +175,7 @@ void CSgitTradeSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel
 	AddOrderRefClOrdID(ssOrderActionRef, clOrdID.getValue());
 
 	//1.OrderSysID+ExchangeID
-	if (!orderID.getValue().empty() && securityExchange.getValue().empty())
+	if (!orderID.getValue().empty() && !securityExchange.getValue().empty())
 	{
 		strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
 		strncpy(
