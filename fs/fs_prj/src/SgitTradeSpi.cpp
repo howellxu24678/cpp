@@ -199,7 +199,7 @@ void CSgitTradeSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel
 		strncpy(
 			stuInputOrderAction.InstrumentID, 
 			m_enSymbolType == Convert::Original ? 
-			symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), m_enSymbolType, Convert::Original).c_str(), 
+			symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
 			sizeof(stuInputOrderAction.InstrumentID));
 	}
 

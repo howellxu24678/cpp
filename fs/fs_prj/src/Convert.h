@@ -31,6 +31,13 @@ public:
 		UINT8							m_iMonthLen;
 	};
 
+  struct STUExchange
+  {
+    std::string       m_ssName;
+    EnCvtType         m_enCvtType;
+    std::string       m_ssExchange;
+  };
+
 	Convert(const std::string ssCfgPath);
 	~Convert();
 
@@ -40,7 +47,7 @@ public:
 
 	std::string CvtSymbol(const std::string &ssSymbol, const EnCvtType enDstType);
 
-	std::string CvtExchange(const std::string &ssExchange, const EnCvtType enSrcType, const EnCvtType enDstType);
+	std::string CvtExchange(const std::string &ssExchange, const EnCvtType enDstType);
 
 protected:
 	bool InitMonthMap(AutoPtr<XMLConfiguration> apXmlConf);
@@ -59,7 +66,7 @@ protected:
 
 	bool AddSymbol(const std::string &ssKey, const STUSymbol &stuSymbol);
 
-	bool AddExchange(const std::string &ssKey, const std::string &ssValue);
+	bool AddExchange(const std::string &ssKey, const STUExchange &stuExchange);
 
 	std::string CvtSymbol(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const;
 
@@ -81,7 +88,7 @@ private:
 	std::map<std::string, std::string>		m_mapDict;
 	std::map<std::string, STUSymbol>			m_mapSymbol;
 	std::map<std::string, std::string>		m_mapMonth;
-	std::map<std::string, std::string>		m_mapExchange;
+	std::map<std::string, STUExchange>		m_mapExchange;
 };
 
 #endif // __CONVERT_H__

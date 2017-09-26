@@ -316,8 +316,6 @@ bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)
 	AbstractConfiguration::Keys kExchange, kItem;
 
 	std::string ssExchanges = "exchanges", ssSymbolKey = "", ssItemKey = "", ssName = "", ssValue = "";
-	EnCvtType enCvtType;
-
 
 	apXmlConf->keys(ssExchanges, kExchange);
 	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssExchanges.c_str(), kExchange.size());
@@ -332,28 +330,35 @@ bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)
 		{
 			ssItemKey = ssSymbolKey + "." + *itItem;
 
-			enCvtType = (EnCvtType)apXmlConf->getUInt(ssItemKey + "[@type]");
-			ssValue = apXmlConf->getString(ssItemKey + "[@value]");
+      STUExchange stuExchange;
+      stuExchange.m_ssName = ssName;
+      stuExchange.m_enCvtType = (EnCvtType)apXmlConf->getUInt(ssItemKey + "[@type]");
+			stuExchange.m_ssExchange = apXmlConf->getString(ssItemKey + "[@value]");
 
-			if(!AddExchange(GetExchangeKey(ssName, enCvtType), ssValue)) return false;
+			if(!AddExchange(GetExchangeKey(stuExchange.m_ssName, stuExchange.m_enCvtType), stuExchange)) return false;
 		}
 	}
 	return true;
 }
 
-std::string Convert::CvtExchange(const std::string &ssExchange, const EnCvtType enSrcType, const EnCvtType enDstType)
+std::string Convert::CvtExchange(const std::string &ssExchange, const EnCvtType enDstType)
 {
-	std::string ssKey = GetExchangeKey(ssExchange, enSrcType);
-	std::map<std::string, std::string>::const_iterator citFind = m_mapExchange.find(ssKey);
-	if (citFind != m_mapExchange.end())
-	{
-		return citFind->second;
-	}
-	else
-	{
-		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in Exchange", ssKey.c_str());
-		return "unknow";
-	}
+  for(std::map<std::string, STUExchange>::const_iterator cit = m_mapExchange.begin(); cit != m_mapExchange.end(); cit++)
+  {
+    if (cit->second.m_ssExchange == ssExchange)
+    {
+      const STUExchange &stuExchange = cit->second;
+      if (stuExchange.m_enCvtType == enDstType) return ssExchange;
+      
+      std::map<std::string, STUExchange>::const_iterator citFind = m_mapExchange.find(GetExchangeKey(stuExchange.m_ssName, enDstType));
+      if (citFind != m_mapExchange.end())
+      {
+        return citFind->second.m_ssExchange;
+      }
+    }
+  }
+
+  return "unknow";
 }
 
 std::string Convert::GetExchangeKey(const std::string &ssName, EnCvtType enCvtType)
@@ -361,12 +366,12 @@ std::string Convert::GetExchangeKey(const std::string &ssName, EnCvtType enCvtTy
 	return ssName + "." + GetStrType(enCvtType);
 }
 
-bool Convert::AddExchange(const std::string &ssKey, const std::string &ssValue)
+bool Convert::AddExchange(const std::string &ssKey, const STUExchange &stuExchange)
 {
-	LOG(DEBUG_LOG_LEVEL, "ssKey:%s,ssValue:%s", ssKey.c_str(), ssValue.c_str());
+	LOG(DEBUG_LOG_LEVEL, "ssKey:%s,ssExchange:%s", ssKey.c_str(), stuExchange.m_ssExchange.c_str());
 
-	std::pair<std::map<std::string, std::string>::iterator, bool> ret = 
-		m_mapExchange.insert(std::pair<std::string, std::string>(ssKey, ssValue));
+	std::pair<std::map<std::string, STUExchange>::iterator, bool> ret = 
+		m_mapExchange.insert(std::pair<std::string, STUExchange>(ssKey, stuExchange));
 
 	if (!ret.second)
 	{

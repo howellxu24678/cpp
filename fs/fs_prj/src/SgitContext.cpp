@@ -267,8 +267,8 @@ void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
   }
 }
 
-std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enSrcType, const Convert::EnCvtType enDstType)
+std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enDstType)
 {
-	return m_oConvert.CvtExchange(ssExchange, enSrcType, enDstType);
+	return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
 
