@@ -17,6 +17,7 @@ CSgitTradeSpi::CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqAp
 	, m_acOrderRef(0)
 	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
 	, m_chClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
+  , m_chOrderRef2Order(12*60*60*1000)
 {
 
 }
@@ -276,8 +277,18 @@ void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 	
 }
 
+//撤单的情况在此回复执行回报，其余情况只用于更新订单的最新状态参数
 void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
+  if(strlen(pOrder->OrderRef) < 1) return;
+  std::string ssOrderRef = std::string(pOrder->OrderRef);
+  if (!m_chOrderRef2Order.has(ssOrderRef))
+  {
+    STUOrder stuOrder;
+    m_chOrderRef2Order.add(ssOrderRef, stuOrder);
+  }
+  m_chOrderRef2Order.get(ssOrderRef)->Update(*pOrder);
+
 	std::string ssClOrdID = "";
 	if (!GetClOrdID(pOrder->OrderRef, ssClOrdID)) return;
 
@@ -313,6 +324,8 @@ void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   m_pSgitCtx->Send(pOrder->InvestorID, executionReport);
 }
 
+
+//收到成交，回复执行回报
 void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,TradeID:%s,OrderSysID:%s,Price:%f,Volume:%d", 
@@ -434,4 +447,43 @@ void CSgitTradeSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std:
 {
 	m_chOrderRef2ClOrderID.add(ssOrderRef, ssClOrdID);
 	m_chClOrderID2OrderRef.add(ssClOrdID, ssOrderRef);
+}
+
+double CSgitTradeSpi::STUOrder::AvgPx() const
+{
+  double dTurnover = 0.0;
+  int iTotalVolume = 0;
+  for (std::vector<STUTradeRec>::const_iterator cit = m_vTradeRec.begin(); cit != m_vTradeRec.end(); cit++)
+  {
+    dTurnover += cit->m_dMatchPrice * cit->m_iMatchVolume;
+    iTotalVolume += cit->m_iMatchVolume;
+  }
+
+  if (iTotalVolume == 0) return 0.0;
+
+  return dTurnover / iTotalVolume;
+}
+
+void CSgitTradeSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder)
+{
+  //struct STUOrder
+  //{
+  //  std::string               m_ssOrderRef;//报单引用
+  //  std::string		            m_ssClOrdID;//11
+  //  std::string               m_ssOrigClOrdID;//41 撤单回报需要用到
+  //  char					            m_cOrderStatus;//39
+  //  std::string		            m_ssSymbol;//55
+  //  char					            m_cSide;//54
+  //  int						            m_iLeavesQty;//151
+  //  int						            m_iCumQty;//14
+  //  std::vector<STUTradeRec>  m_vTradeRec;
+  //  //double				            m_dAvgPx;//6
+
+  m_ssOrderRef = oOrder.OrderRef;
+  
+}
+
+void CSgitTradeSpi::STUOrder::Update(const CThostFtdcTradeField& oTrade)
+{
+
 }

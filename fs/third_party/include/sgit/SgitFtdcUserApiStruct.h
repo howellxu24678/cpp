@@ -1268,7 +1268,6 @@ struct CThostFtdcInputOrderField
 	///onRspOrderInsert中使用,ReqOrderInsert中不用填写.
 	TThostFtdcOrderSysIDType OrderSysID;
 	TThostFtdcExchangeIDType ExchangeID;
-
 };
 
 ///报单

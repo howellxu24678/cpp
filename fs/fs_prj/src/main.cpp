@@ -38,6 +38,7 @@
 
 #include "Toolkit.h"
 //#include "Poco/FileStream.h"
+#include "Poco/ExpireCache.h"
 
 using namespace Poco;
 using namespace Poco::Util;
@@ -82,8 +83,32 @@ bool checkCfgPath(AutoPtr<Poco::Util::IniFileConfiguration> apCfg, const std::st
 	return true;
 }
 
+struct STUtest{
+  int m_i;
+
+  void upate(int i)
+  {
+    m_i = i;
+  }
+};
+
+void TestExpireCache()
+{
+  ExpireCache<int, STUtest> cache;
+  STUtest oStutest;
+  memset(&oStutest, 0, sizeof(STUtest));
+  cache.add(1, oStutest);
+  cache.add(2, oStutest);
+
+  cache.get(1)->upate(20);
+
+  cout << "TestExpireCache 1:" << cache.get(1)->m_i << endl;
+  cout << "TestExpireCache 2:" << cache.get(2)->m_i << endl;
+}
+
 int main( int argc, char** argv )
 {
+  TestExpireCache();
 	std::string ssConfigPath = "";
 	if(argc < 2)
 	{

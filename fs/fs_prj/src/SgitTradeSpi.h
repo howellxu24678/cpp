@@ -24,15 +24,28 @@ class CSgitContext;
 class CSgitTradeSpi : public CThostFtdcTraderSpi
 {
 public:
+  struct STUTradeRec
+  {
+    int     m_iMatchVolume; //成交数量
+    double  m_dMatchPrice;  //成交价格
+  };
+
 	struct STUOrder
 	{
-		std::string		m_ssClOrdID;//11
-		char					m_cOrderStatus;//39
-		std::string		m_ssSymbol;//55
-		char					m_cSide;//54
-		int						m_iLeavesQty;//151
-		int						m_iCumQty;//14
-		double				m_dAvgPx;//6
+    std::string               m_ssOrderRef;//报单引用
+		std::string		            m_ssClOrdID;//11
+    std::string               m_ssOrigClOrdID;//41 撤单回报需要用到
+		char					            m_cOrderStatus;//39
+		std::string		            m_ssSymbol;//55
+		char					            m_cSide;//54
+		int						            m_iLeavesQty;//151
+		int						            m_iCumQty;//14
+    std::vector<STUTradeRec>  m_vTradeRec;
+		//double				            m_dAvgPx;//6
+
+    double AvgPx() const;
+    void Update(const CThostFtdcOrderField& oOrder);
+    void Update(const CThostFtdcTradeField& oTrade);
 	};
 
   CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
@@ -415,10 +428,13 @@ private:
   Convert::EnCvtType										m_enSymbolType;
 
 	AtomicCounter														m_acOrderRef;
+  //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
 	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
 	ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
 	ExpireCache<std::string, std::string>		m_chClOrderID2OrderRef;
+  //OrderRef -> STUOrder (报单引用->委托)
+  ExpireCache<std::string, STUOrder>		  m_chOrderRef2Order;
 };
 
 #endif // __SGITTRADESPI_H__
