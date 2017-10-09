@@ -479,7 +479,8 @@ void CSgitTradeSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder)
   //  std::vector<STUTradeRec>  m_vTradeRec;
   //  //double				            m_dAvgPx;//6
 
-  m_ssOrderRef = oOrder.OrderRef;
+  if (m_ssOrderRef.length() < 1) m_ssOrderRef = oOrder.OrderRef;
+  
   
 }
 
