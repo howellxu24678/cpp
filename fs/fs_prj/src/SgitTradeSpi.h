@@ -43,6 +43,7 @@ public:
     std::vector<STUTradeRec>  m_vTradeRec;
 		//double				            m_dAvgPx;//6
 
+		STUOrder();
     double AvgPx() const;
     void Update(const CThostFtdcOrderField& oOrder);
     void Update(const CThostFtdcTradeField& oTrade);
@@ -416,6 +417,8 @@ public:
 			CThostFtdcRspInfoField *pRspInfo, 
 			const std::string& ssClOrdID, 
 			const std::string& ssOrigClOrdID);
+
+		void Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder);
 
 private:
   CThostFtdcTraderApi											*m_pTradeApi;

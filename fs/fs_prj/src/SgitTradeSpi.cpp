@@ -68,69 +68,12 @@ void CSgitTradeSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
 
 void CSgitTradeSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 {
-	//FIX::SenderCompID senderCompId;
-	//FIX::OnBehalfOfCompID  onBehalfOfCompId;
-	FIX::Account account;
-	FIX::ClOrdID clOrdID;
-	//FIX::SecurityExchange securityExchange;
-	FIX::Symbol symbol;
-	FIX::OrderQty orderQty;
-	//FIX::HandlInst handInst;
-	FIX::OrdType ordType;
-	FIX::Price price;
-	FIX::Side side;
-	FIX::OpenClose openClose;
-	//FIX::TransactTime transTime;
-	//FIX::TimeInForce timeInForce;
-	//if ( ordType != FIX::OrdType_LIMIT )
-	//  throw FIX::IncorrectTagValue( ordType.getField() );
-	oNewOrderSingle.get(account);
-	oNewOrderSingle.get(clOrdID);
-	//oNewOrderSingleMsg.get(securityExchange);
-	oNewOrderSingle.get(symbol);
-	oNewOrderSingle.get(orderQty);
-	//oNewOrderSingleMsg.get(handInst);
-	oNewOrderSingle.get(ordType);
-	oNewOrderSingle.get(price);
-	oNewOrderSingle.get(side);
-	oNewOrderSingle.get(openClose);
-	//oNewOrderSingle.get(transTime);
-	//oNewOrderSingleMsg.get(timeInForce);
-
 	CThostFtdcInputOrderField stuInputOrder;
-	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
+	STUOrder stuOrder;
+	Cvt(oNewOrderSingle, stuInputOrder, stuOrder);
 
-	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);
-	AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue());
-	LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s", ssOrderRef.c_str(), clOrdID.getValue().c_str());
-  
-	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
-  strncpy(stuInputOrder.InvestorID, m_pSgitCtx->GetRealAccont(oNewOrderSingle).c_str(), sizeof(stuInputOrder.InvestorID));
-  strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
-  strncpy(
-    stuInputOrder.InstrumentID, 
-    m_enSymbolType == Convert::Original ? 
-    symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-    sizeof(stuInputOrder.InstrumentID));
-   
-  stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
-	stuInputOrder.OrderPriceType = m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
-  stuInputOrder.LimitPrice = price.getValue();
-	stuInputOrder.Direction = m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
-  stuInputOrder.CombOffsetFlag[0] = m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+	m_chOrderRef2Order.add(stuOrder.m_ssOrderRef, stuOrder);
 
-	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
-	stuInputOrder.MinVolume = 1;
-	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
-	stuInputOrder.ContingentCondition = THOST_FTDC_CC_Immediately;
-	stuInputOrder.StopPrice = 0.0;
-	stuInputOrder.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
-	stuInputOrder.IsAutoSuspend = false;
-	stuInputOrder.UserForceClose = false;
-	stuInputOrder.IsSwapOrder = false;
-	stuInputOrder.CombHedgeFlag[0] = '0'; 
-	
-	stuInputOrder.RequestID = m_acRequestId++;
 	int iRet = m_pTradeApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
 	{
@@ -445,8 +388,89 @@ bool CSgitTradeSpi::Get( ExpireCache<std::string, std::string>& oExpCache, const
 
 void CSgitTradeSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID)
 {
-	m_chOrderRef2ClOrderID.add(ssOrderRef, ssClOrdID);
-	m_chClOrderID2OrderRef.add(ssClOrdID, ssOrderRef);
+	if (m_chOrderRef2ClOrderID.has(ssOrderRef))
+	{
+		LOG(WARN_LOG_LEVEL, "%s in m_chOrderRef2ClOrderID will be replace", ssOrderRef.c_str());
+		m_chOrderRef2ClOrderID.update(ssOrderRef, ssClOrdID);
+	}
+	else
+	{
+		m_chOrderRef2ClOrderID.add(ssOrderRef, ssClOrdID);
+	}
+
+	if (m_chClOrderID2OrderRef.has(ssClOrdID))
+	{
+		LOG(WARN_LOG_LEVEL, "%s in m_chClOrderID2OrderRef will be replace", ssClOrdID.c_str());
+		m_chClOrderID2OrderRef.update(ssClOrdID, ssOrderRef);
+	}
+	else
+	{
+		m_chClOrderID2OrderRef.add(ssClOrdID, ssOrderRef);
+	}
+}
+
+void CSgitTradeSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder)
+{
+	FIX::Account account;
+	FIX::ClOrdID clOrdID;
+	FIX::Symbol symbol;
+	FIX::OrderQty orderQty;
+	FIX::OrdType ordType;
+	FIX::Price price;
+	FIX::Side side;
+	FIX::OpenClose openClose;
+
+	oNewOrderSingle.get(account);
+	oNewOrderSingle.get(clOrdID);
+	oNewOrderSingle.get(symbol);
+	oNewOrderSingle.get(orderQty);
+	oNewOrderSingle.get(ordType);
+	oNewOrderSingle.get(price);
+	oNewOrderSingle.get(side);
+	oNewOrderSingle.get(openClose);
+
+	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
+	//由于不能确保送入的ClOrdID(11)严格递增，在这里递增生成一个报单引用并做关联
+	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);
+	AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue());
+	LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s", ssOrderRef.c_str(), clOrdID.getValue().c_str());
+
+	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
+	strncpy(stuInputOrder.InvestorID, m_pSgitCtx->GetRealAccont(oNewOrderSingle).c_str(), sizeof(stuInputOrder.InvestorID));
+	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
+	strncpy(
+		stuInputOrder.InstrumentID, 
+		m_enSymbolType == Convert::Original ? 
+		symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+		sizeof(stuInputOrder.InstrumentID));
+
+	stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
+	stuInputOrder.OrderPriceType = m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
+	stuInputOrder.LimitPrice = price.getValue();
+	stuInputOrder.Direction = m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
+	stuInputOrder.CombOffsetFlag[0] = m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+
+	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
+	stuInputOrder.MinVolume = 1;
+	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
+	stuInputOrder.ContingentCondition = THOST_FTDC_CC_Immediately;
+	stuInputOrder.StopPrice = 0.0;
+	stuInputOrder.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
+	stuInputOrder.IsAutoSuspend = false;
+	stuInputOrder.UserForceClose = false;
+	stuInputOrder.IsSwapOrder = false;
+	stuInputOrder.CombHedgeFlag[0] = '0'; 
+
+	stuInputOrder.RequestID = m_acRequestId++;
+
+	//STUOrder
+	stuOrder.m_ssOrderRef = ssOrderRef;
+	stuOrder.m_ssClOrdID = clOrdID.getValue();
+	stuOrder.m_cOrderStatus = THOST_FTDC_OST_Unknown;
+	stuOrder.m_ssSymbol = symbol.getValue();
+	stuOrder.m_cSide = side.getValue();
+	stuOrder.m_iLeavesQty = orderQty.getValue();
+	stuOrder.m_iCumQty = 0;
 }
 
 double CSgitTradeSpi::STUOrder::AvgPx() const
@@ -487,4 +511,17 @@ void CSgitTradeSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder)
 void CSgitTradeSpi::STUOrder::Update(const CThostFtdcTradeField& oTrade)
 {
 
+}
+
+CSgitTradeSpi::STUOrder::STUOrder()
+	: m_ssOrderRef("")
+	, m_ssClOrdID("")
+	, m_ssOrigClOrdID("")
+	, m_cOrderStatus(THOST_FTDC_OST_Unknown)
+	, m_ssSymbol("")
+	, m_cSide('*')
+	, m_iLeavesQty(0)
+	, m_iCumQty(0)
+{
+	m_vTradeRec.clear();
 }
