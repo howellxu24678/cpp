@@ -26,25 +26,32 @@ class CSgitTradeSpi : public CThostFtdcTraderSpi
 public:
   struct STUTradeRec
   {
-    int     m_iMatchVolume; //成交数量
+    STUTradeRec();
+    STUTradeRec(double dPrice, int iVolume);
+
     double  m_dMatchPrice;  //成交价格
+    int     m_iMatchVolume; //成交数量
   };
 
 	struct STUOrder
 	{
+    std::string               m_ssAccout;//资金账号（真实）
     std::string               m_ssOrderRef;//报单引用
-		std::string		            m_ssClOrdID;//11
-    std::string               m_ssOrigClOrdID;//41 撤单回报需要用到
+    std::string               m_ssOrderID;//37合同编号
+		std::string		            m_ssClOrdID;//11委托编号(撤单回报时为41)
+    std::string               m_ssCancelOrdID;//撤单请求编号 撤单回报时为11
 		char					            m_cOrderStatus;//39
 		std::string		            m_ssSymbol;//55
 		char					            m_cSide;//54
+    int                       m_iOrderQty;//38委托数量
+    double                    m_dPrice;//44价格
 		int						            m_iLeavesQty;//151
 		int						            m_iCumQty;//14
     std::vector<STUTradeRec>  m_vTradeRec;
-		//double				            m_dAvgPx;//6
 
 		STUOrder();
     double AvgPx() const;
+    void Update(const CThostFtdcInputOrderField& oInputOrder);
     void Update(const CThostFtdcOrderField& oOrder);
     void Update(const CThostFtdcTradeField& oTrade);
 	};
@@ -404,7 +411,9 @@ public:
 
 		bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
 
-		void SendExecutionReport(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo);
+    void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
+
+    void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
 		void SendOrderCancelReject(
 			CThostFtdcOrderActionField *pOrderAction, 
@@ -420,6 +429,8 @@ public:
 
 		void Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder);
 
+    void Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction);
+
 private:
   CThostFtdcTraderApi											*m_pTradeApi;
   CSgitContext														*m_pSgitCtx;
@@ -434,8 +445,10 @@ private:
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
 	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
 	ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
+
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
 	ExpireCache<std::string, std::string>		m_chClOrderID2OrderRef;
+
   //OrderRef -> STUOrder (报单引用->委托)
   ExpireCache<std::string, STUOrder>		  m_chOrderRef2Order;
 };

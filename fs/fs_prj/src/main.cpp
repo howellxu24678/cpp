@@ -101,6 +101,8 @@ void TestExpireCache()
   cache.add(2, oStutest);
 
   cache.get(1)->upate(20);
+  SharedPtr<STUtest> spTest = cache.get(3);
+  cout << "isNull:" << spTest.isNull() << endl;
 
   cout << "TestExpireCache 1:" << cache.get(1)->m_i << endl;
   cout << "TestExpireCache 2:" << cache.get(2)->m_i << endl;

@@ -55,6 +55,6 @@ bool CToolkit::isExist(const std::string &ssFilePath)
 std::string CToolkit::GetUuid()
 {
   Poco::LocalDateTime now;
-  return Poco::DateTimeFormatter::format(now, Poco::DateTimeFormat::ISO8601_FRAC_FORMAT);
+  return Poco::DateTimeFormatter::format(now, "%Y%m%d%H%M%S%i");
 }
 
