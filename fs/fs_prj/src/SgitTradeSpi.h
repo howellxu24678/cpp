@@ -39,7 +39,7 @@ public:
     std::string               m_ssOrderRef;//报单引用
     std::string               m_ssOrderID;//37合同编号
 		std::string		            m_ssClOrdID;//11委托编号(撤单回报时为41)
-    std::string               m_ssCancelOrdID;//撤单请求编号 撤单回报时为11
+    std::string               m_ssCancelClOrdID;//撤单请求编号 撤单回报时为11
 		char					            m_cOrderStatus;//39
 		std::string		            m_ssSymbol;//55
 		char					            m_cSide;//54
@@ -405,27 +405,19 @@ public:
 	protected:
 		void AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID);
 
-		bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
+		//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
 
 		bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
 
 		bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
 
-    void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
+    void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg, bool bIsPendingCancel = false);
 
     void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
-		void SendOrderCancelReject(
-			CThostFtdcOrderActionField *pOrderAction, 
-			CThostFtdcRspInfoField *pRspInfo, 
-			const std::string& ssClOrdID, 
-			const std::string& ssOrigClOrdID);
+		void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
-		void SendOrderCancelReject(
-			CThostFtdcInputOrderActionField *pInputOrderAction, 
-			CThostFtdcRspInfoField *pRspInfo, 
-			const std::string& ssClOrdID, 
-			const std::string& ssOrigClOrdID);
+		void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
 
 		void Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder);
 
@@ -443,8 +435,8 @@ private:
 
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
-	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
-	ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
+	////OrderRef -> ClOrderID (报单引用->fix本地报单编号)
+	//ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
 
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
 	ExpireCache<std::string, std::string>		m_chClOrderID2OrderRef;
