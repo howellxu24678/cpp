@@ -660,6 +660,7 @@
    <field name='EncodedSecurityDescLen' required='N' />
    <field name='EncodedSecurityDesc' required='N' />
    <field name='Side' required='Y' />
+   <field name='TransactTime' required='N' />
   </message>
   <message name='Allocation' msgcat='app' msgtype='J'>
    <field name='AllocID' required='Y' />

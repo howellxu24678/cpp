@@ -110,6 +110,7 @@ void CSgitTradeSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel
 
 void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	if (!pInputOrder || !pRspInfo) return;
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d, ErrorMsg:%s", 
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
   
@@ -127,6 +128,7 @@ void CSgitTradeSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 
 void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	if (!pInputOrderAction || !pRspInfo) return;
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
     pInputOrderAction->OrderRef, pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange, 
 		pRspInfo->ErrorID, pRspInfo->ErrorMsg);
@@ -151,6 +153,7 @@ void CSgitTradeSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrde
 //撤单的情况在此回复执行回报，其余情况只用于更新订单的最新状态参数
 void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
+	if (!pOrder) return;
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
      pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
@@ -182,6 +185,7 @@ void CSgitTradeSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 //收到成交，回复执行回报
 void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
+	if (!pTrade) return;
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
     pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
 
@@ -198,6 +202,7 @@ void CSgitTradeSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 
 void CSgitTradeSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
+	if (!pInputOrder || !pRspInfo) return;
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d,ErrorMsg:%s", 
     pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
@@ -206,6 +211,7 @@ void CSgitTradeSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, 
 
 void CSgitTradeSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
+	if (!pOrderAction || !pRspInfo) return;
   LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
     pOrderAction->OrderActionRef, pOrderAction->OrderRef, pOrderAction->OrderSysID, pOrderAction->ActionFlag, 
     pOrderAction->VolumeChange, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
@@ -541,32 +547,16 @@ void CSgitTradeSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReq
     sizeof(stuQryOrder.InstrumentID));
   strncpy(stuQryOrder.OrderSysID, orderID.getValue().c_str(), sizeof(stuQryOrder.OrderSysID));
 
-  m_pTradeApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
-
-
-  /////查询报单
-  //struct CThostFtdcQryOrderField
-  //{
-  //  ///经纪公司代码
-  //  TThostFtdcBrokerIDType	BrokerID;
-  //  ///投资者代码
-  //  TThostFtdcInvestorIDType	InvestorID;
-  //  ///合约代码
-  //  TThostFtdcInstrumentIDType	InstrumentID;
-  //  ///交易所代码
-  //  TThostFtdcExchangeIDType	ExchangeID;
-  //  ///报单编号
-  //  TThostFtdcOrderSysIDType	OrderSysID;
-  //  ///开始时间
-  //  TThostFtdcTimeType	InsertTimeStart;
-  //  ///结束时间
-  //  TThostFtdcTimeType	InsertTimeEnd;
-  //};
-
+  int iRet = m_pTradeApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
+	if (iRet != 0)
+	{
+		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
+	}
 }
 
 void CSgitTradeSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	if (!pOrder || !pRspInfo) return;
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
     pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
