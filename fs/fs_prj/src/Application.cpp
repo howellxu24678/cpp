@@ -87,6 +87,15 @@ void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::Se
   }
 }
 
+void Application::onMessage(const FIX42::OrderStatusRequest& oMsg, const FIX::SessionID& oSessionID)
+{
+  SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
+  if (spTradeSpi)
+  {
+    spTradeSpi->ReqQryOrder(oMsg);
+  }
+}
+
 Application::Application(CSgitContext* pSgitCtx)
    : m_pSigtCtx(pSgitCtx)
 {

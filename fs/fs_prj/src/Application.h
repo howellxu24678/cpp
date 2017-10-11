@@ -30,6 +30,7 @@
 
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
+#include "quickfix/fix42/OrderStatusRequest.h"
 
 #include "SgitContext.h"
 
@@ -54,6 +55,7 @@ public:
   // MessageCracker overloads
   void onMessage(const FIX42::NewOrderSingle&, const FIX::SessionID&);
   void onMessage(const FIX42::OrderCancelRequest&, const FIX::SessionID&);
+  void onMessage(const FIX42::OrderStatusRequest&, const FIX::SessionID&);
 
 private:
   CSgitContext*       m_pSigtCtx;

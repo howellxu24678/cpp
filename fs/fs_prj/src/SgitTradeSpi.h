@@ -10,6 +10,7 @@
 
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
+#include "quickfix/fix42/OrderStatusRequest.h"
 
 #include "Convert.h"
 
@@ -66,6 +67,9 @@ public:
 
 
   void ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
+
+
+  void ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest);
 
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
@@ -145,7 +149,7 @@ public:
   virtual void OnRspCombActionInsert(CThostFtdcInputCombActionField *pInputCombAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
   ///请求查询报单响应
-  virtual void OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///请求查询成交响应
   virtual void OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
@@ -403,7 +407,7 @@ public:
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
 	protected:
-		void AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID);
+		bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
 
 		//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
 
@@ -411,7 +415,7 @@ public:
 
 		bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
 
-    void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg, bool bIsPendingCancel = false);
+    void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
 
     void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
@@ -419,9 +423,11 @@ public:
 
 		void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
 
-		void Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder);
+    void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
 
-    void Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction);
+		bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
+
+    bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
 private:
   CThostFtdcTraderApi											*m_pTradeApi;
@@ -435,8 +441,8 @@ private:
 
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
-	////OrderRef -> ClOrderID (报单引用->fix本地报单编号)
-	//ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
+	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
+	ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
 
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
 	ExpireCache<std::string, std::string>		m_chClOrderID2OrderRef;
