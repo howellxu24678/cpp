@@ -2,7 +2,8 @@
 #define __SGITAPIMANAGER_H__
 
 
-#include "SgitTradeSpi.h"
+#include "SgitTdSpi.h"
+#include "SgitMdSpi.h"
 #include "Convert.h"
 #include "quickfix/Message.h"
 #include "Poco/Util/JSONConfiguration.h"
@@ -26,7 +27,9 @@ public:
 
   bool Init();
 
-  SharedPtr<CSgitTradeSpi> GetSpi(const FIX::Message& oMsg);
+  SharedPtr<CSgitTdSpi> GetTdSpi(const FIX::Message& oMsg);
+
+  SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::Message& oMsg);
 
   std::string GetRealAccont(const FIX::Message& oRecvMsg);
 
@@ -45,11 +48,13 @@ protected:
 
   bool InitSgitApi();
 
-  SharedPtr<CSgitTradeSpi> CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
+  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
 
-  void LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId);
+  SharedPtr<CSgitMdSpi> CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr);
 
-  SharedPtr<CSgitTradeSpi> GetSpi(const std::string &ssKey);
+  void LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTradeSpi, const std::string &ssTradeId);
+
+  SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
 
   bool GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo);
 
@@ -64,8 +69,13 @@ private:
   //账户别名（TargetCompID + OnBehalfOfCompID）对实际账户
   std::map<std::string, std::string>    m_mapAlias2Acct;
 
-  //实际账户(账户别名)->Spi实例
-  std::map<std::string, SharedPtr<CSgitTradeSpi>>   m_mapAcct2Spi;
+  //实际账户(账户别名)->TdSpi实例
+  std::map<std::string, SharedPtr<CSgitTdSpi>>   m_mapAcct2TdSpi;
+
+  //实际账户(账户别名)->MdSpi实例
+  std::map<std::string, SharedPtr<CSgitMdSpi>>   m_mapAcc2MdSpi;
+
+  SharedPtr<CSgitMdSpi>                           m_spMdSpi;
 
   //资金账号真名->Fix相关信息(用于应答和推送)
   std::map<std::string, STUFixInfo>     m_mapAcct2FixInfo;

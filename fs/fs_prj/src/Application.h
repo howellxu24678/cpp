@@ -31,6 +31,7 @@
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
 #include "quickfix/fix42/OrderStatusRequest.h"
+#include "quickfix/fix42/MarketDataRequest.h"
 
 #include "SgitContext.h"
 
@@ -56,6 +57,7 @@ public:
   void onMessage(const FIX42::NewOrderSingle&, const FIX::SessionID&);
   void onMessage(const FIX42::OrderCancelRequest&, const FIX::SessionID&);
   void onMessage(const FIX42::OrderStatusRequest&, const FIX::SessionID&);
+  void onMessage(const FIX42::MarketDataRequest&, const FIX::SessionID&);
 
 private:
   CSgitContext*       m_pSigtCtx;

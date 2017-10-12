@@ -69,30 +69,39 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 	crack( message, sessionID ); 
 }
 
-void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID& oSessionID)
+void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID&)
 {
-	SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
-	if (spTradeSpi)
+	SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
+	if (spTdSpi)
 	{
-		spTradeSpi->ReqOrderInsert(oMsg);
+		spTdSpi->ReqOrderInsert(oMsg);
 	}
 }
 
-void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::SessionID& oSessionID)
+void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::SessionID&)
 {
-  SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
-  if (spTradeSpi)
+  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
+  if (spTdSpi)
   {
-    spTradeSpi->ReqOrderAction(oMsg);
+    spTdSpi->ReqOrderAction(oMsg);
   }
 }
 
-void Application::onMessage(const FIX42::OrderStatusRequest& oMsg, const FIX::SessionID& oSessionID)
+void Application::onMessage(const FIX42::OrderStatusRequest& oMsg, const FIX::SessionID&)
 {
-  SharedPtr<CSgitTradeSpi> spTradeSpi = m_pSigtCtx->GetSpi(oMsg);
-  if (spTradeSpi)
+  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
+  if (spTdSpi)
   {
-    spTradeSpi->ReqQryOrder(oMsg);
+    spTdSpi->ReqQryOrder(oMsg);
+  }
+}
+
+void Application::onMessage(const FIX42::MarketDataRequest& oMsg, const FIX::SessionID&)
+{
+  SharedPtr<CSgitMdSpi> spMdSpi = m_pSigtCtx->GetMdSpi(oMsg);
+  if (spMdSpi)
+  {
+    spMdSpi->MarketDataRequest(oMsg);
   }
 }
 

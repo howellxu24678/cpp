@@ -48,10 +48,10 @@ bool CSgitContext::Init()
   return true;
 }
 
-SharedPtr<CSgitTradeSpi> CSgitContext::CreateSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId)
+SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId)
 {
   CThostFtdcTraderApi *pTradeApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
-  SharedPtr<CSgitTradeSpi> spTradeSpi = new CSgitTradeSpi(this, pTradeApi, m_ssSgitCfgPath, ssTradeId);
+  SharedPtr<CSgitTdSpi> spTradeSpi = new CSgitTdSpi(this, pTradeApi, m_ssSgitCfgPath, ssTradeId);
   spTradeSpi->Init();
 
   pTradeApi->IsReviveNtyCapital(false);
@@ -62,20 +62,33 @@ SharedPtr<CSgitTradeSpi> CSgitContext::CreateSpi(const std::string &ssFlowPath, 
   pTradeApi->RegisterFront(const_cast<char*>(ssTradeServerAddr.c_str()));
   pTradeApi->Init();
 
-  LOG(INFO_LOG_LEVEL, "Create api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
+  LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
     ssTradeId.c_str(), ssTradeServerAddr.c_str());
 
   return spTradeSpi;
 }
 
-void CSgitContext::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::string &ssTradeId)
+SharedPtr<CSgitMdSpi> CSgitContext::CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr)
+{
+  CThostFtdcMdApi* pMdApi = CThostFtdcMdApi::CreateFtdcMdApi(ssFlowPath.c_str());
+  m_spMdSpi = new CSgitMdSpi(pMdApi);
+  pMdApi->RegisterSpi(m_spMdSpi);
+  pMdApi->RegisterFront(const_cast<char*>(ssMdServerAddr.c_str()));
+  pMdApi->Init();
+
+  LOG(INFO_LOG_LEVEL, "Create market api instance");
+
+  return m_spMdSpi;
+}
+
+void CSgitContext::LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTradeSpi, const std::string &ssTradeId)
 {
   StringTokenizer stAccounts(m_apSgitConf->getString(ssTradeId + ".Accounts"), ",", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 
   for(StringTokenizer::Iterator it = stAccounts.begin(); it != stAccounts.end(); it++)
   {
-    m_mapAcct2Spi[*it] = spTradeSpi;
+    m_mapAcct2TdSpi[*it] = spTradeSpi;
   }
 
   std::string ssAccountAliasKey = ssTradeId + ".AccountAlias";
@@ -100,26 +113,26 @@ void CSgitContext::LinkAcct2Spi(SharedPtr<CSgitTradeSpi> spTradeSpi, const std::
     LOG(DEBUG_LOG_LEVEL, "AccountAlias:%s, Account:%s", ssAcctAliasKey.c_str(), ssAcctValue.c_str());
 
     m_mapAlias2Acct[ssAcctAliasKey] = ssAcctValue;
-    m_mapAcct2Spi[ssAcctAliasKey] = spTradeSpi;
+    m_mapAcct2TdSpi[ssAcctAliasKey] = spTradeSpi;
   }
 }
 
-SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const FIX::Message& oMsg)
+SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::Message& oMsg)
 {
   FIX::Account account;
   oMsg.getField(account);
 
   //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Spi实例
-  if (!CToolkit::isAliasAcct(account.getValue())) return GetSpi(account.getValue());
+  if (!CToolkit::isAliasAcct(account.getValue())) return GetTdSpi(account.getValue());
 
   //如果account为账户别名，即包含字母，则要通过 SessionID + OnBehalfOfCompID + 别名 获取对应的Spi实例
-	return GetSpi(CToolkit::GenAcctAliasKey(account.getValue(), oMsg));
+	return GetTdSpi(CToolkit::GenAcctAliasKey(account.getValue(), oMsg));
 }
 
-SharedPtr<CSgitTradeSpi> CSgitContext::GetSpi(const std::string &ssKey)
+SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const std::string &ssKey)
 {
-  std::map<std::string, SharedPtr<CSgitTradeSpi>>::const_iterator cit = m_mapAcct2Spi.find(ssKey);
-  if (cit != m_mapAcct2Spi.end())
+  std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapAcct2TdSpi.find(ssKey);
+  if (cit != m_mapAcct2TdSpi.end())
   {
     return cit->second;
   }
@@ -153,8 +166,12 @@ bool CSgitContext::InitSgitApi()
   std::string ssFlowPath = "";
   CToolkit::getStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath); 
 
-  std::string ssTradeServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
+  std::string ssTdServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
+  std::string ssMdServerAddr = m_apSgitConf->getString("global.QuoteServerAddr");
 
+  LOG(INFO_LOG_LEVEL, "TdApi version:%s, MdApi version:%s", 
+    CThostFtdcTraderApi::GetApiVersion(), CThostFtdcMdApi::GetApiVersion());
+  
   std::string ssTradeIdListKey = "global.TradeIDList";
   if (!m_apSgitConf->hasProperty(ssTradeIdListKey))
   {
@@ -166,8 +183,10 @@ bool CSgitContext::InitSgitApi()
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   for(StringTokenizer::Iterator it = st.begin(); it != st.end(); it++)
   {
-    LinkAcct2Spi(CreateSpi(ssFlowPath, ssTradeServerAddr, *it), *it);
+    LinkAcct2TdSpi(CreateTdSpi(ssFlowPath, ssTdServerAddr, *it), *it);
   }
+
+  CreateMdSpi(ssFlowPath, ssMdServerAddr);
 
   return true;
 }
@@ -271,4 +290,11 @@ std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Conve
 {
 	return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
+
+SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::Message& oMsg)
+{
+  return m_spMdSpi;
+}
+
+
 

@@ -22,7 +22,7 @@ using namespace Poco::Util;
 const std::string ssOrderRefFormat = "%012d";
 
 class CSgitContext;
-class CSgitTradeSpi : public CThostFtdcTraderSpi
+class CSgitTdSpi : public CThostFtdcTraderSpi
 {
 public:
   struct STUTradeRec
@@ -57,8 +57,8 @@ public:
     void Update(const CThostFtdcTradeField& oTrade);
 	};
 
-  CSgitTradeSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
-  ~CSgitTradeSpi();
+  CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
+  ~CSgitTdSpi();
 
   void Init();
 
@@ -257,7 +257,7 @@ public:
   virtual void OnRspQryAccountregister(CThostFtdcAccountregisterField *pAccountregister, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
   ///错误应答
-  virtual void OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///报单通知
   virtual void OnRtnOrder(CThostFtdcOrderField *pOrder);

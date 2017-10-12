@@ -89,7 +89,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(SolutionDir)\third_party\lib\$(Platform)\$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;quickfix.lib;log4cplus.lib;sgittradeapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;quickfix.lib;log4cplus.lib;sgittradeapi.lib;sgitquotapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
@@ -121,7 +121,8 @@
     <ClCompile Include="src\Convert.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\SgitContext.cpp" />
-    <ClCompile Include="src\SgitTradeSpi.cpp" />
+    <ClCompile Include="src\SgitMdSpi.cpp" />
+    <ClCompile Include="src\SgitTdSpi.cpp" />
     <ClCompile Include="src\Toolkit.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -130,7 +131,8 @@
     <ClInclude Include="src\Convert.h" />
     <ClInclude Include="src\Log.h" />
     <ClInclude Include="src\SgitContext.h" />
-    <ClInclude Include="src\SgitTradeSpi.h" />
+    <ClInclude Include="src\SgitMdSpi.h" />
+    <ClInclude Include="src\SgitTdSpi.h" />
     <ClInclude Include="src\Toolkit.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
