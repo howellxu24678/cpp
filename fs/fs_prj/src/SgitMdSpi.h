@@ -5,6 +5,7 @@
 #include "quickfix/fix42/MarketDataRequest.h"
 
 using namespace fstech;
+using namespace  std;
 
 class CSgitMdSpi : public CThostFtdcMdSpi
 {

@@ -23,12 +23,28 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   oMarketDataRequest.get(subscriptionRequestType);
   oMarketDataRequest.get(noRelatedSym);
 
-  for (int i = 0; i < noRelatedSym.getValue(); i++)
+  int iSymCount = noRelatedSym.getValue(), iSymLen = 0;
+  char **ppInstrumentID = new char* [iSymCount];
+  for (int i = 0; i < iSymCount; i++)
   {
     oMarketDataRequest.getGroup(i + 1, symGroup);
     symGroup.get(symbol);
-    LOG(INFO_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
+    LOG(DEBUG_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
+
+    iSymLen = symbol.getValue().size();
+    ppInstrumentID[i] = new char[iSymLen + 1];
+    memset(ppInstrumentID[i], 0, iSymLen + 1);
+    strncpy(ppInstrumentID[i], symbol.getValue().c_str(), iSymLen);
   }
+  m_pMdApi->SubscribeMarketData(ppInstrumentID, iSymCount);
+
+  for (int i = 0; i < iSymCount; i++)
+  {
+    delete[] ppInstrumentID[i];
+    ppInstrumentID[i] = NULL;
+  }
+  delete[] ppInstrumentID;
+  ppInstrumentID = NULL;
 }
 
 void CSgitMdSpi::OnFrontConnected()

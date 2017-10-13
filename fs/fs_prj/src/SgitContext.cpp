@@ -233,11 +233,12 @@ void CSgitContext::Send(const std::string &ssAcct, FIX::Message &oMsg)
 
 void CSgitContext::AddFixInfo(const FIX::Message& oMsg, const FIX::SessionID& sessionID)
 {
+  FIX::Account account;
+  oMsg.getFieldIfSet(account);
+  if (account.getValue().empty()) return;
+
   std::string ssRealAccount = GetRealAccont(oMsg); 
   if(m_mapAcct2FixInfo.count(ssRealAccount) > 0) return;
-
-  FIX::Account account;
-  oMsg.getField(account);
 
   STUFixInfo stuFixInfo;
   stuFixInfo.m_ssAcctRecv = account.getValue();
