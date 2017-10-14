@@ -2,8 +2,11 @@
 #include "SgitContext.h"
 #include "Log.h"
 
-CSgitMdSpi::CSgitMdSpi(CThostFtdcMdApi *pMdApi)
-  : m_pMdApi(pMdApi)
+CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId) 
+	: m_pSgitCtx(pSgitCtx)
+	, m_pMdReqApi(pMdReqApi)
+	, m_ssSgitCfgPath(ssSgitCfgPath)
+	, m_ssTradeID(ssTradeId)
 {
 
 }
@@ -36,7 +39,7 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
     memset(ppInstrumentID[i], 0, iSymLen + 1);
     strncpy(ppInstrumentID[i], symbol.getValue().c_str(), iSymLen);
   }
-  m_pMdApi->SubscribeMarketData(ppInstrumentID, iSymCount);
+  m_pMdReqApi->SubscribeMarketData(ppInstrumentID, iSymCount);
 
   for (int i = 0; i < iSymCount; i++)
   {
@@ -49,7 +52,13 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
 
 void CSgitMdSpi::OnFrontConnected()
 {
-  LOG(INFO_LOG_LEVEL, "");
+	CThostFtdcReqUserLoginField stuLogin;
+	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
+	strncpy(stuLogin.UserID, m_ssTradeID.c_str(), sizeof(stuLogin.UserID));
+	strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
+	m_pMdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
+
+	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", stuLogin.UserID);
 }
 
 void CSgitMdSpi::OnFrontDisconnected(int nReason)
@@ -82,5 +91,12 @@ void CSgitMdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecif
 void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
   LOG(INFO_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
+}
+
+void CSgitMdSpi::Init()
+{
+	AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+	m_ssPassword = apSgitConf->getString(m_ssTradeID + ".PassWord");
+	m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssTradeID + ".SymbolType");
 }
 

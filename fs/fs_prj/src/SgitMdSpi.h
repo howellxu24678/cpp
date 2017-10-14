@@ -3,15 +3,19 @@
 
 #include "sgit/SgitFtdcMdApi.h"
 #include "quickfix/fix42/MarketDataRequest.h"
+#include "Convert.h"
 
 using namespace fstech;
 using namespace  std;
 
+class CSgitContext;
 class CSgitMdSpi : public CThostFtdcMdSpi
 {
 public:
-  CSgitMdSpi(CThostFtdcMdApi *pMdApi);
+  CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
   ~CSgitMdSpi();
+
+	void Init();
 
   void MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest);
 
@@ -64,8 +68,14 @@ protected:
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
 
 private:
-  CThostFtdcReqUserLoginField m_logonField;
-  CThostFtdcMdApi* m_pMdApi;
+  CThostFtdcMdApi													*m_pMdReqApi;
+	CSgitContext														*m_pSgitCtx;
+	std::string															m_ssSgitCfgPath;
+	std::string															m_ssTradeID;
+	std::string															m_ssPassword;
+	AtomicCounter														m_acRequestId;
+
+	Convert::EnCvtType											m_enSymbolType;
 };
 
 #endif // __SGITMDSPI_H__

@@ -9,7 +9,7 @@
 
 CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId) 
   : m_pSgitCtx(pSgitCtx)
-  , m_pTradeApi(pReqApi)
+  , m_pTdReqApi(pReqApi)
   , m_ssSgitCfgPath(ssSgitCfgPath)
   , m_ssTradeID(ssTradeId)
   , m_enSymbolType(Convert::Original)
@@ -25,11 +25,11 @@ CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, con
 CSgitTdSpi::~CSgitTdSpi()
 {
   //ÊÍ·ÅApiÄÚ´æ
-  if( m_pTradeApi )
+  if( m_pTdReqApi )
   {
-    m_pTradeApi->RegisterSpi(nullptr);
-    m_pTradeApi->Release();
-    m_pTradeApi = nullptr;
+    m_pTdReqApi->RegisterSpi(nullptr);
+    m_pTdReqApi->Release();
+    m_pTdReqApi = nullptr;
   }
 }
 
@@ -39,7 +39,7 @@ void CSgitTdSpi::OnFrontConnected()
 	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
 	strncpy(stuLogin.UserID, m_ssTradeID.c_str(), sizeof(stuLogin.UserID));
 	strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
-	m_pTradeApi->ReqUserLogin(&stuLogin, m_acRequestId++);
+	m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
 	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s",stuLogin.UserID);
 }
@@ -62,7 +62,7 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
     strncpy(stuConfirm.InvestorID, pRspUserLogin->UserID, sizeof(stuConfirm.InvestorID));
     strncpy(stuConfirm.BrokerID, pRspUserLogin->BrokerID, sizeof(stuConfirm.BrokerID));
 
-    m_pTradeApi->ReqSettlementInfoConfirm(&stuConfirm, m_acRequestId++);
+    m_pTdReqApi->ReqSettlementInfoConfirm(&stuConfirm, m_acRequestId++);
   }
 }
 
@@ -79,7 +79,7 @@ void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 
 	m_chOrderRef2Order.add(stuOrder.m_ssOrderRef, stuOrder);
 
-	int iRet = m_pTradeApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
+	int iRet = m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
@@ -98,7 +98,7 @@ void CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
     return;
   }
 
-  int iRet = m_pTradeApi->ReqOrderAction(&stuInputOrderAction, stuInputOrderAction.RequestID);
+  int iRet = m_pTdReqApi->ReqOrderAction(&stuInputOrderAction, stuInputOrderAction.RequestID);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderAction,iRet:%d", iRet);
@@ -547,7 +547,7 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
     sizeof(stuQryOrder.InstrumentID));
   strncpy(stuQryOrder.OrderSysID, orderID.getValue().c_str(), sizeof(stuQryOrder.OrderSysID));
 
-  int iRet = m_pTradeApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
+  int iRet = m_pTdReqApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);

@@ -430,14 +430,14 @@ public:
     bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
 private:
-  CThostFtdcTraderApi											*m_pTradeApi;
+  CThostFtdcTraderApi											*m_pTdReqApi;
   CSgitContext														*m_pSgitCtx;
   std::string															m_ssSgitCfgPath;
   std::string															m_ssTradeID;
   std::string															m_ssPassword;
   AtomicCounter														m_acRequestId;
 
-  Convert::EnCvtType										m_enSymbolType;
+  Convert::EnCvtType											m_enSymbolType;
 
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代

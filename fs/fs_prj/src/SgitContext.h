@@ -50,11 +50,13 @@ protected:
 
   SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
 
-  SharedPtr<CSgitMdSpi> CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr);
+  SharedPtr<CSgitMdSpi> CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr, const std::string &ssTradeId);
 
-  void LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTradeSpi, const std::string &ssTradeId);
+  void LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTdSpi, SharedPtr<CSgitMdSpi> spMdSpi, const std::string &ssTradeId);
 
   SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
+
+	SharedPtr<CSgitMdSpi> GetMdSpi(const std::string &ssKey);
 
   bool GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo);
 
@@ -73,9 +75,7 @@ private:
   std::map<std::string, SharedPtr<CSgitTdSpi>>   m_mapAcct2TdSpi;
 
   //实际账户(账户别名)->MdSpi实例
-  std::map<std::string, SharedPtr<CSgitMdSpi>>   m_mapAcc2MdSpi;
-
-  SharedPtr<CSgitMdSpi>                           m_spMdSpi;
+  std::map<std::string, SharedPtr<CSgitMdSpi>>   m_mapAcct2MdSpi;
 
   //资金账号真名->Fix相关信息(用于应答和推送)
   std::map<std::string, STUFixInfo>     m_mapAcct2FixInfo;
