@@ -984,6 +984,7 @@
     <field name='EncodedSecurityDesc' required='N' />
     <field name='TradingSessionID' required='N' />
    </group>
+   <field name='Account' required='N' />
   </message>
   <message name='MarketDataSnapshotFullRefresh' msgcat='app' msgtype='W'>
    <field name='MDReqID' required='N' />
