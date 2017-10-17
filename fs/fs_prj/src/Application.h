@@ -28,6 +28,7 @@
 #include "quickfix/Utility.h"
 #include "quickfix/Mutex.h"
 
+#include "quickfix/fix42/Logon.h"
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
 #include "quickfix/fix42/OrderStatusRequest.h"
@@ -54,6 +55,7 @@ public:
     throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::UnsupportedMessageType );
 
   // MessageCracker overloads
+  void onMessage(const FIX42::Logon&, const FIX::SessionID&);
   void onMessage(const FIX42::NewOrderSingle&, const FIX::SessionID&);
   void onMessage(const FIX42::OrderCancelRequest&, const FIX::SessionID&);
   void onMessage(const FIX42::OrderStatusRequest&, const FIX::SessionID&);
