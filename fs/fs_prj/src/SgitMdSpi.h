@@ -12,10 +12,8 @@ class CSgitContext;
 class CSgitMdSpi : public CThostFtdcMdSpi
 {
 public:
-  CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
+  CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword);
   ~CSgitMdSpi();
-
-	void Init();
 
   void MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest);
 
@@ -38,7 +36,7 @@ protected:
 
 
   ///登录请求响应
-  virtual void OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///登出请求响应
   virtual void OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
@@ -70,12 +68,10 @@ protected:
 private:
   CThostFtdcMdApi													*m_pMdReqApi;
 	CSgitContext														*m_pSgitCtx;
-	std::string															m_ssSgitCfgPath;
+
 	std::string															m_ssTradeID;
 	std::string															m_ssPassword;
 	AtomicCounter														m_acRequestId;
-
-	Convert::EnCvtType											m_enSymbolType;
 };
 
 #endif // __SGITMDSPI_H__

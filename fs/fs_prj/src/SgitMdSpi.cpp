@@ -2,11 +2,12 @@
 #include "SgitContext.h"
 #include "Log.h"
 
-CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId) 
+CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword) 
 	: m_pSgitCtx(pSgitCtx)
 	, m_pMdReqApi(pMdReqApi)
-	, m_ssSgitCfgPath(ssSgitCfgPath)
 	, m_ssTradeID(ssTradeId)
+  , m_ssPassword(ssPassword)
+  , m_acRequestId(0)
 {
 
 }
@@ -73,30 +74,33 @@ void CSgitMdSpi::OnHeartBeatWarning(int nTimeLapse)
 
 void CSgitMdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+  if(!pRspInfo) return;
   LOG(ERROR_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,RequestID:%d", pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
 }
 
 void CSgitMdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+  if (!pSpecificInstrument || !pRspInfo) return;
   LOG(INFO_LOG_LEVEL, "InstrumentID:%s,ErrorID:%d,ErrorMsg:%s,RequestID:%d", 
     pSpecificInstrument->InstrumentID, pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
 }
 
 void CSgitMdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+  if(!pSpecificInstrument || !pRspInfo) return;
   LOG(INFO_LOG_LEVEL, "InstrumentID:%s,ErrorID:%d,ErrorMsg:%s,RequestID:%d", 
     pSpecificInstrument->InstrumentID, pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
 }
 
 void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
+  if(!pDepthMarketData) return;
   LOG(INFO_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
 }
 
-void CSgitMdSpi::Init()
+void CSgitMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
-	AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
-	m_ssPassword = apSgitConf->getString(m_ssTradeID + ".PassWord");
-	m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssTradeID + ".SymbolType");
+  if (!pRspUserLogin || !pRspInfo) return;
+  LOG(INFO_LOG_LEVEL, "UserID:%s,ErrorID:%d,ErrorMsg:%s", pRspUserLogin->UserID, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 

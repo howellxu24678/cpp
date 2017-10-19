@@ -35,15 +35,15 @@ std::string CToolkit::GenAcctAliasKey(const std::string &ssAccount, const FIX::M
 	FIX::OnBehalfOfCompID onBehalfOfCompId;
 	std::string ssOnBehalfOfCompID = oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
 
-  FIX::BeginString beginString;
-  FIX::SenderCompID senderCompID;
-  FIX::TargetCompID targetCompID;
+  //FIX::BeginString beginString;
+  //FIX::SenderCompID senderCompID;
+  //FIX::TargetCompID targetCompID;
 
-  oRecvMsg.getHeader().getField(beginString);
-  oRecvMsg.getHeader().getField(senderCompID);
-  oRecvMsg.getHeader().getField(targetCompID);
+  //oRecvMsg.getHeader().getField(beginString);
+  //oRecvMsg.getHeader().getField(senderCompID);
+  //oRecvMsg.getHeader().getField(targetCompID);
 
-	return CToolkit::GenAcctAliasKey(FIX::SessionID(beginString, targetCompID, senderCompID), ssOnBehalfOfCompID, ssAccount);
+	return CToolkit::GenAcctAliasKey(oRecvMsg.getSessionID(), ssOnBehalfOfCompID, ssAccount);
 }
 
 bool CToolkit::isExist(const std::string &ssFilePath)
