@@ -25,25 +25,18 @@ bool CToolkit::getStrinIfSet(Poco::AutoPtr<Poco::Util::IniFileConfiguration> apC
 	return false;
 }
 
-std::string CToolkit::GenAcctAliasKey(const FIX::SessionID &oSessionID, const std::string &ssOnBehalfOfCompID, const std::string &ssTradeID)
+std::string CToolkit::GenAcctAliasKey(const FIX::SessionID &oSessionID, const std::string &ssOnBehalfOfCompID, const std::string &ssAccountAlias)
 {
-  return oSessionID.toString() + "|" + ssOnBehalfOfCompID + "|" + ssTradeID;
+  return oSessionID.toString() + "|" + ssOnBehalfOfCompID + "|" + ssAccountAlias;
 }
 
-std::string CToolkit::GenAcctAliasKey(const std::string &ssAccount, const FIX::Message& oRecvMsg)
+std::string CToolkit::GenAcctAliasKey(const FIX::Message& oRecvMsg, const std::string &ssAccount)
 {
 	FIX::OnBehalfOfCompID onBehalfOfCompId;
-	std::string ssOnBehalfOfCompID = oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
+	//std::string ssOnBehalfOfCompID = oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId) ? onBehalfOfCompId.getValue() : "";
+  oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
 
-  //FIX::BeginString beginString;
-  //FIX::SenderCompID senderCompID;
-  //FIX::TargetCompID targetCompID;
-
-  //oRecvMsg.getHeader().getField(beginString);
-  //oRecvMsg.getHeader().getField(senderCompID);
-  //oRecvMsg.getHeader().getField(targetCompID);
-
-	return CToolkit::GenAcctAliasKey(oRecvMsg.getSessionID(), ssOnBehalfOfCompID, ssAccount);
+	return CToolkit::GenAcctAliasKey(oRecvMsg.getSessionID(), onBehalfOfCompId.getValue(), ssAccount);
 }
 
 bool CToolkit::isExist(const std::string &ssFilePath)
@@ -56,5 +49,12 @@ std::string CToolkit::GetUuid()
 {
   Poco::LocalDateTime now;
   return Poco::DateTimeFormatter::format(now, "%Y%m%d%H%M%S%i");
+}
+
+std::string CToolkit::GetSessionKey(const FIX::Message& oRecvMsg)
+{
+  FIX::OnBehalfOfCompID onBehalfOfCompId;
+  oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
+  return oRecvMsg.getSessionID().toString() + "|" + onBehalfOfCompId.getValue();
 }
 

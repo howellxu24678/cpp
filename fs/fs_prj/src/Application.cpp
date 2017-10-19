@@ -58,20 +58,21 @@ void Application::fromAdmin( const FIX::Message& message,
                              const FIX::SessionID& sessionID )
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::RejectLogon ) 
 {
-  const std::string& msgTypeValue 
-    = message.getHeader().getField( FIX::FIELD::MsgType );
+  crack( message, sessionID ); 
+  //const std::string& msgTypeValue 
+  //  = message.getHeader().getField( FIX::FIELD::MsgType );
 
-  if( msgTypeValue == FIX::MsgType_Logon )
-  {
-    FIX::RawData rawData;
-    message.getFieldIfSet(rawData);
+  //if( msgTypeValue == FIX::MsgType_Logon )
+  //{
+  //  FIX::RawData rawData;
+  //  message.getFieldIfSet(rawData);
 
-    if (rawData.getValue().empty()) return;
+  //  if (rawData.getValue().empty()) return;
 
-    LOG(INFO_LOG_LEVEL, "rawData:%s", rawData.getValue().c_str());
+  //  LOG(INFO_LOG_LEVEL, "rawData:%s", rawData.getValue().c_str());
 
-    //throw FIX::DoNotSend();
-  }
+  //  //throw FIX::DoNotSend();
+  //}
 }
 
 void Application::fromApp( const FIX::Message& message,
@@ -79,18 +80,18 @@ void Application::fromApp( const FIX::Message& message,
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::UnsupportedMessageType )
 {
 	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
-  m_pSigtCtx->AddFixInfo(message, sessionID);
+  m_pSigtCtx->AddFixInfo(message);
 	crack( message, sessionID ); 
 }
 
 void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID&)
 {
-  //FIX::RawData rawData;
-  //oMsg.getIfSet(rawData);
+  FIX::RawData rawData;
+  oMsg.getIfSet(rawData);
 
-  //if (rawData.getValue().empty()) return;
+  if (rawData.getValue().empty()) return;
 
-  //LOG(INFO_LOG_LEVEL, "rawData:%s", rawData.getValue().c_str());
+  LOG(INFO_LOG_LEVEL, "rawData:%s", rawData.getValue().c_str());
 
   //throw FIX::DoNotSend();
 }

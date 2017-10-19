@@ -5,11 +5,15 @@
 CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword) 
 	: m_pSgitCtx(pSgitCtx)
 	, m_pMdReqApi(pMdReqApi)
-	, m_ssTradeID(ssTradeId)
-  , m_ssPassword(ssPassword)
   , m_acRequestId(0)
 {
+  memset(&m_stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
+  strncpy(m_stuLogin.UserID, ssTradeId.c_str(), sizeof(m_stuLogin.UserID));
+  strncpy(m_stuLogin.Password, ssPassword.c_str(), sizeof(m_stuLogin.Password));
 
+  m_mapCode2SubSession.clear();
+  m_lSubAllCodeSession.clear();
+  m_mapSnapshot.clear();
 }
 
 CSgitMdSpi::~CSgitMdSpi()
@@ -20,7 +24,9 @@ CSgitMdSpi::~CSgitMdSpi()
 void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest)
 {
   FIX::SubscriptionRequestType subscriptionRequestType;
+  //代码个数
   FIX::NoRelatedSym noRelatedSym;
+  //代码组
   FIX42::MarketDataRequest::NoRelatedSym symGroup;
   FIX::Symbol symbol;
 
@@ -28,38 +34,54 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   oMarketDataRequest.get(noRelatedSym);
 
   int iSymCount = noRelatedSym.getValue(), iSymLen = 0;
-  char **ppInstrumentID = new char* [iSymCount];
   for (int i = 0; i < iSymCount; i++)
   {
     oMarketDataRequest.getGroup(i + 1, symGroup);
     symGroup.get(symbol);
     LOG(DEBUG_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
-
-    iSymLen = symbol.getValue().size();
-    ppInstrumentID[i] = new char[iSymLen + 1];
-    memset(ppInstrumentID[i], 0, iSymLen + 1);
-    strncpy(ppInstrumentID[i], symbol.getValue().c_str(), iSymLen);
   }
-  m_pMdReqApi->SubscribeMarketData(ppInstrumentID, iSymCount);
 
-  for (int i = 0; i < iSymCount; i++)
-  {
-    delete[] ppInstrumentID[i];
-    ppInstrumentID[i] = NULL;
-  }
-  delete[] ppInstrumentID;
-  ppInstrumentID = NULL;
+  //char **ppInstrumentID = new char* [iSymCount];
+  //for (int i = 0; i < iSymCount; i++)
+  //{
+  //  oMarketDataRequest.getGroup(i + 1, symGroup);
+  //  symGroup.get(symbol);
+  //  LOG(DEBUG_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
+
+  //  iSymLen = symbol.getValue().size();
+  //  ppInstrumentID[i] = new char[iSymLen + 1];
+  //  memset(ppInstrumentID[i], 0, iSymLen + 1);
+  //  strncpy(ppInstrumentID[i], symbol.getValue().c_str(), iSymLen);
+  //}
+  //m_pMdReqApi->SubscribeMarketData(ppInstrumentID, iSymCount);
+
+  //for (int i = 0; i < iSymCount; i++)
+  //{
+  //  delete[] ppInstrumentID[i];
+  //  ppInstrumentID[i] = NULL;
+  //}
+  //delete[] ppInstrumentID;
+  //ppInstrumentID = NULL;
 }
 
 void CSgitMdSpi::OnFrontConnected()
 {
-	CThostFtdcReqUserLoginField stuLogin;
-	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
-	strncpy(stuLogin.UserID, m_ssTradeID.c_str(), sizeof(stuLogin.UserID));
-	strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
-	m_pMdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
-	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", stuLogin.UserID);
+	m_pMdReqApi->ReqUserLogin(&m_stuLogin, m_acRequestId++);
+
+	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", m_stuLogin.UserID);
+}
+
+void CSgitMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+  if (!pRspUserLogin || !pRspInfo) return;
+  LOG(INFO_LOG_LEVEL, "UserID:%s,ErrorID:%d,ErrorMsg:%s,RequestID:%d", pRspUserLogin->UserID, pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
+  if (pRspInfo->ErrorID != 0) return;
+
+  //登录成功后订阅全市场行情
+  char* ppInstruments[1];
+  ppInstruments[0] = "all";
+  m_pMdReqApi->SubscribeMarketData(ppInstruments, 1);
 }
 
 void CSgitMdSpi::OnFrontDisconnected(int nReason)
@@ -96,11 +118,5 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
 {
   if(!pDepthMarketData) return;
   LOG(INFO_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
-}
-
-void CSgitMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
-{
-  if (!pRspUserLogin || !pRspInfo) return;
-  LOG(INFO_LOG_LEVEL, "UserID:%s,ErrorID:%d,ErrorMsg:%s", pRspUserLogin->UserID, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 

@@ -18,12 +18,14 @@ public:
   static std::string GenAcctAliasKey(
     const FIX::SessionID &oSessionID, 
     const std::string &ssOnBehalfOfCompID, 
-    const std::string &ssTradeID); 
+    const std::string &ssAccountAlias); 
 
-	static std::string GenAcctAliasKey(const std::string &ssAccount, const FIX::Message& oRecvMsg);
+	static std::string GenAcctAliasKey(const FIX::Message& oRecvMsg, const std::string &ssAccount);
 
 	static bool isExist(const std::string &ssFilePath);
 
   static std::string GetUuid();
+
+  static std::string GetSessionKey(const FIX::Message& oRecvMsg);
 };
 #endif // __TOOLKIT_H__

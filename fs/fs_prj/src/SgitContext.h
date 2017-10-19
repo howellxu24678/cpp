@@ -41,7 +41,7 @@ public:
 
   void Send(const std::string &ssAcct, FIX::Message &oMsg);
 
-  void AddFixInfo(const FIX::Message& oMsg, const FIX::SessionID& sessionID);
+  void AddFixInfo(const FIX::Message& oMsg);
 
 protected:
   bool InitConvert();
@@ -61,6 +61,8 @@ protected:
   bool GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo);
 
   void SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg);
+
+  void AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo);
 private:
   std::string                           m_ssSgitCfgPath;
   Convert                               m_oConvert;
@@ -79,6 +81,6 @@ private:
   //std::map<std::string, SharedPtr<CSgitMdSpi>>   m_mapAcct2MdSpi;
 
   //资金账号真名->Fix相关信息(用于应答和推送)
-  std::map<std::string, STUFixInfo>     m_mapAcct2FixInfo;
+  std::map<std::string, STUFixInfo>     m_mapSessionAcct2FixInfo;
 };
 #endif // __SGITAPIMANAGER_H__

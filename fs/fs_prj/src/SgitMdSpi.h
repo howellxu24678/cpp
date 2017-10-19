@@ -66,12 +66,18 @@ protected:
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
 
 private:
-  CThostFtdcMdApi													*m_pMdReqApi;
-	CSgitContext														*m_pSgitCtx;
+  CThostFtdcMdApi													              *m_pMdReqApi;
+	CSgitContext														              *m_pSgitCtx;
+	AtomicCounter														              m_acRequestId;
+  CThostFtdcReqUserLoginField                           m_stuLogin;
+  //订阅关系 代码->订阅session
+  std::map<std::string, std::list<std::string>>         m_mapCode2SubSession; 
 
-	std::string															m_ssTradeID;
-	std::string															m_ssPassword;
-	AtomicCounter														m_acRequestId;
+  //订阅全量代码的session
+  std::list<std::string>                                m_lSubAllCodeSession;
+
+  //保存全市场行情快照
+  std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
 };
 
 #endif // __SGITMDSPI_H__

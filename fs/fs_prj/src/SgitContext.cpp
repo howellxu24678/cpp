@@ -83,6 +83,7 @@ void CSgitContext::CreateMdSpi(const std::string &ssFlowPath, const std::string 
 
 void CSgitContext::LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTdSpi, const std::string &ssTradeId)
 {
+  //建立真实资金账号和TdSpi实例的对应关系
   StringTokenizer stAccounts(m_apSgitConf->getString(ssTradeId + ".Accounts"), ",", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 
@@ -92,6 +93,7 @@ void CSgitContext::LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTdSpi, const std::stri
 		//m_mapAcct2MdSpi[*it] = spMdSpi;
   }
 
+  //如果配置账户别名，建立账户别名和TdSpi实例的对应关系，账户别名和真实资金账号的对应关系
   std::string ssAccountAliasKey = ssTradeId + ".AccountAlias";
   if (!m_apSgitConf->hasProperty(ssAccountAliasKey)) return;
 
@@ -128,7 +130,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::Message& oMsg)
   if (!CToolkit::isAliasAcct(account.getValue())) return GetTdSpi(account.getValue());
 
   //如果account为账户别名，即包含字母，则要通过 SessionID + OnBehalfOfCompID + 别名 获取对应的Spi实例
-	return GetTdSpi(CToolkit::GenAcctAliasKey(account.getValue(), oMsg));
+	return GetTdSpi(CToolkit::GenAcctAliasKey(oMsg, account.getValue()));
 }
 
 SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::Message& oMsg)
@@ -176,7 +178,7 @@ std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
 
 	if(!CToolkit::isAliasAcct(account.getValue())) return account.getValue();
 
-	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(account.getValue(), oRecvMsg);
+	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(oRecvMsg, account.getValue());
 	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
 	if (cit != m_mapAlias2Acct.end())
 	{
@@ -261,27 +263,32 @@ void CSgitContext::Send(const std::string &ssAcct, FIX::Message &oMsg)
   }
 }
 
-void CSgitContext::AddFixInfo(const FIX::Message& oMsg, const FIX::SessionID& sessionID)
+void CSgitContext::AddFixInfo(const FIX::Message& oMsg)
 {
+  STUFixInfo stuFixInfo;
+  stuFixInfo.m_oSessionID = oMsg.getSessionID();
+  stuFixInfo.m_oHeader = oMsg.getHeader();
+  AddFixInfo(CToolkit::GetSessionKey(oMsg), stuFixInfo);
+
+
   FIX::Account account;
   oMsg.getFieldIfSet(account);
   if (account.getValue().empty()) return;
 
-  std::string ssRealAccount = GetRealAccont(oMsg); 
-  if(m_mapAcct2FixInfo.count(ssRealAccount) > 0) return;
-
-  STUFixInfo stuFixInfo;
   stuFixInfo.m_ssAcctRecv = account.getValue();
-  stuFixInfo.m_oSessionID = sessionID;
-  stuFixInfo.m_oHeader = oMsg.getHeader();
+  AddFixInfo(GetRealAccont(oMsg), stuFixInfo);
+}
 
-  m_mapAcct2FixInfo[ssRealAccount] = stuFixInfo;
+void CSgitContext::AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo)
+{
+  if (m_mapSessionAcct2FixInfo.count(ssKey) > 0) return;
+  m_mapSessionAcct2FixInfo[ssKey] = stuFixInfo;
 }
 
 bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
 {
-  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapAcct2FixInfo.find(ssAcct);
-  if(cit != m_mapAcct2FixInfo.end())
+  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapSessionAcct2FixInfo.find(ssAcct);
+  if(cit != m_mapSessionAcct2FixInfo.end())
   {
     stuFixInfo = cit->second;
     return true;
@@ -292,7 +299,8 @@ bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
 
 void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
 {
-  oMsg.setField(FIX::Account(stuFixInfo.m_ssAcctRecv));
+  if (!stuFixInfo.m_ssAcctRecv.empty())
+    oMsg.setField(FIX::Account(stuFixInfo.m_ssAcctRecv));
 
   
   FIX::OnBehalfOfCompID onBehalfOfCompID;
@@ -321,6 +329,4 @@ std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Conve
 {
 	return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
-
-
 
