@@ -4,9 +4,14 @@
 #include "sgit/SgitFtdcMdApi.h"
 #include "quickfix/fix42/MarketDataRequest.h"
 #include "Convert.h"
+#include <float.h>
+#include "Poco/RWLock.h"
 
 using namespace fstech;
 using namespace  std;
+
+double const THRESHOLD = 2*DBL_MIN;
+inline bool feq( double const x, double const y ) { return fabs( x - y ) < THRESHOLD; }
 
 class CSgitContext;
 class CSgitMdSpi : public CThostFtdcMdSpi
@@ -78,6 +83,8 @@ private:
 
   //保存全市场行情快照
   std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
+
+  RWLock                                                m_rwLockSnapShot;
 };
 
 #endif // __SGITMDSPI_H__

@@ -2,6 +2,7 @@
 #include "SgitContext.h"
 #include "Log.h"
 
+
 CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword) 
 	: m_pSgitCtx(pSgitCtx)
 	, m_pMdReqApi(pMdReqApi)
@@ -117,6 +118,15 @@ void CSgitMdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecif
 void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
   if(!pDepthMarketData) return;
+  if (feq(pDepthMarketData->LastPrice, DBL_MAX)) return;
+
+  do 
+  {
+    ScopedWriteRWLock scopeWriteLock(m_rwLockSnapShot);
+
+  } while (0);
+  
+
   LOG(INFO_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
 }
 
