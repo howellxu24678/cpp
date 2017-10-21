@@ -70,20 +70,26 @@ protected:
   ///递延交割行情
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
 
+  //发送快照
+  void SendSnapShot(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID);
+
+  //建立订阅关系
+  void AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
+
 private:
   CThostFtdcMdApi													              *m_pMdReqApi;
 	CSgitContext														              *m_pSgitCtx;
 	AtomicCounter														              m_acRequestId;
   CThostFtdcReqUserLoginField                           m_stuLogin;
   //订阅关系 代码->订阅session
-  std::map<std::string, std::list<std::string>>         m_mapCode2SubSession; 
+  std::map<std::string, std::set<std::string>>          m_mapCode2SubSession; 
 
   //订阅全量代码的session
-  std::list<std::string>                                m_lSubAllCodeSession;
+  std::set<std::string>                                 m_lSubAllCodeSession;
 
   //保存全市场行情快照
   std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
-
+  //全市场行情快照读写锁
   RWLock                                                m_rwLockSnapShot;
 };
 

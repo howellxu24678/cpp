@@ -24,6 +24,7 @@ CSgitMdSpi::~CSgitMdSpi()
 
 void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest)
 {
+  FIX::MDReqID mdReqID;
   FIX::SubscriptionRequestType subscriptionRequestType;
   //代码个数
   FIX::NoRelatedSym noRelatedSym;
@@ -31,15 +32,33 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   FIX42::MarketDataRequest::NoRelatedSym symGroup;
   FIX::Symbol symbol;
 
+  oMarketDataRequest.get(mdReqID);
   oMarketDataRequest.get(subscriptionRequestType);
   oMarketDataRequest.get(noRelatedSym);
 
-  int iSymCount = noRelatedSym.getValue(), iSymLen = 0;
+  int iSymCount = noRelatedSym.getValue();
+  std::set<std::string> symbolSet;
   for (int i = 0; i < iSymCount; i++)
   {
     oMarketDataRequest.getGroup(i + 1, symGroup);
     symGroup.get(symbol);
     LOG(DEBUG_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
+    symbolSet.insert(symbol.getValue());
+  }
+
+  switch(subscriptionRequestType.getValue())
+  {
+  case FIX::SubscriptionRequestType_SNAPSHOT:
+    SendSnapShot(symbolSet, mdReqID.getValue(), oMarketDataRequest.getSessionID().toString());
+    break;
+  case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
+    SendSnapShot(symbolSet, mdReqID.getValue(), oMarketDataRequest.getSessionID().toString());
+    AddSub(symbolSet, oMarketDataRequest.getSessionID().toString());
+    break;
+  case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
+    break;
+  default:
+    break;
   }
 
   //char **ppInstrumentID = new char* [iSymCount];
@@ -120,13 +139,24 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
   if(!pDepthMarketData) return;
   if (feq(pDepthMarketData->LastPrice, DBL_MAX)) return;
 
+  LOG(DEBUG_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
   do 
   {
     ScopedWriteRWLock scopeWriteLock(m_rwLockSnapShot);
-
+    m_mapSnapshot[pDepthMarketData->InstrumentID] = *pDepthMarketData;
   } while (0);
-  
 
-  LOG(INFO_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
+  //推送给感兴趣的订阅方
+
+}
+
+void CSgitMdSpi::SendSnapShot(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID)
+{
+
+}
+
+void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
+{
+
 }
 
