@@ -10,7 +10,9 @@
 using namespace fstech;
 using namespace  std;
 
+std::string const ALL_SYMBOL = "all";
 double const THRESHOLD = 2*DBL_MIN;
+
 inline bool feq( double const x, double const y ) { return fabs( x - y ) < THRESHOLD; }
 
 class CSgitContext;
@@ -69,6 +71,8 @@ protected:
 
   ///递延交割行情
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
+
+	bool CheckValid(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID);
 
   //发送快照
   void SendSnapShot(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID);

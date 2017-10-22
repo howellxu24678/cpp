@@ -1,6 +1,7 @@
 #include "SgitMdSpi.h"
 #include "SgitContext.h"
 #include "Log.h"
+#include "quickfix/fix42/MarketDataRequestReject.h"
 
 
 CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword) 
@@ -46,6 +47,8 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
     symbolSet.insert(symbol.getValue());
   }
 
+
+	
   switch(subscriptionRequestType.getValue())
   {
   case FIX::SubscriptionRequestType_SNAPSHOT:
@@ -158,5 +161,20 @@ void CSgitMdSpi::SendSnapShot(const std::set<std::string> &symbolSet, const std:
 void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
 {
 
+}
+
+bool CSgitMdSpi::CheckValid(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID)
+{
+	//主要检查是否带多个symbol，其中有一个为ALL_SYMBOL(既然为ALL_SYMBOL，那么就应该只有一个，否则逻辑上说不通)
+	if (symbolSet.size() == 1) return true;
+
+	for (std::set<std::string>::const_iterator cit = symbolSet.begin(); cit != symbolSet.end(); cit++)
+	{
+		if (*cit == ALL_SYMBOL)
+		{
+			FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(ssMDReqID));
+			marketDataRequestReject.set(FIX::MDReqRejReason())
+		}
+	}
 }
 
