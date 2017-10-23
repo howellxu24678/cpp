@@ -594,6 +594,25 @@ void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bo
   LOG(ERROR_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,RequestID:%d", pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
 }
 
+void CSgitTdSpi::OnMessage(const FIX::Message& oMsg)
+{
+  FIX::MsgType msgType;
+  oMsg.getHeader().getField(msgType);
+
+  if (msgType == FIX::MsgType_NewOrderSingle)
+  {
+    ReqOrderInsert((const FIX42::NewOrderSingle&) oMsg);
+  }
+  else if(msgType == FIX::MsgType_OrderCancelRequest)
+  {
+    ReqOrderAction((const FIX42::NewOrderSingle&) oMsg);
+  }
+  else if(msgType == FIX::MsgType_OrderStatusRequest)
+  {
+    ReqQryOrder((const FIX42::OrderStatusRequest&) oMsg);
+  }
+}
+
 double CSgitTdSpi::STUOrder::AvgPx() const
 {
   double dTurnover = 0.0;

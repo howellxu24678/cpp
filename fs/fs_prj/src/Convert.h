@@ -7,6 +7,7 @@
 #include "Poco/RegularExpression.h"
 #include "Poco/SharedPtr.h"
 #include "Poco/Util/XMLConfiguration.h"
+#include "quickfix/Values.h"
 
 using namespace Poco;
 using namespace Poco::Util;
@@ -16,8 +17,8 @@ class Convert
 public:
   //字典转换方向：Sgit，Fix
   enum EnDictType { Sgit, Fix };
-  //代码类别：交易所原始代码，彭博代码
-	enum EnCvtType { Original, Bloomberg};
+  //代码类别：路透代码，交易所原始代码，彭博代码
+	enum EnCvtType { Reuters = 5, Original = 8, Bloomberg = 100};
 
 	struct STUSymbol
 	{

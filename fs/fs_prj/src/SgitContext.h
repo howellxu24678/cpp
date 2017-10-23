@@ -13,19 +13,13 @@ using namespace Poco::Util;
 
 class CSgitContext
 {
-  struct STUFixInfo{
-    //收到的原始资金账号
-    std::string     m_ssAcctRecv;
-    FIX::Header     m_oHeader;
-
-    FIX::SessionID  m_oSessionID;
-  };
-
 public:
   CSgitContext(const std::string &ssSgitCfgPath, const std::string &ssCvtCfgPath);
   ~CSgitContext();
 
   bool Init();
+
+  void Deal(const FIX::Message& oMsg);
 
   SharedPtr<CSgitTdSpi> GetTdSpi(const FIX::Message& oMsg);
 

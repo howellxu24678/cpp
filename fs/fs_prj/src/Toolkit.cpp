@@ -5,7 +5,7 @@
 #include "Poco/DateTimeFormat.h"
 #include "Poco/DateTimeFormatter.h"
 
-bool CToolkit::isAliasAcct(const std::string &ssAcct)
+bool CToolkit::IsAliasAcct(const std::string &ssAcct)
 {
   for (std::string::const_iterator cit = ssAcct.begin(); cit != ssAcct.end(); cit++)
     if(std::isalpha(*cit)) return true;
@@ -13,7 +13,7 @@ bool CToolkit::isAliasAcct(const std::string &ssAcct)
   return false;
 }
 
-bool CToolkit::getStrinIfSet(Poco::AutoPtr<Poco::Util::IniFileConfiguration> apCfg, const std::string &ssProperty, std::string &ssValue)
+bool CToolkit::GetStrinIfSet(Poco::AutoPtr<Poco::Util::IniFileConfiguration> apCfg, const std::string &ssProperty, std::string &ssValue)
 {
 	ssValue = "";
 	if (apCfg->hasProperty(ssProperty))
@@ -39,7 +39,7 @@ std::string CToolkit::GenAcctAliasKey(const FIX::Message& oRecvMsg, const std::s
 	return CToolkit::GenAcctAliasKey(oRecvMsg.getSessionID(), onBehalfOfCompId.getValue(), ssAccount);
 }
 
-bool CToolkit::isExist(const std::string &ssFilePath)
+bool CToolkit::IsExist(const std::string &ssFilePath)
 {
 	Poco::File file = Poco::File(ssFilePath);
 	return file.exists();
@@ -56,5 +56,17 @@ std::string CToolkit::GetSessionKey(const FIX::Message& oRecvMsg)
   FIX::OnBehalfOfCompID onBehalfOfCompId;
   oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
   return oRecvMsg.getSessionID().toString() + "|" + onBehalfOfCompId.getValue();
+}
+
+bool CToolkit::IsTdRequest(const FIX::MsgType &msgType)
+{
+  return msgType == FIX::MsgType_NewOrderSingle 
+    || msgType == FIX::MsgType_OrderCancelRequest 
+    || msgType == FIX::MsgType_OrderStatusRequest ? true : false;
+}
+
+bool CToolkit::IsMdRequest(const FIX::MsgType &msgType)
+{
+  return msgType == FIX::MsgType_MarketDataRequest ? true : false;
 }
 

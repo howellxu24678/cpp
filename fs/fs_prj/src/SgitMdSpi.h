@@ -6,6 +6,7 @@
 #include "Convert.h"
 #include <float.h>
 #include "Poco/RWLock.h"
+#include "Const.h"
 
 using namespace fstech;
 using namespace  std;
@@ -21,6 +22,8 @@ class CSgitMdSpi : public CThostFtdcMdSpi
 public:
   CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword);
   ~CSgitMdSpi();
+
+  void OnMessage(const FIX::Message& oMsg);
 
   void MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest);
 
@@ -72,7 +75,11 @@ protected:
   ///递延交割行情
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
 
-	bool CheckValid(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID);
+	bool CheckValid(
+    const std::set<std::string> &symbolSet,
+    const std::string &ssMDReqID, 
+    const std::string &ssSessionID, 
+    const std::string &ssSessionKey);
 
   //发送快照
   void SendSnapShot(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID);
@@ -80,11 +87,17 @@ protected:
   //建立订阅关系
   void AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
 
+  void AddFixInfo(const FIX::Message& oMsg);
+
 private:
   CThostFtdcMdApi													              *m_pMdReqApi;
 	CSgitContext														              *m_pSgitCtx;
 	AtomicCounter														              m_acRequestId;
   CThostFtdcReqUserLoginField                           m_stuLogin;
+
+  //行情MDReqID (262)记录，用于判断是否有重复
+  std::map<std::string, std::set<std::string>>          m_mapMDReqId;
+
   //订阅关系 代码->订阅session
   std::map<std::string, std::set<std::string>>          m_mapCode2SubSession; 
 
@@ -95,6 +108,10 @@ private:
   std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
   //全市场行情快照读写锁
   RWLock                                                m_rwLockSnapShot;
+
+
+  std::map<std::string, STUFixInfo>                     m_mapSessionKey2FixInfo;
+  RWLock                                                m_rwLockSessionKey2FixInfo;
 };
 
 #endif // __SGITMDSPI_H__

@@ -52,52 +52,62 @@
 		<item in="12" out="Z" />
 	</month>
 	
-	<exchanges desc="交易所代码转换 type 0:交易所原始代码;1:彭博代码">
+	<exchanges desc="交易所代码转换(与fix协议中 tag22的字典保持相同，由于字典对彭博代码没有定义，暂取100) 
+	type 5:路透代码;8:交易所原始代码;100:彭博代码">
 		<exchange name="CFFEX">
-			<item type="0" value="CFFEX" />
-			<item type="1" value="CFF" />
+			<item type="5" value="CFX" />
+			<item type="8" value="CFFEX" />
+			<item type="100" value="CFF" />
 		</exchange>
 		<exchange name="CZCE">
-			<item type="0" value="CZCE" />
-			<item type="1" value="ZCE" />
+			<item type="5" value="CZCE" />
+			<item type="8" value="CZCE" />
+			<item type="100" value="ZCE" />
 		</exchange>
 		<exchange name="DCE">
-			<item type="0" value="DCE" />
-			<item type="1" value="DCE" />
+			<item type="5" value="DCE" />
+			<item type="8" value="DCE" />
+			<item type="100" value="DCE" />
 		</exchange>
 		<exchange name="SHFE">
-			<item type="0" value="SHFE" />
-			<item type="1" value="SHF" />
+			<item type="5" value="SHFE" />
+			<item type="8" value="SHFE" />
+			<item type="100" value="SHF" />
 		</exchange>
 	</exchanges>
 	
-	<symbols desc="type 0:交易所原始代码;1:彭博代码，*:年份 ?:月份">
+	<symbols desc="type 5:路透代码;8:交易所原始代码;100:彭博代码，*:年份 ?:月份">
 		<!-- 中金所品种 -->
 		<symbol name="IF" desc="股指期货">
-			<item type="0" format="IF**??" re="IF\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2" desc="正则表达式匹配IF后4个数字，年月开始位置(从0开始)，年月长度"/>
-			<item type="1" format="IFB?* Index" re="IFB[A-Z]{1}\d{1} Index" yearpos="4" yearlen="1" monthpos="3" monthlen="1" desc="正则表达式匹配IFB后1个英文字符、1个数字"/>
+			<item type="5" format="CIF?*" re="CIF[A-Z]{1}\d{1}" yearpos="4" yearlen="1" monthpos="3" monthlen="1" desc="正则表达式匹配CIF后1个英文字符、1个数字，年月开始位置(从0开始)，年月长度"/>
+			<item type="8" format="IF**??" re="IF\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2" desc="正则表达式匹配IF后4个数字，年月开始位置(从0开始)，年月长度"/>
+			<item type="100" format="IFB?* Index" re="IFB[A-Z]{1}\d{1} Index" yearpos="4" yearlen="1" monthpos="3" monthlen="1" desc="正则表达式匹配IFB后1个英文字符、1个数字"/>
 		</symbol>
 		
 		<!-- 上期所品种-->
 		<symbol name="au" desc="沪金">
-			<item type="0" format="au**??" re="au\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
-			<item type="1" format="AUA?* Comdty" re="AUA[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
+			<item type="5" format="SHAU?*" re="SHAU[A-Z]{1}\d{1}" yearpos="5" yearlen="1" monthpos="4" monthlen="1"/>
+			<item type="8" format="au**??" re="au\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="100" format="AUA?* Comdty" re="AUA[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
 		</symbol>
 		
 		<!-- 大商所品种-->
 		<symbol name="m" desc="豆粕">
-			<item type="0" format="m**??" re="m\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
-			<item type="1" format="AE?* Comdty" re="AE[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+			<item type="5" format="DSM?*" re="DSM[A-Z]{1}\d{1}" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
+			<item type="8" format="m**??" re="m\d{4}" yearpos="2" yearlen="2" monthpos="4" monthlen="2"/>
+			<item type="100" format="AE?* Comdty" re="AE[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
 		</symbol>
 		
 		<!-- 郑商所品种-->
 		<symbol name="FG" desc="玻璃">
-			<item type="0" format="FG*??" re="FG\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
-			<item type="1" format="FGL?* Comdty" re="FGL[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
+			<item type="5" format="XR_FG?*" re="XR_FG[A-Z]{1}\d{1}" yearpos="6" yearlen="1" monthpos="5" monthlen="1"/>
+			<item type="8" format="FG*??" re="FG\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="100" format="FGL?* Comdty" re="FGL[A-Z]{1}\d{1} Comdty" yearpos="4" yearlen="1" monthpos="3" monthlen="1"/>
 		</symbol>
 		<symbol name="WH" desc="强麦">
-			<item type="0" format="WH*??" re="WH\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
-			<item type="1" format="VN?* Comdty" re="VN[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
+			<item type="5" format="XR_WH?*" re="XR_WH[A-Z]{1}\d{1}" yearpos="6" yearlen="1" monthpos="5" monthlen="1"/>
+			<item type="8" format="WH*??" re="WH\d{3}" yearpos="2" yearlen="1" monthpos="3" monthlen="2"/>
+			<item type="100" format="VN?* Comdty" re="VN[A-Z]{1}\d{1} Comdty" yearpos="3" yearlen="1" monthpos="2" monthlen="1"/>
 		</symbol>
 	</symbols>
 </config>

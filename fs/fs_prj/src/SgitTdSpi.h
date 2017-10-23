@@ -62,6 +62,8 @@ public:
 
   void Init();
 
+  void OnMessage(const FIX::Message& oMsg);
+
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 

@@ -9,4 +9,13 @@ const std::string G_CONFIG_SGIT = "sgit";
 const std::string G_CONFIG_FIX = "fix";
 const std::string G_CONFIG_DICT = "dict";
 
+
+struct STUFixInfo{
+  //收到的原始资金账号
+  std::string     m_ssAcctRecv;
+  FIX::Header     m_oHeader;
+
+  FIX::SessionID  m_oSessionID;
+};
+
 #endif // __CONST_H__

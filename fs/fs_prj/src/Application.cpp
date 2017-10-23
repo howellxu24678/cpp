@@ -80,8 +80,11 @@ void Application::fromApp( const FIX::Message& message,
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::UnsupportedMessageType )
 {
 	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
-  m_pSigtCtx->AddFixInfo(message);
-	crack( message, sessionID ); 
+
+  if (!m_pSigtCtx) m_pSigtCtx->Deal(message);
+
+ // m_pSigtCtx->AddFixInfo(message);
+	//crack( message, sessionID ); 
 }
 
 void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID&)
@@ -96,41 +99,41 @@ void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID&)
   //throw FIX::DoNotSend();
 }
 
-void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID&)
-{
-	SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
-	if (spTdSpi)
-	{
-		spTdSpi->ReqOrderInsert(oMsg);
-	}
-}
-
-void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::SessionID&)
-{
-  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
-  if (spTdSpi)
-  {
-    spTdSpi->ReqOrderAction(oMsg);
-  }
-}
-
-void Application::onMessage(const FIX42::OrderStatusRequest& oMsg, const FIX::SessionID&)
-{
-  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
-  if (spTdSpi)
-  {
-    spTdSpi->ReqQryOrder(oMsg);
-  }
-}
-
-void Application::onMessage(const FIX42::MarketDataRequest& oMsg, const FIX::SessionID&)
-{
-  SharedPtr<CSgitMdSpi> spMdSpi = m_pSigtCtx->GetMdSpi(oMsg);
-  if (spMdSpi)
-  {
-    spMdSpi->MarketDataRequest(oMsg);
-  }
-}
+//void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID&)
+//{
+//	SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
+//	if (spTdSpi)
+//	{
+//		spTdSpi->ReqOrderInsert(oMsg);
+//	}
+//}
+//
+//void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::SessionID&)
+//{
+//  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
+//  if (spTdSpi)
+//  {
+//    spTdSpi->ReqOrderAction(oMsg);
+//  }
+//}
+//
+//void Application::onMessage(const FIX42::OrderStatusRequest& oMsg, const FIX::SessionID&)
+//{
+//  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
+//  if (spTdSpi)
+//  {
+//    spTdSpi->ReqQryOrder(oMsg);
+//  }
+//}
+//
+//void Application::onMessage(const FIX42::MarketDataRequest& oMsg, const FIX::SessionID&)
+//{
+//  SharedPtr<CSgitMdSpi> spMdSpi = m_pSigtCtx->GetMdSpi(oMsg);
+//  if (spMdSpi)
+//  {
+//    spMdSpi->MarketDataRequest(oMsg);
+//  }
+//}
 
 Application::Application(CSgitContext* pSgitCtx)
    : m_pSigtCtx(pSgitCtx)

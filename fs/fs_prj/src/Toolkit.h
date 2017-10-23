@@ -5,12 +5,14 @@
 #include "Poco/Util/IniFileConfiguration.h"
 #include "quickfix/Message.h"
 
+
+
 class CToolkit
 {
 public:
-  static bool isAliasAcct(const std::string &ssAcct);
+  static bool IsAliasAcct(const std::string &ssAcct);
 
-	static bool getStrinIfSet(
+	static bool GetStrinIfSet(
     Poco::AutoPtr<Poco::Util::IniFileConfiguration> apCfg, 
     const std::string &ssProperty, 
     std::string &ssValue);
@@ -22,10 +24,14 @@ public:
 
 	static std::string GenAcctAliasKey(const FIX::Message& oRecvMsg, const std::string &ssAccount);
 
-	static bool isExist(const std::string &ssFilePath);
+	static bool IsExist(const std::string &ssFilePath);
 
   static std::string GetUuid();
 
   static std::string GetSessionKey(const FIX::Message& oRecvMsg);
+
+  static bool IsTdRequest(const FIX::MsgType &msgType);
+
+  static bool IsMdRequest(const FIX::MsgType &msgType);
 };
 #endif // __TOOLKIT_H__

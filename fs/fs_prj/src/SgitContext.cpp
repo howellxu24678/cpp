@@ -103,7 +103,7 @@ void CSgitContext::LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTdSpi, const std::stri
   std::string ssTargetCompID = m_apSgitConf->getString(ssTradeId + ".TargetCompID");
 
   std::string ssOnBehalfOfCompID = "";
-  CToolkit::getStrinIfSet(m_apSgitConf, ssTradeId + ".OnBehalfOfCompID", ssOnBehalfOfCompID);
+  CToolkit::GetStrinIfSet(m_apSgitConf, ssTradeId + ".OnBehalfOfCompID", ssOnBehalfOfCompID);
 
   StringTokenizer stAccountAlias(m_apSgitConf->getString(ssAccountAliasKey), ",", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
@@ -127,7 +127,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::Message& oMsg)
   oMsg.getField(account);
 
   //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Spi实例
-  if (!CToolkit::isAliasAcct(account.getValue())) return GetTdSpi(account.getValue());
+  if (!CToolkit::IsAliasAcct(account.getValue())) return GetTdSpi(account.getValue());
 
   //如果account为账户别名，即包含字母，则要通过 SessionID + OnBehalfOfCompID + 别名 获取对应的Spi实例
 	return GetTdSpi(CToolkit::GenAcctAliasKey(oMsg, account.getValue()));
@@ -176,7 +176,7 @@ std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
 	FIX::Account account;
 	oRecvMsg.getField(account);
 
-	if(!CToolkit::isAliasAcct(account.getValue())) return account.getValue();
+	if(!CToolkit::IsAliasAcct(account.getValue())) return account.getValue();
 
 	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(oRecvMsg, account.getValue());
 	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
@@ -197,7 +197,7 @@ bool CSgitContext::InitSgitApi()
   m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
   std::string ssFlowPath = "";
-  CToolkit::getStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath); 
+  CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath); 
 
   std::string ssTdServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
   std::string ssMdServerAddr = m_apSgitConf->getString("global.QuoteServerAddr");
@@ -328,5 +328,28 @@ void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
 std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enDstType)
 {
 	return m_oConvert.CvtExchange(ssExchange, enDstType);
+}
+
+void CSgitContext::Deal(const FIX::Message& oMsg)
+{
+  const FIX::BeginString& beginString = 
+    FIELD_GET_REF( oMsg.getHeader(), BeginString);
+  if ( beginString != FIX::BeginString_FIX42 ) return;
+
+  FIX::MsgType msgType;
+  oMsg.getHeader().getField(msgType);
+
+  if(CToolkit::IsTdRequest(msgType))
+  {
+
+  }
+  else if(CToolkit::IsMdRequest(msgType))
+  {
+    SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oMsg);
+    if (spMdSpi)
+    {
+      spMdSpi->MarketDataRequest(oMsg);
+    }
+  }
 }
 

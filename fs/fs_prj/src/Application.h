@@ -56,10 +56,10 @@ public:
 
   // MessageCracker overloads
   void onMessage(const FIX42::Logon&, const FIX::SessionID&);
-  void onMessage(const FIX42::NewOrderSingle&, const FIX::SessionID&);
-  void onMessage(const FIX42::OrderCancelRequest&, const FIX::SessionID&);
-  void onMessage(const FIX42::OrderStatusRequest&, const FIX::SessionID&);
-  void onMessage(const FIX42::MarketDataRequest&, const FIX::SessionID&);
+  //void onMessage(const FIX42::NewOrderSingle&, const FIX::SessionID&);
+  //void onMessage(const FIX42::OrderCancelRequest&, const FIX::SessionID&);
+  //void onMessage(const FIX42::OrderStatusRequest&, const FIX::SessionID&);
+  //void onMessage(const FIX42::MarketDataRequest&, const FIX::SessionID&);
 
 private:
   CSgitContext*       m_pSigtCtx;

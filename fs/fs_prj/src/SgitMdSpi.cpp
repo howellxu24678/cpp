@@ -2,6 +2,7 @@
 #include "SgitContext.h"
 #include "Log.h"
 #include "quickfix/fix42/MarketDataRequestReject.h"
+#include "Toolkit.h"
 
 
 CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword) 
@@ -47,7 +48,7 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
     symbolSet.insert(symbol.getValue());
   }
 
-
+  CheckValid(symbolSet, mdReqID.getValue(), oMarketDataRequest.getSessionID().toString(), CToolkit::GetSessionKey(oMarketDataRequest));
 	
   switch(subscriptionRequestType.getValue())
   {
@@ -163,18 +164,55 @@ void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::strin
 
 }
 
-bool CSgitMdSpi::CheckValid(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID)
+bool CSgitMdSpi::CheckValid(
+  const std::set<std::string> &symbolSet, 
+  const std::string &ssMDReqID, 
+  const std::string &ssSessionID, 
+  const std::string &ssSessionKey)
 {
-	//主要检查是否带多个symbol，其中有一个为ALL_SYMBOL(既然为ALL_SYMBOL，那么就应该只有一个，否则逻辑上说不通)
-	if (symbolSet.size() == 1) return true;
+ // bool bIsOk = true;
+ // std::string ssErrMsg = "";
 
-	for (std::set<std::string>::const_iterator cit = symbolSet.begin(); cit != symbolSet.end(); cit++)
-	{
-		if (*cit == ALL_SYMBOL)
-		{
-			FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(ssMDReqID));
-			marketDataRequestReject.set(FIX::MDReqRejReason())
-		}
-	}
+ // //
+ // std::map<std::string, std::set<std::string>>::iterator it = m_mapMDReqId.find(ssSessionKey);
+ // if (it != m_mapMDReqId.end())
+ // {
+ //   if (it->second.count(ssMDReqID) > 0)
+ //   {
+ //     bIsOk = false;
+ //     ssErrMsg = ""
+ //   }
+ // }
+	////主要检查是否带多个symbol，其中有一个为ALL_SYMBOL(既然为ALL_SYMBOL，那么就应该只有一个，否则逻辑上说不通)
+	//if (symbolSet.size() == 1) return true;
+
+	//for (std::set<std::string>::const_iterator cit = symbolSet.begin(); cit != symbolSet.end(); cit++)
+	//{
+	//	if (*cit == ALL_SYMBOL)
+	//	{
+	//		FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(ssMDReqID));
+	//		//marketDataRequestReject.set(FIX::MDReqRejReason())
+	//	}
+	//}
+
+  return true;
+}
+
+void CSgitMdSpi::OnMessage(const FIX::Message& oMsg)
+{
+  AddFixInfo(oMsg);
+
+  FIX::MsgType msgType;
+  oMsg.getHeader().getField(msgType);
+
+  if (msgType == FIX::MsgType_MarketDataRequest)
+  {
+    MarketDataRequest((const FIX42::MarketDataRequest&) oMsg);
+  }
+}
+
+void CSgitMdSpi::AddFixInfo(const FIX::Message& oMsg)
+{
+
 }
 

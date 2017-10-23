@@ -74,8 +74,8 @@ void wait()
 
 bool checkCfgPath(AutoPtr<Poco::Util::IniFileConfiguration> apCfg, const std::string ssKey, std::string &ssValue)
 {
-	CToolkit::getStrinIfSet(apCfg, G_CONFIG_GLOBAL_SECTION + "." + ssKey, ssValue);
-	if (!CToolkit::isExist(ssValue))
+	CToolkit::GetStrinIfSet(apCfg, G_CONFIG_GLOBAL_SECTION + "." + ssKey, ssValue);
+	if (!CToolkit::IsExist(ssValue))
 	{
 		std::cout << "Failed to find log cfg file of:" << ssKey << ", path:" << ssValue << std::endl;
 		return false;
@@ -124,7 +124,7 @@ int main( int argc, char** argv )
 	try
 	{
 
-		if (!CToolkit::isExist(ssConfigPath))
+		if (!CToolkit::IsExist(ssConfigPath))
 		{
 			std::cout << "Failed to find global cfg file, path:" << ssConfigPath << std::endl;
 			return 0;
