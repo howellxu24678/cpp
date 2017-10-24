@@ -42,11 +42,11 @@ protected:
 
   bool InitSgitApi();
 
-  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssTradeId);
+  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssUserId, const std::string &ssPassword);
 
   void CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr, const std::string &ssTradeId, const std::string &ssPassword);
 
-  void LinkAcct2TdSpi(SharedPtr<CSgitTdSpi> spTdSpi, const std::string &ssTradeId);
+  void LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi);
 
   SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
 
@@ -57,6 +57,9 @@ protected:
   void SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg);
 
   void AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo);
+
+  //预先发起登录
+  bool PreLogin();
 private:
   std::string                           m_ssSgitCfgPath;
   Convert                               m_oConvert;
@@ -68,7 +71,7 @@ private:
   std::map<std::string, std::string>    m_mapAlias2Acct;
 
   //实际账户(账户别名)->TdSpi实例
-  std::map<std::string, SharedPtr<CSgitTdSpi>>   m_mapAcct2TdSpi;
+  std::map<std::string, SharedPtr<CSgitTdSpi>>   m_mapSessionID2TdSpi;
 
   SharedPtr<CSgitMdSpi>                          m_spMdSpi;
   ////实际账户(账户别名)->MdSpi实例

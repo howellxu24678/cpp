@@ -57,7 +57,7 @@ public:
     void Update(const CThostFtdcTradeField& oTrade);
 	};
 
-  CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId);
+  CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssUserId, const std::string &ssPassword);
   ~CSgitTdSpi();
 
   void Init();
@@ -434,8 +434,7 @@ public:
 private:
   CThostFtdcTraderApi											*m_pTdReqApi;
   CSgitContext														*m_pSgitCtx;
-  std::string															m_ssSgitCfgPath;
-  std::string															m_ssTradeID;
+  std::string															m_ssUserId;
   std::string															m_ssPassword;
   AtomicCounter														m_acRequestId;
 

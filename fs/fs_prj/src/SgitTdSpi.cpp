@@ -7,12 +7,12 @@
 #include "Poco/UUIDGenerator.h"
 #include "Toolkit.h"
 
-CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssSgitCfgPath, const std::string &ssTradeId) 
+CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  const std::string &ssUserId, const std::string &ssPassword) 
   : m_pSgitCtx(pSgitCtx)
   , m_pTdReqApi(pReqApi)
-  , m_ssSgitCfgPath(ssSgitCfgPath)
-  , m_ssTradeID(ssTradeId)
-  , m_enSymbolType(Convert::Original)
+  , m_ssUserId(ssUserId)
+  , m_ssPassword(ssPassword)
+  , m_enSymbolType(Convert::Init)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
 	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
@@ -37,7 +37,7 @@ void CSgitTdSpi::OnFrontConnected()
 {
 	CThostFtdcReqUserLoginField stuLogin;
 	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
-	strncpy(stuLogin.UserID, m_ssTradeID.c_str(), sizeof(stuLogin.UserID));
+	strncpy(stuLogin.UserID, m_ssUserId.c_str(), sizeof(stuLogin.UserID));
 	strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
 	m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
@@ -222,8 +222,8 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 void CSgitTdSpi::Init()
 {
   AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
-  m_ssPassword = apSgitConf->getString(m_ssTradeID + ".PassWord");
-  m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssTradeID + ".SymbolType");
+  m_ssPassword = apSgitConf->getString(m_ssUserId + ".PassWord");
+  m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssUserId + ".SymbolType");
 }
 
 void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/)
@@ -425,7 +425,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	if(!AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue(), ssErrMsg)) return false;
   stuOrder.m_ssOrderRef = ssOrderRef;
   
-	strncpy(stuInputOrder.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrder.UserID));
+	strncpy(stuInputOrder.UserID, m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
 	strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
 	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
 	strncpy(
@@ -513,7 +513,7 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   else
   {
     strncpy(stuInputOrderAction.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
-    strncpy(stuInputOrderAction.UserID, m_ssTradeID.c_str(), sizeof(stuInputOrderAction.UserID));
+    strncpy(stuInputOrderAction.UserID, m_ssUserId.c_str(), sizeof(stuInputOrderAction.UserID));
     strncpy(
       stuInputOrderAction.InstrumentID, 
       m_enSymbolType == Convert::Original ? 

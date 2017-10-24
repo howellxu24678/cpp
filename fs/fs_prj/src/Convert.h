@@ -17,19 +17,19 @@ class Convert
 public:
   //字典转换方向：Sgit，Fix
   enum EnDictType { Sgit, Fix };
-  //代码类别：路透代码，交易所原始代码，彭博代码
-	enum EnCvtType { Reuters = 5, Original = 8, Bloomberg = 100};
+  //代码类别：路透代码，交易所原始代码，彭博代码，取值对应fix tag22 对应的字典取值
+	enum EnCvtType { Init = 0, Reuters = 5, Original = 8, Bloomberg = 100};
 
 	struct STUSymbol
 	{
-		std::string				m_ssName;
-		EnCvtType			m_enSymbolType;
-		std::string				m_ssFormat;
+		std::string				            m_ssName;
+		EnCvtType			                m_enSymbolType;
+		std::string				            m_ssFormat;
 		SharedPtr<RegularExpression>	m_spRe;
-		UINT8							m_iYearPos;
-		UINT8							m_iYearLen;
-		UINT8							m_iMonthPos;
-		UINT8							m_iMonthLen;
+		UINT8							            m_iYearPos;
+		UINT8							            m_iYearLen;
+		UINT8							            m_iMonthPos;
+		UINT8							            m_iMonthLen;
 	};
 
   struct STUExchange
