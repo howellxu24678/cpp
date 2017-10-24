@@ -38,11 +38,16 @@
 
 void Application::onCreate( const FIX::SessionID& sessionID ) 
 {
+	LOG(INFO_LOG_LEVEL, "%s", sessionID.toString().c_str());
 }
 void Application::onLogon( const FIX::SessionID& sessionID )
 {
+	LOG(INFO_LOG_LEVEL, "%s", sessionID.toString().c_str());
 }
-void Application::onLogout( const FIX::SessionID& sessionID ) {}
+void Application::onLogout( const FIX::SessionID& sessionID ) 
+{
+	LOG(INFO_LOG_LEVEL, "%s", sessionID.toString().c_str());
+}
 void Application::toAdmin( FIX::Message& message,
                            const FIX::SessionID& sessionID ) 
 {

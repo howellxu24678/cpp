@@ -143,7 +143,7 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
   if(!pDepthMarketData) return;
   if (feq(pDepthMarketData->LastPrice, DBL_MAX)) return;
 
-  LOG(DEBUG_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
+  //LOG(DEBUG_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
   do 
   {
     ScopedWriteRWLock scopeWriteLock(m_rwLockSnapShot);

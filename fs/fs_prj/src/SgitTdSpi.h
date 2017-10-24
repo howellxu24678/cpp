@@ -60,7 +60,7 @@ public:
   CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssUserId, const std::string &ssPassword);
   ~CSgitTdSpi();
 
-  void Init();
+  //void Init();
 
   void OnMessage(const FIX::Message& oMsg);
 

@@ -38,6 +38,8 @@ bool CSgitContext::Init()
 		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("au1801", Convert::Bloomberg), Convert::Original).c_str());
 
     if(!InitSgitApi()) return false;
+
+		if(!InitFixUserConf()) return false;
   }
   catch ( std::exception & e)
   {
@@ -52,7 +54,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, c
 {
   CThostFtdcTraderApi *pTdReqApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
   SharedPtr<CSgitTdSpi> spTdSpi = new CSgitTdSpi(this, pTdReqApi, ssUserId, ssPassword);
-  spTdSpi->Init();
+  //spTdSpi->Init();
 
   pTdReqApi->IsReviveNtyCapital(false);
   pTdReqApi->RegisterSpi(spTdSpi);
@@ -81,85 +83,36 @@ void CSgitContext::CreateMdSpi(const std::string &ssFlowPath, const std::string 
 		ssTradeId.c_str(), ssMdServerAddr.c_str());
 }
 
-void CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi)
+bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi)
 {
+	std::pair<std::map<std::string, SharedPtr<CSgitTdSpi>>::iterator, bool> ret = 
+		m_mapSessionID2TdSpi.insert(std::pair<std::string, SharedPtr<CSgitTdSpi>>(ssSessionID, spTdSpi));
 
+	if (ret.second == false)
+	{
+		LOG(ERROR_LOG_LEVEL, "SessionID:%s is already in map", ssSessionID.c_str());
+		return false;
+	}
 
-  ////建立真实资金账号和TdSpi实例的对应关系
-  //StringTokenizer stAccounts(m_apSgitConf->getString(ssSessionID + ".Accounts"), ",", 
-  //  StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-
-  //for(StringTokenizer::Iterator it = stAccounts.begin(); it != stAccounts.end(); it++)
-  //{
-  //  m_mapAcct2TdSpi[*it] = spTdSpi;
-		////m_mapAcct2MdSpi[*it] = spMdSpi;
-  //}
-
-  ////如果配置账户别名，建立账户别名和TdSpi实例的对应关系，账户别名和真实资金账号的对应关系
-  //std::string ssAccountAliasKey = ssSessionID + ".AccountAlias";
-  //if (!m_apSgitConf->hasProperty(ssAccountAliasKey)) return;
-
-  ////SessionID + OnBehalfOfCompID(如有,彭博通过第三方hub过来的需要这个值)
-  //std::string ssBeginString = m_apSgitConf->getString(ssSessionID + ".BeginString");
-  //std::string ssSenderCompID = m_apSgitConf->getString(ssSessionID + ".SenderCompID");
-  //std::string ssTargetCompID = m_apSgitConf->getString(ssSessionID + ".TargetCompID");
-
-  //std::string ssOnBehalfOfCompID = "";
-  //CToolkit::GetStrinIfSet(m_apSgitConf, ssSessionID + ".OnBehalfOfCompID", ssOnBehalfOfCompID);
-
-  //StringTokenizer stAccountAlias(m_apSgitConf->getString(ssAccountAliasKey), ",", 
-  //  StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-
-  //for(StringTokenizer::Iterator it = stAccountAlias.begin(); it != stAccountAlias.end(); it++)
-  //{
-  //  std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(FIX::SessionID(ssBeginString, ssTargetCompID, ssSenderCompID), ssOnBehalfOfCompID, *it);
-  //  std::string ssAcctValue = m_apSgitConf->getString(ssSessionID + "."+ *it);
-
-  //  LOG(DEBUG_LOG_LEVEL, "AccountAlias:%s, Account:%s", ssAcctAliasKey.c_str(), ssAcctValue.c_str());
-
-  //  m_mapAlias2Acct[ssAcctAliasKey] = ssAcctValue;
-  //  m_mapAcct2TdSpi[ssAcctAliasKey] = spTdSpi;
-		////m_mapAcct2MdSpi[ssAcctAliasKey] = spMdSpi;
-  //}
+	return true;
 }
 
 SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::Message& oMsg)
 {
-  FIX::Account account;
-  oMsg.getField(account);
+	std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(oMsg.getSessionID().toString());
+	if (cit != m_mapSessionID2TdSpi.end())
+	{
+		return cit->second;
+	}
 
-  //如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Spi实例
-  if (!CToolkit::IsAliasAcct(account.getValue())) return GetTdSpi(account.getValue());
-
-  //如果account为账户别名，即包含字母，则要通过 SessionID + OnBehalfOfCompID + 别名 获取对应的Spi实例
-	return GetTdSpi(CToolkit::GenAcctAliasKey(oMsg, account.getValue()));
+	LOG(ERROR_LOG_LEVEL, "Can not find TdSpi by SessionID:%s", oMsg.getSessionID().toString().c_str());
+	return NULL;
 }
 
 SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::Message& oMsg)
 {
-	//FIX::Account account;
-	//oMsg.getField(account);
-
-	////如果account全为数字，则表示客户显式指定了账户，直接通过账户获取对应的Spi实例
-	//if (!CToolkit::isAliasAcct(account.getValue())) return GetMdSpi(account.getValue());
-
-	////如果account为账户别名，即包含字母，则要通过 SessionID + OnBehalfOfCompID + 别名 获取对应的Spi实例
-	//return GetMdSpi(CToolkit::GenAcctAliasKey(account.getValue(), oMsg));
-
   return m_spMdSpi;
 }
-
-//SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const std::string &ssKey)
-//{
-//	std::map<std::string, SharedPtr<CSgitMdSpi>>::const_iterator cit = m_mapAcct2MdSpi.find(ssKey);
-//	if (cit != m_mapAcct2MdSpi.end())
-//	{
-//		return cit->second;
-//	}
-//
-//	LOG(ERROR_LOG_LEVEL, "Can not find MdSpi by key:%s", ssKey.c_str());
-//	return NULL;
-//}
 
 SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const std::string &ssKey)
 {
@@ -209,30 +162,26 @@ bool CSgitContext::InitSgitApi()
   CreateMdSpi(ssFlowPath, ssMdServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
 
   std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSessionProp = "";
-  if (m_apSgitConf->hasProperty(ssTradeAccountListKey))
-  {
-    StringTokenizer stTradeAccountList(m_apSgitConf->getString(ssTradeAccountListKey), ";", 
-      StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-    for (StringTokenizer::Iterator it = stTradeAccountList.begin(); it != stTradeAccountList.end(); it++)
-    {
-      StringTokenizer stTdUserIdPassword(*it, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 
-      ssFixSessionProp = "global." + stTdUserIdPassword[0];
-      if (!m_apSgitConf->hasProperty(ssFixSessionProp))
-      {
-        LOG(ERROR_LOG_LEVEL, "Can not find the fix session of %s, property:%s", stTdUserIdPassword[0].c_str(), ssFixSessionProp.c_str());
-        return false;
-      }
+  if (!m_apSgitConf->hasProperty(ssTradeAccountListKey)) return true;
 
-      LinkSessionID2TdSpi(m_apSgitConf->getString(ssFixSessionProp), 
-        CreateTdSpi(ssFlowPath, ssTdServerAddr, stTdUserIdPassword[0], stTdUserIdPassword[1]));
-    }
+	StringTokenizer stTradeAccountList(m_apSgitConf->getString(ssTradeAccountListKey), ";", 
+		StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+	for (StringTokenizer::Iterator it = stTradeAccountList.begin(); it != stTradeAccountList.end(); it++)
+	{
+		StringTokenizer stTdUserIdPassword(*it, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 
+		ssFixSessionProp = "global." + stTdUserIdPassword[0];
+		if (!m_apSgitConf->hasProperty(ssFixSessionProp))
+		{
+			LOG(ERROR_LOG_LEVEL, "Can not find the fix session of %s, property:%s", stTdUserIdPassword[0].c_str(), ssFixSessionProp.c_str());
+			return false;
+		}
 
-    LOG(ERROR_LOG_LEVEL, "Can not find property:%s in %s", ssTradeAccountListKey.c_str(), m_ssSgitCfgPath.c_str());
-    return false;
-  }
-
+		if(!LinkSessionID2TdSpi(m_apSgitConf->getString(ssFixSessionProp), 
+			CreateTdSpi(ssFlowPath, ssTdServerAddr, stTdUserIdPassword[0], stTdUserIdPassword[1]))) return false;
+	}
+  
   return true;
 }
 
@@ -354,15 +303,28 @@ void CSgitContext::Deal(const FIX::Message& oMsg)
 
   if(CToolkit::IsTdRequest(msgType))
   {
-
+		SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oMsg);
+		if (!spTdSpi) return;
+		spTdSpi->OnMessage(oMsg);
   }
   else if(CToolkit::IsMdRequest(msgType))
   {
     SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oMsg);
-    if (spMdSpi)
-    {
-      spMdSpi->MarketDataRequest(oMsg);
-    }
+		if(!spMdSpi) return;
+		spMdSpi->OnMessage(oMsg);
   }
+}
+
+bool CSgitContext::InitFixUserConf()
+{
+	AbstractConfiguration::Keys kProp;
+	m_apSgitConf->keys(kProp);
+
+	for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
+	{
+		LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
+	}
+
+	return true;
 }
 

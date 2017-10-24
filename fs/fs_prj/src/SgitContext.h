@@ -42,11 +42,13 @@ protected:
 
   bool InitSgitApi();
 
+	bool InitFixUserConf();
+
   SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssUserId, const std::string &ssPassword);
 
   void CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr, const std::string &ssTradeId, const std::string &ssPassword);
 
-  void LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi);
+  bool LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi);
 
   SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
 

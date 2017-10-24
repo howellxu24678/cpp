@@ -18,7 +18,7 @@ public:
   //字典转换方向：Sgit，Fix
   enum EnDictType { Sgit, Fix };
   //代码类别：路透代码，交易所原始代码，彭博代码，取值对应fix tag22 对应的字典取值
-	enum EnCvtType { Init = 0, Reuters = 5, Original = 8, Bloomberg = 100};
+	enum EnCvtType { Unknow = 0, Reuters = 5, Original = 8, Bloomberg = 100};
 
 	struct STUSymbol
 	{

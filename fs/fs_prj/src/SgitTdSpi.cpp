@@ -12,7 +12,7 @@ CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  co
   , m_pTdReqApi(pReqApi)
   , m_ssUserId(ssUserId)
   , m_ssPassword(ssPassword)
-  , m_enSymbolType(Convert::Init)
+  , m_enSymbolType(Convert::Unknow)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
 	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
@@ -219,12 +219,12 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
-void CSgitTdSpi::Init()
-{
-  AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
-  m_ssPassword = apSgitConf->getString(m_ssUserId + ".PassWord");
-  m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssUserId + ".SymbolType");
-}
+//void CSgitTdSpi::Init()
+//{
+//  AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+//  m_ssPassword = apSgitConf->getString(m_ssUserId + ".PassWord");
+//  m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssUserId + ".SymbolType");
+//}
 
 void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/)
 {
