@@ -44,7 +44,7 @@ protected:
 
 	bool InitFixUserConf();
 
-  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssUserId, const std::string &ssPassword);
+  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 
   void CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr, const std::string &ssTradeId, const std::string &ssPassword);
 
@@ -69,17 +69,21 @@ private:
 
 	AutoPtr<IniFileConfiguration>					m_apSgitConf;
 
-  //账户别名（TargetCompID + OnBehalfOfCompID）对实际账户
-  std::map<std::string, std::string>    m_mapAlias2Acct;
-
-  //实际账户(账户别名)->TdSpi实例
-  std::map<std::string, SharedPtr<CSgitTdSpi>>   m_mapSessionID2TdSpi;
-
   SharedPtr<CSgitMdSpi>                          m_spMdSpi;
-  ////实际账户(账户别名)->MdSpi实例
-  //std::map<std::string, SharedPtr<CSgitMdSpi>>   m_mapAcct2MdSpi;
 
-  //资金账号真名->Fix相关信息(用于应答和推送)
-  std::map<std::string, STUFixInfo>     m_mapSessionAcct2FixInfo;
+  //账户别名(SessionID+onBehalfOfCompID)->真实资金账户
+  std::map<std::string, std::string>              m_mapAlias2Acct;
+
+  //真实资金账户->SessionID + onBehalfOfCompID + 原始送入账户 + 所用代码类型 --用于交易推送
+  std::map<std::string, STUFixInfo>               m_mapAcct2FixInfo;
+  RWLock                                          m_rwAcct2FixInfo;
+
+  //fix用户(SessionID+onBehalfOfCompID)->代码类型 --用于行情推送
+  std::map<std::string, Convert::EnCvtType>       m_mapFixUser2CvtType;
+  RWLock                                          m_rwFixUser2CvtType;
+
+  //SessionID->TdSpi实例
+  std::map<std::string, SharedPtr<CSgitTdSpi>>    m_mapSessionID2TdSpi;
+  RWLock                                          m_rwSessionID2TdSpi;
 };
 #endif // __SGITAPIMANAGER_H__

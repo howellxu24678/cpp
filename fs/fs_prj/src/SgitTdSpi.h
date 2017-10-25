@@ -13,6 +13,7 @@
 #include "quickfix/fix42/OrderStatusRequest.h"
 
 #include "Convert.h"
+#include "Const.h"
 
 using namespace fstech;
 
@@ -25,6 +26,25 @@ class CSgitContext;
 class CSgitTdSpi : public CThostFtdcTraderSpi
 {
 public:
+  struct STUTdParam
+  {
+    STUTdParam()
+      : m_pSgitCtx(NULL)
+      , m_pTdReqApi(NULL)
+      , m_ssUserId("")
+      , m_ssPassword("")
+      , m_ssSessionID("")
+    {}
+
+    CSgitContext        *m_pSgitCtx;
+    CThostFtdcTraderApi *m_pTdReqApi;
+    std::string         m_ssUserId;
+    std::string         m_ssPassword;
+    std::string         m_ssSessionID;
+  };
+
+  enum EnTdSpiRole {HubTran, Direct};
+
   struct STUTradeRec
   {
     STUTradeRec();
@@ -57,8 +77,9 @@ public:
     void Update(const CThostFtdcTradeField& oTrade);
 	};
 
-  CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssUserId, const std::string &ssPassword);
-  ~CSgitTdSpi();
+  //CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssUserId, const std::string &ssPassword);
+  CSgitTdSpi(const STUTdParam &stuTdParam);
+  virtual ~CSgitTdSpi();
 
   //void Init();
 
@@ -432,10 +453,13 @@ public:
     bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
 private:
-  CThostFtdcTraderApi											*m_pTdReqApi;
-  CSgitContext														*m_pSgitCtx;
-  std::string															m_ssUserId;
-  std::string															m_ssPassword;
+  //CThostFtdcTraderApi											*m_pTdReqApi;
+  //CSgitContext														*m_pSgitCtx;
+  //std::string															m_ssUserId;
+  //std::string															m_ssPassword;
+
+  STUTdParam                              m_stuTdParam;
+
   AtomicCounter														m_acRequestId;
 
   Convert::EnCvtType											m_enSymbolType;
@@ -452,4 +476,25 @@ private:
   ExpireCache<std::string, STUOrder>		  m_chOrderRef2Order;
 };
 
+//处理经过hub转发
+class CSgitTdSpiHubTran : public CSgitTdSpi
+{
+public:
+  CSgitTdSpiHubTran(const STUTdParam &stuTdParam);
+  virtual ~CSgitTdSpiHubTran();
+
+private:
+
+};
+
+
+//处理直连
+class CSgitTdSpiDirect : public CSgitTdSpi
+{
+public:
+  CSgitTdSpiDirect(const STUTdParam &stuTdParam);
+  virtual ~CSgitTdSpiDirect();
+
+private:
+};
 #endif // __SGITTRADESPI_H__

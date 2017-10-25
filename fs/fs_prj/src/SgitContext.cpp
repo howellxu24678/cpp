@@ -50,10 +50,19 @@ bool CSgitContext::Init()
   return true;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, const std::string &ssUserId, const std::string &ssPassword)
+SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
 {
   CThostFtdcTraderApi *pTdReqApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
-  SharedPtr<CSgitTdSpi> spTdSpi = new CSgitTdSpi(this, pTdReqApi, ssUserId, ssPassword);
+  stuTdParam.m_pTdReqApi = pTdReqApi;
+  SharedPtr<CSgitTdSpi> spTdSpi = NULL;
+  if (enTdSpiRole == CSgitTdSpi::HubTran)
+  {
+    spTdSpi = new CSgitTdSpiHubTran(stuTdParam);
+  }
+  else
+  {
+    spTdSpi = new CSgitTdSpiDirect(stuTdParam);
+  }
   //spTdSpi->Init();
 
   pTdReqApi->IsReviveNtyCapital(false);
@@ -65,7 +74,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, c
   pTdReqApi->Init();
 
   LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
-    ssUserId.c_str(), ssTradeServerAddr.c_str());
+    stuTdParam.m_ssUserId.c_str(), ssTradeServerAddr.c_str());
 
   return spTdSpi;
 }
@@ -85,6 +94,8 @@ void CSgitContext::CreateMdSpi(const std::string &ssFlowPath, const std::string 
 
 bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi)
 {
+  ScopedWriteRWLock scopeWriteLock(m_rwSessionID2TdSpi);
+
 	std::pair<std::map<std::string, SharedPtr<CSgitTdSpi>>::iterator, bool> ret = 
 		m_mapSessionID2TdSpi.insert(std::pair<std::string, SharedPtr<CSgitTdSpi>>(ssSessionID, spTdSpi));
 
@@ -99,6 +110,7 @@ bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr
 
 SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::Message& oMsg)
 {
+  ScopedReadRWLock scopeReadLock(m_rwSessionID2TdSpi);
 	std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(oMsg.getSessionID().toString());
 	if (cit != m_mapSessionID2TdSpi.end())
 	{
@@ -161,7 +173,7 @@ bool CSgitContext::InitSgitApi()
   StringTokenizer stQuoteUserIdPassword(ssQuoteAccount, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   CreateMdSpi(ssFlowPath, ssMdServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
 
-  std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSessionProp = "";
+  std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSessionProp = "", ssSessionID = "";
 
   if (!m_apSgitConf->hasProperty(ssTradeAccountListKey)) return true;
 
@@ -178,8 +190,16 @@ bool CSgitContext::InitSgitApi()
 			return false;
 		}
 
-		if(!LinkSessionID2TdSpi(m_apSgitConf->getString(ssFixSessionProp), 
-			CreateTdSpi(ssFlowPath, ssTdServerAddr, stTdUserIdPassword[0], stTdUserIdPassword[1]))) return false;
+    ssSessionID = m_apSgitConf->getString(ssFixSessionProp);
+
+    CSgitTdSpi::STUTdParam stuTdParam;
+    stuTdParam.m_pSgitCtx = this;
+    stuTdParam.m_ssUserId = stTdUserIdPassword[0];
+    stuTdParam.m_ssPassword = stTdUserIdPassword[1];
+    stuTdParam.m_ssSessionID = ssSessionID;
+
+		if(!LinkSessionID2TdSpi(ssSessionID, 
+			CreateTdSpi(ssFlowPath, ssTdServerAddr, stuTdParam, CSgitTdSpi::HubTran))) return false;
 	}
   
   return true;
@@ -243,14 +263,14 @@ void CSgitContext::AddFixInfo(const FIX::Message& oMsg)
 
 void CSgitContext::AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo)
 {
-  if (m_mapSessionAcct2FixInfo.count(ssKey) > 0) return;
-  m_mapSessionAcct2FixInfo[ssKey] = stuFixInfo;
+  if (m_mapAcct2FixInfo.count(ssKey) > 0) return;
+  m_mapAcct2FixInfo[ssKey] = stuFixInfo;
 }
 
 bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
 {
-  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapSessionAcct2FixInfo.find(ssAcct);
-  if(cit != m_mapSessionAcct2FixInfo.end())
+  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapAcct2FixInfo.find(ssAcct);
+  if(cit != m_mapAcct2FixInfo.end())
   {
     stuFixInfo = cit->second;
     return true;
@@ -322,9 +342,18 @@ bool CSgitContext::InitFixUserConf()
 
 	for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
 	{
-		LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
+    if (strncmp(itProp->c_str(), G_FIX42.c_str(), G_FIX42.size()) == 0)
+    {
+      if(m_apSgitConf->hasProperty(*itProp + ".SymbolType"))
+      {
+        ScopedWriteRWLock scopeWriteLock(m_rwFixUser2CvtType);
+        m_mapFixUser2CvtType[*itProp] = (Convert::EnCvtType) m_apSgitConf->getInt(*itProp + ".SymbolType");
+      }
+      LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
+    }
 	}
 
 	return true;
 }
+
 

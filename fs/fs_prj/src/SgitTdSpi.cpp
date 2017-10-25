@@ -7,11 +7,23 @@
 #include "Poco/UUIDGenerator.h"
 #include "Toolkit.h"
 
-CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  const std::string &ssUserId, const std::string &ssPassword) 
-  : m_pSgitCtx(pSgitCtx)
-  , m_pTdReqApi(pReqApi)
-  , m_ssUserId(ssUserId)
-  , m_ssPassword(ssPassword)
+//CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  const std::string &ssUserId, const std::string &ssPassword) 
+//  : m_stuTdParam.m_pSgitCtx(pSgitCtx)
+//  , m_stuTdParam.m_pTdReqApi(pReqApi)
+//  , m_ssUserId(ssUserId)
+//  , m_ssPassword(ssPassword)
+//  , m_enSymbolType(Convert::Unknow)
+//	, m_acRequestId(0)
+//	, m_acOrderRef(0)
+//	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
+//	, m_chClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
+//  , m_chOrderRef2Order(12*60*60*1000)//超时设为12小时
+//{
+//
+//}
+
+CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
+  : m_stuTdParam(stuTdParam)
   , m_enSymbolType(Convert::Unknow)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
@@ -25,11 +37,11 @@ CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  co
 CSgitTdSpi::~CSgitTdSpi()
 {
   //释放Api内存
-  if( m_pTdReqApi )
+  if( m_stuTdParam.m_pTdReqApi )
   {
-    m_pTdReqApi->RegisterSpi(nullptr);
-    m_pTdReqApi->Release();
-    m_pTdReqApi = nullptr;
+    m_stuTdParam.m_pTdReqApi->RegisterSpi(nullptr);
+    m_stuTdParam.m_pTdReqApi->Release();
+    m_stuTdParam.m_pTdReqApi = nullptr;
   }
 }
 
@@ -37,9 +49,9 @@ void CSgitTdSpi::OnFrontConnected()
 {
 	CThostFtdcReqUserLoginField stuLogin;
 	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
-	strncpy(stuLogin.UserID, m_ssUserId.c_str(), sizeof(stuLogin.UserID));
-	strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
-	m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
+	strncpy(stuLogin.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuLogin.UserID));
+	strncpy(stuLogin.Password, m_stuTdParam.m_ssPassword.c_str(), sizeof(stuLogin.Password));
+	m_stuTdParam.m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
 	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s",stuLogin.UserID);
 }
@@ -62,7 +74,7 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
     strncpy(stuConfirm.InvestorID, pRspUserLogin->UserID, sizeof(stuConfirm.InvestorID));
     strncpy(stuConfirm.BrokerID, pRspUserLogin->BrokerID, sizeof(stuConfirm.BrokerID));
 
-    m_pTdReqApi->ReqSettlementInfoConfirm(&stuConfirm, m_acRequestId++);
+    m_stuTdParam.m_pTdReqApi->ReqSettlementInfoConfirm(&stuConfirm, m_acRequestId++);
   }
 }
 
@@ -79,7 +91,7 @@ void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 
 	m_chOrderRef2Order.add(stuOrder.m_ssOrderRef, stuOrder);
 
-	int iRet = m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
+	int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
@@ -98,7 +110,7 @@ void CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
     return;
   }
 
-  int iRet = m_pTdReqApi->ReqOrderAction(&stuInputOrderAction, stuInputOrderAction.RequestID);
+  int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderAction(&stuInputOrderAction, stuInputOrderAction.RequestID);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderAction,iRet:%d", iRet);
@@ -274,12 +286,12 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
 	//正常情况
   else
   {
-		char chOrderStatus = m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oStuOrder.m_cOrderStatus, Convert::Fix);
+		char chOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oStuOrder.m_cOrderStatus, Convert::Fix);
 		executionReport.set(FIX::OrdStatus(chOrderStatus));
 		executionReport.set(FIX::ExecType(chOrderStatus));
   }
 
-  m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
+  m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
 }
 
 void CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
@@ -312,12 +324,12 @@ void CSgitTdSpi::SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, 
 		FIX::OrderID(oStuOrder.m_ssOrderID),
 		FIX::ClOrdID(oStuOrder.m_ssCancelClOrdID),
 		FIX::OrigClOrdID(oStuOrder.m_ssClOrdID),
-		FIX::OrdStatus(m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oStuOrder.m_cOrderStatus, Convert::Fix)),
+		FIX::OrdStatus(m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oStuOrder.m_cOrderStatus, Convert::Fix)),
 		FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
 
 	orderCancelReject.set(FIX::Text(ssErrMsg));
 
-	m_pSgitCtx->Send(oStuOrder.m_ssAccout, orderCancelReject);
+	m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, orderCancelReject);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg)
@@ -339,7 +351,7 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
 
   orderCancelReject.set(FIX::Text(ssErrMsg));
 
-  m_pSgitCtx->Send(m_pSgitCtx->GetRealAccont(oOrderCancel), orderCancelReject);
+  m_stuTdParam.m_pSgitCtx->Send(m_stuTdParam.m_pSgitCtx->GetRealAccont(oOrderCancel), orderCancelReject);
 }
 
 //bool CSgitTradeSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
@@ -406,7 +418,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(side);
 	oNewOrderSingle.get(openClose);
 
-  std::string ssRealAccount = m_pSgitCtx->GetRealAccont(oNewOrderSingle);
+  std::string ssRealAccount = m_stuTdParam.m_pSgitCtx->GetRealAccont(oNewOrderSingle);
   //STUOrder
   stuOrder.m_ssAccout = ssRealAccount;
   stuOrder.m_ssClOrdID = clOrdID.getValue();
@@ -425,20 +437,20 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	if(!AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue(), ssErrMsg)) return false;
   stuOrder.m_ssOrderRef = ssOrderRef;
   
-	strncpy(stuInputOrder.UserID, m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
+	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
 	strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
 	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
 	strncpy(
 		stuInputOrder.InstrumentID, 
 		m_enSymbolType == Convert::Original ? 
-		symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+		symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
 		sizeof(stuInputOrder.InstrumentID));
 
 	stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
-	stuInputOrder.OrderPriceType = m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
+	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
 	stuInputOrder.LimitPrice = price.getValue();
-	stuInputOrder.Direction = m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
-	stuInputOrder.CombOffsetFlag[0] = m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+	stuInputOrder.Direction = m_stuTdParam.m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
+	stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
 
 	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
 	stuInputOrder.MinVolume = 1;
@@ -506,18 +518,18 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
     strncpy(
       stuInputOrderAction.ExchangeID, 
       m_enSymbolType == Convert::Original ? 
-      securityExchange.getValue().c_str() : m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
+      securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
       sizeof(stuInputOrderAction.ExchangeID));
   }
   //2.OrderRef+UserID+InstrumentID
   else
   {
     strncpy(stuInputOrderAction.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
-    strncpy(stuInputOrderAction.UserID, m_ssUserId.c_str(), sizeof(stuInputOrderAction.UserID));
+    strncpy(stuInputOrderAction.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrderAction.UserID));
     strncpy(
       stuInputOrderAction.InstrumentID, 
       m_enSymbolType == Convert::Original ? 
-      symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+      symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
       sizeof(stuInputOrderAction.InstrumentID));
   }
 
@@ -539,15 +551,15 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
   CThostFtdcQryOrderField stuQryOrder;
   memset(&stuQryOrder, 0, sizeof(CThostFtdcQryOrderField));
 
-  strncpy(stuQryOrder.InvestorID, m_pSgitCtx->GetRealAccont(oOrderStatusRequest).c_str(), sizeof(stuQryOrder.InvestorID));
+  strncpy(stuQryOrder.InvestorID, m_stuTdParam.m_pSgitCtx->GetRealAccont(oOrderStatusRequest).c_str(), sizeof(stuQryOrder.InvestorID));
   strncpy(
     stuQryOrder.InstrumentID, 
     m_enSymbolType == Convert::Original ? 
-    symbol.getValue().c_str() : m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+    symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
     sizeof(stuQryOrder.InstrumentID));
   strncpy(stuQryOrder.OrderSysID, orderID.getValue().c_str(), sizeof(stuQryOrder.OrderSysID));
 
-  int iRet = m_pTdReqApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
+  int iRet = m_stuTdParam.m_pTdReqApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
@@ -681,3 +693,29 @@ CSgitTdSpi::STUTradeRec::STUTradeRec(double dPrice, int iVolume)
   : m_dMatchPrice(dPrice)
   , m_iMatchVolume(iVolume)
 {}
+
+CSgitTdSpiHubTran::CSgitTdSpiHubTran(const STUTdParam &stuTdParam)
+  : CSgitTdSpi(stuTdParam)
+{
+
+}
+
+CSgitTdSpiHubTran::~CSgitTdSpiHubTran()
+{
+
+}
+
+
+
+CSgitTdSpiDirect::CSgitTdSpiDirect(const STUTdParam &stuTdParam)
+  : CSgitTdSpi(stuTdParam)
+{
+
+}
+
+CSgitTdSpiDirect::~CSgitTdSpiDirect()
+{
+
+}
+
+
