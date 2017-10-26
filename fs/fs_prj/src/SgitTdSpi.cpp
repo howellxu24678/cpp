@@ -705,6 +705,32 @@ CSgitTdSpiHubTran::~CSgitTdSpiHubTran()
 
 }
 
+bool CSgitTdSpiHubTran::Init()
+{
+  AutoPtr<IniFileConfiguration> apSgitConf =  new IniFileConfiguration(m_stuTdParam.m_ssSgitCfgPath);
+
+  std::string ssSessionIDTmp = Poco::replace(m_stuTdParam.m_ssSessionID, ".", "#");
+  LOG(INFO_LOG_LEVEL, "SessionID:%s, ssSessionIDTmp:%s", m_stuTdParam.m_ssSessionID.c_str(), ssSessionIDTmp.c_str());
+  
+  AbstractConfiguration::Keys kProp;
+  apSgitConf->keys(kProp);
+
+  for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
+  {
+    if (strncmp(itProp->c_str(), G_FIX42.c_str(), G_FIX42.size()) == 0)
+    {
+      if(m_apSgitConf->hasProperty(*itProp + ".SymbolType"))
+      {
+        ScopedWriteRWLock scopeWriteLock(m_rwFixUser2CvtType);
+        m_mapFixUser2CvtType[*itProp] = (Convert::EnCvtType) m_apSgitConf->getInt(*itProp + ".SymbolType");
+      }
+      LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
+    }
+  }
+
+  return true;
+}
+
 
 
 CSgitTdSpiDirect::CSgitTdSpiDirect(const STUTdParam &stuTdParam)
@@ -716,6 +742,11 @@ CSgitTdSpiDirect::CSgitTdSpiDirect(const STUTdParam &stuTdParam)
 CSgitTdSpiDirect::~CSgitTdSpiDirect()
 {
 
+}
+
+bool CSgitTdSpiDirect::Init()
+{
+  return true;
 }
 
 

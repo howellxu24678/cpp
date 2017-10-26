@@ -41,6 +41,7 @@ public:
     std::string         m_ssUserId;
     std::string         m_ssPassword;
     std::string         m_ssSessionID;
+    std::string         m_ssSgitCfgPath;
   };
 
   enum EnTdSpiRole {HubTran, Direct};
@@ -81,10 +82,11 @@ public:
   CSgitTdSpi(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpi();
 
-  //void Init();
+  virtual bool Init() = 0;
 
   void OnMessage(const FIX::Message& oMsg);
 
+protected:
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 
@@ -93,7 +95,6 @@ public:
 
 
   void ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest);
-
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
   virtual void OnFrontConnected();
@@ -429,7 +430,7 @@ public:
   /// 当收到合约价位查询应答时回调该函数
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
-	protected:
+	
 		bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
 
 		//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
@@ -452,13 +453,12 @@ public:
 
     bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
+    STUTdParam                              m_stuTdParam;
 private:
   //CThostFtdcTraderApi											*m_pTdReqApi;
   //CSgitContext														*m_pSgitCtx;
   //std::string															m_ssUserId;
   //std::string															m_ssPassword;
-
-  STUTdParam                              m_stuTdParam;
 
   AtomicCounter														m_acRequestId;
 
@@ -483,6 +483,9 @@ public:
   CSgitTdSpiHubTran(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpiHubTran();
 
+  bool Init();
+protected:
+
 private:
 
 };
@@ -495,6 +498,7 @@ public:
   CSgitTdSpiDirect(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpiDirect();
 
+  bool Init();
 private:
 };
 #endif // __SGITTRADESPI_H__

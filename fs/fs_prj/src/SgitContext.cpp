@@ -63,7 +63,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, c
   {
     spTdSpi = new CSgitTdSpiDirect(stuTdParam);
   }
-  //spTdSpi->Init();
+  spTdSpi->Init();
 
   pTdReqApi->IsReviveNtyCapital(false);
   pTdReqApi->RegisterSpi(spTdSpi);
@@ -197,6 +197,7 @@ bool CSgitContext::InitSgitApi()
     stuTdParam.m_ssUserId = stTdUserIdPassword[0];
     stuTdParam.m_ssPassword = stTdUserIdPassword[1];
     stuTdParam.m_ssSessionID = ssSessionID;
+    stuTdParam.m_ssSgitCfgPath = m_ssSgitCfgPath;
 
 		if(!LinkSessionID2TdSpi(ssSessionID, 
 			CreateTdSpi(ssFlowPath, ssTdServerAddr, stuTdParam, CSgitTdSpi::HubTran))) return false;
