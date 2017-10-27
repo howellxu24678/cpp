@@ -25,7 +25,7 @@ public:
 
   SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::Message& oMsg);
 
-  std::string GetRealAccont(const FIX::Message& oRecvMsg);
+  //std::string GetRealAccont(const FIX::Message& oRecvMsg);
 
   char CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType);
 
@@ -42,7 +42,7 @@ protected:
 
   bool InitSgitApi();
 
-	bool InitFixUserConf();
+	//bool InitFixUserConf();
 
   SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 
@@ -71,8 +71,8 @@ private:
 
   SharedPtr<CSgitMdSpi>                          m_spMdSpi;
 
-  //账户别名(SessionID+onBehalfOfCompID)->真实资金账户
-  std::map<std::string, std::string>              m_mapAlias2Acct;
+  ////账户别名(SessionID+onBehalfOfCompID)->真实资金账户
+  //std::map<std::string, std::string>              m_mapAlias2Acct;
 
   //真实资金账户->SessionID + onBehalfOfCompID + 原始送入账户 + 所用代码类型 --用于交易推送
   std::map<std::string, STUFixInfo>               m_mapAcct2FixInfo;

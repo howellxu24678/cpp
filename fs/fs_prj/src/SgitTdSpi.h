@@ -82,11 +82,17 @@ public:
   CSgitTdSpi(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpi();
 
-  virtual bool Init() = 0;
+  virtual bool Init();
 
   void OnMessage(const FIX::Message& oMsg);
 
 protected:
+  bool LoadConfig();
+
+  virtual bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp) = 0;
+
+  virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
+
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 
@@ -431,29 +437,29 @@ protected:
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
 	
-		bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
+	bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
 
-		//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
+	//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
 
-		bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
+	bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
 
-		bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
+	bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
 
-    void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
+  void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
 
-    void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
+  void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
-		void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
+	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
-		void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
+	void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
 
-    void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
+  void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
 
-		bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
+	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
 
-    bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
+  bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
-    STUTdParam                              m_stuTdParam;
+  STUTdParam                              m_stuTdParam;
 private:
   //CThostFtdcTraderApi											*m_pTdReqApi;
   //CSgitContext														*m_pSgitCtx;
@@ -461,8 +467,6 @@ private:
   //std::string															m_ssPassword;
 
   AtomicCounter														m_acRequestId;
-
-  Convert::EnCvtType											m_enSymbolType;
 
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
@@ -474,6 +478,9 @@ private:
 
   //OrderRef -> STUOrder (报单引用->委托)
   ExpireCache<std::string, STUOrder>		  m_chOrderRef2Order;
+
+  //账户别名->真实账户
+  std::map<std::string, std::string>      m_mapAcctAlias2Real;
 };
 
 //处理经过hub转发
@@ -483,11 +490,14 @@ public:
   CSgitTdSpiHubTran(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpiHubTran();
 
-  bool Init();
-protected:
+  bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
 private:
+  //真实资金账号->代码类别
+  std::map<std::string, Convert::EnCvtType>   m_Acct2SymbolType;
 
+  ////真实资金账号->SessionKey
+  //std::map<std::string, std::string>          m_map
 };
 
 
@@ -498,7 +508,9 @@ public:
   CSgitTdSpiDirect(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpiDirect();
 
-  bool Init();
+  bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 private:
+
+  Convert::EnCvtType											m_enSymbolType;
 };
 #endif // __SGITTRADESPI_H__

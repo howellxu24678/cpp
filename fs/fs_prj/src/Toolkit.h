@@ -3,6 +3,7 @@
 
 #include <string>
 #include "Poco/Util/IniFileConfiguration.h"
+#include "Poco/String.h"
 #include "quickfix/Message.h"
 
 
@@ -33,5 +34,11 @@ public:
   static bool IsTdRequest(const FIX::MsgType &msgType);
 
   static bool IsMdRequest(const FIX::MsgType &msgType);
+
+  //配置段如果出现'.'，解析会有起义，将FIX.4.2 转为 FIX#4#2
+  static std::string SessionID2Prop(const std::string &ssSessionKey);
+
+  //FIX#4#2 转为 FIX.4.2
+  static std::string SessionProp2ID(const std::string &ssSessionKey);
 };
 #endif // __TOOLKIT_H__

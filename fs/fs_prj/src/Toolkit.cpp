@@ -70,3 +70,13 @@ bool CToolkit::IsMdRequest(const FIX::MsgType &msgType)
   return msgType == FIX::MsgType_MarketDataRequest ? true : false;
 }
 
+std::string CToolkit::SessionID2Prop(const std::string &ssSessionKey)
+{
+  return Poco::replace(ssSessionKey, "FIX.4.2", "FIX#4#2");
+}
+
+std::string CToolkit::SessionProp2ID(const std::string &ssSessionKey)
+{
+  return Poco::replace(ssSessionKey, "FIX#4#2", "FIX.4.2");
+}
+

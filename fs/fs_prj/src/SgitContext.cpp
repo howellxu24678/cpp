@@ -39,7 +39,7 @@ bool CSgitContext::Init()
 
     if(!InitSgitApi()) return false;
 
-		if(!InitFixUserConf()) return false;
+		//if(!InitFixUserConf()) return false;
   }
   catch ( std::exception & e)
   {
@@ -138,23 +138,23 @@ SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const std::string &ssKey)
   return NULL;
 }
 
-std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
-{
-	FIX::Account account;
-	oRecvMsg.getField(account);
-
-	if(!CToolkit::IsAliasAcct(account.getValue())) return account.getValue();
-
-	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(oRecvMsg, account.getValue());
-	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
-	if (cit != m_mapAlias2Acct.end())
-	{
-		return cit->second;
-	}
-
-	LOG(ERROR_LOG_LEVEL, "Can not find Real Account by key:%s", ssAcctAliasKey.c_str());
-	return "";
-}
+//std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
+//{
+//	FIX::Account account;
+//	oRecvMsg.getField(account);
+//
+//	if(!CToolkit::IsAliasAcct(account.getValue())) return account.getValue();
+//
+//	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(oRecvMsg, account.getValue());
+//	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
+//	if (cit != m_mapAlias2Acct.end())
+//	{
+//		return cit->second;
+//	}
+//
+//	LOG(ERROR_LOG_LEVEL, "Can not find Real Account by key:%s", ssAcctAliasKey.c_str());
+//	return "";
+//}
 
 bool CSgitContext::InitSgitApi()
 {
@@ -259,7 +259,7 @@ void CSgitContext::AddFixInfo(const FIX::Message& oMsg)
   if (account.getValue().empty()) return;
 
   stuFixInfo.m_ssAcctRecv = account.getValue();
-  AddFixInfo(GetRealAccont(oMsg), stuFixInfo);
+  //AddFixInfo(GetRealAccont(oMsg), stuFixInfo);
 }
 
 void CSgitContext::AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo)
@@ -336,25 +336,25 @@ void CSgitContext::Deal(const FIX::Message& oMsg)
   }
 }
 
-bool CSgitContext::InitFixUserConf()
-{
-	AbstractConfiguration::Keys kProp;
-	m_apSgitConf->keys(kProp);
-
-	for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
-	{
-    if (strncmp(itProp->c_str(), G_FIX42.c_str(), G_FIX42.size()) == 0)
-    {
-      if(m_apSgitConf->hasProperty(*itProp + ".SymbolType"))
-      {
-        ScopedWriteRWLock scopeWriteLock(m_rwFixUser2CvtType);
-        m_mapFixUser2CvtType[*itProp] = (Convert::EnCvtType) m_apSgitConf->getInt(*itProp + ".SymbolType");
-      }
-      LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
-    }
-	}
-
-	return true;
-}
+//bool CSgitContext::InitFixUserConf()
+//{
+//	AbstractConfiguration::Keys kProp;
+//	m_apSgitConf->keys(kProp);
+//
+//	for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
+//	{
+//    if (strncmp(itProp->c_str(), G_FIX42.c_str(), G_FIX42.size()) == 0)
+//    {
+//      if(m_apSgitConf->hasProperty(*itProp + ".SymbolType"))
+//      {
+//        ScopedWriteRWLock scopeWriteLock(m_rwFixUser2CvtType);
+//        m_mapFixUser2CvtType[*itProp] = (Convert::EnCvtType) m_apSgitConf->getInt(*itProp + ".SymbolType");
+//      }
+//      LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
+//    }
+//	}
+//
+//	return true;
+//}
 
 

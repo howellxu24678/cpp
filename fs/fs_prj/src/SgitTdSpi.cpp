@@ -5,6 +5,7 @@
 #include "quickfix/fix42/OrderCancelReject.h"
 #include "Poco/Format.h"
 #include "Poco/UUIDGenerator.h"
+#include "Poco/StringTokenizer.h"
 #include "Toolkit.h"
 
 //CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  const std::string &ssUserId, const std::string &ssPassword) 
@@ -24,7 +25,7 @@
 
 CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   : m_stuTdParam(stuTdParam)
-  , m_enSymbolType(Convert::Unknow)
+  //, m_enSymbolType(Convert::Unknow)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
 	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
@@ -351,7 +352,7 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
 
   orderCancelReject.set(FIX::Text(ssErrMsg));
 
-  m_stuTdParam.m_pSgitCtx->Send(m_stuTdParam.m_pSgitCtx->GetRealAccont(oOrderCancel), orderCancelReject);
+  //m_stuTdParam.m_pSgitCtx->Send(m_stuTdParam.m_pSgitCtx->GetRealAccont(oOrderCancel), orderCancelReject);
 }
 
 //bool CSgitTradeSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
@@ -418,9 +419,9 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(side);
 	oNewOrderSingle.get(openClose);
 
-  std::string ssRealAccount = m_stuTdParam.m_pSgitCtx->GetRealAccont(oNewOrderSingle);
+  //std::string ssRealAccount = m_stuTdParam.m_pSgitCtx->GetRealAccont(oNewOrderSingle);
   //STUOrder
-  stuOrder.m_ssAccout = ssRealAccount;
+  //stuOrder.m_ssAccout = ssRealAccount;
   stuOrder.m_ssClOrdID = clOrdID.getValue();
   stuOrder.m_cOrderStatus = THOST_FTDC_OST_NoTradeQueueing;
   stuOrder.m_ssSymbol = symbol.getValue();
@@ -438,13 +439,13 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   stuOrder.m_ssOrderRef = ssOrderRef;
   
 	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
-	strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
+	//strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
 	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
-	strncpy(
-		stuInputOrder.InstrumentID, 
-		m_enSymbolType == Convert::Original ? 
-		symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-		sizeof(stuInputOrder.InstrumentID));
+	//strncpy(
+	//	stuInputOrder.InstrumentID, 
+	//	m_enSymbolType == Convert::Original ? 
+	//	symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+	//	sizeof(stuInputOrder.InstrumentID));
 
 	stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
 	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
@@ -515,22 +516,22 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   if (!orderID.getValue().empty() && !securityExchange.getValue().empty())
   {
     strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
-    strncpy(
-      stuInputOrderAction.ExchangeID, 
-      m_enSymbolType == Convert::Original ? 
-      securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
-      sizeof(stuInputOrderAction.ExchangeID));
+    //strncpy(
+    //  stuInputOrderAction.ExchangeID, 
+    //  m_enSymbolType == Convert::Original ? 
+    //  securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
+    //  sizeof(stuInputOrderAction.ExchangeID));
   }
   //2.OrderRef+UserID+InstrumentID
   else
   {
     strncpy(stuInputOrderAction.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
     strncpy(stuInputOrderAction.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrderAction.UserID));
-    strncpy(
-      stuInputOrderAction.InstrumentID, 
-      m_enSymbolType == Convert::Original ? 
-      symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-      sizeof(stuInputOrderAction.InstrumentID));
+    //strncpy(
+    //  stuInputOrderAction.InstrumentID, 
+    //  m_enSymbolType == Convert::Original ? 
+    //  symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+    //  sizeof(stuInputOrderAction.InstrumentID));
   }
 
   stuInputOrderAction.RequestID = m_acRequestId++;
@@ -551,13 +552,13 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
   CThostFtdcQryOrderField stuQryOrder;
   memset(&stuQryOrder, 0, sizeof(CThostFtdcQryOrderField));
 
-  strncpy(stuQryOrder.InvestorID, m_stuTdParam.m_pSgitCtx->GetRealAccont(oOrderStatusRequest).c_str(), sizeof(stuQryOrder.InvestorID));
-  strncpy(
-    stuQryOrder.InstrumentID, 
-    m_enSymbolType == Convert::Original ? 
-    symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-    sizeof(stuQryOrder.InstrumentID));
-  strncpy(stuQryOrder.OrderSysID, orderID.getValue().c_str(), sizeof(stuQryOrder.OrderSysID));
+  //strncpy(stuQryOrder.InvestorID, m_stuTdParam.m_pSgitCtx->GetRealAccont(oOrderStatusRequest).c_str(), sizeof(stuQryOrder.InvestorID));
+  //strncpy(
+  //  stuQryOrder.InstrumentID, 
+  //  m_enSymbolType == Convert::Original ? 
+  //  symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+  //  sizeof(stuQryOrder.InstrumentID));
+  //strncpy(stuQryOrder.OrderSysID, orderID.getValue().c_str(), sizeof(stuQryOrder.OrderSysID));
 
   int iRet = m_stuTdParam.m_pTdReqApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
 	if (iRet != 0)
@@ -623,6 +624,58 @@ void CSgitTdSpi::OnMessage(const FIX::Message& oMsg)
   {
     ReqQryOrder((const FIX42::OrderStatusRequest&) oMsg);
   }
+}
+
+bool CSgitTdSpi::Init()
+{
+  if(!LoadConfig()) return false;
+
+  return true;
+}
+
+bool CSgitTdSpi::LoadConfig()
+{
+  AutoPtr<IniFileConfiguration> apSgitConf =  new IniFileConfiguration(m_stuTdParam.m_ssSgitCfgPath);
+
+  std::string ssSessionProp = CToolkit::SessionID2Prop(m_stuTdParam.m_ssSessionID);
+  LOG(INFO_LOG_LEVEL, "SessionID:%s, ssSessionIDTmp:%s", m_stuTdParam.m_ssSessionID.c_str(), ssSessionProp.c_str());
+
+  AbstractConfiguration::Keys kProp;
+  apSgitConf->keys(kProp);
+
+  for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
+  {
+    if (strncmp(itProp->c_str(), ssSessionProp.c_str(), ssSessionProp.size()) == 0)
+    {
+      if (apSgitConf->hasProperty(*itProp + ".AccountAlias"))
+        if(!LoadAcctAlias(apSgitConf, *itProp)) return false;
+
+      if(!LoadConfig(apSgitConf, *itProp)) return false;
+    }
+  }
+
+  return true;
+}
+
+bool CSgitTdSpi::LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp)
+{
+  StringTokenizer stAccountAliasList(apSgitConf->getString(ssSessionProp + ".AccountAlias"), ";", 
+    StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+  std::string ssKey = "", ssRealAcct = "";
+  for (StringTokenizer::Iterator it = stAccountAliasList.begin(); it != stAccountAliasList.end(); it++)
+  {
+    ssKey = CToolkit::SessionProp2ID(ssSessionProp) + "|" + *it;
+    ssRealAcct = apSgitConf->getString(ssSessionProp + "." + *it);
+    std::pair<std::map<std::string, std::string>::iterator, bool> ret = m_mapAcctAlias2Real.insert(
+      std::pair<std::string, std::string>(ssKey, ssRealAcct));
+    if(!ret.second)
+    {
+      LOG(ERROR_LOG_LEVEL, "Alias account key:%s is dulplicated", ssKey.c_str());
+      return false;
+    }
+  }
+
+  return true;
 }
 
 double CSgitTdSpi::STUOrder::AvgPx() const
@@ -705,28 +758,25 @@ CSgitTdSpiHubTran::~CSgitTdSpiHubTran()
 
 }
 
-bool CSgitTdSpiHubTran::Init()
+bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp)
 {
-  AutoPtr<IniFileConfiguration> apSgitConf =  new IniFileConfiguration(m_stuTdParam.m_ssSgitCfgPath);
+  LOG(INFO_LOG_LEVEL, "ssSessionProp:%s", ssSessionProp.c_str());
 
-  std::string ssSessionIDTmp = Poco::replace(m_stuTdParam.m_ssSessionID, ".", "#");
-  LOG(INFO_LOG_LEVEL, "SessionID:%s, ssSessionIDTmp:%s", m_stuTdParam.m_ssSessionID.c_str(), ssSessionIDTmp.c_str());
-  
-  AbstractConfiguration::Keys kProp;
-  apSgitConf->keys(kProp);
-
-  for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
+  std::string ssProp = ssSessionProp + ".AccountList";
+  if (!apSgitConf->hasProperty(ssProp))
   {
-    if (strncmp(itProp->c_str(), G_FIX42.c_str(), G_FIX42.size()) == 0)
-    {
-      if(m_apSgitConf->hasProperty(*itProp + ".SymbolType"))
-      {
-        ScopedWriteRWLock scopeWriteLock(m_rwFixUser2CvtType);
-        m_mapFixUser2CvtType[*itProp] = (Convert::EnCvtType) m_apSgitConf->getInt(*itProp + ".SymbolType");
-      }
-      LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
-    }
+    LOG(ERROR_LOG_LEVEL, "Can not find property:%s", ssProp.c_str());
+    return false;
   }
+
+  StringTokenizer stAccountList(apSgitConf->getString(ssProp), ";", 
+    StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+  std::string ssKey = "", ssRealAcct = "";
+  for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)
+  {
+
+  }
+
 
   return true;
 }
@@ -735,6 +785,7 @@ bool CSgitTdSpiHubTran::Init()
 
 CSgitTdSpiDirect::CSgitTdSpiDirect(const STUTdParam &stuTdParam)
   : CSgitTdSpi(stuTdParam)
+  , m_enSymbolType(Convert::Unknow)
 {
 
 }
@@ -744,8 +795,15 @@ CSgitTdSpiDirect::~CSgitTdSpiDirect()
 
 }
 
-bool CSgitTdSpiDirect::Init()
+bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp)
 {
+  LOG(INFO_LOG_LEVEL, "ssProp:%s", ssSessionProp.c_str());
+
+  if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
+  {
+    m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
+  }
+
   return true;
 }
 

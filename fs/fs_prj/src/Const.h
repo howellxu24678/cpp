@@ -9,9 +9,6 @@ const std::string G_CONFIG_SGIT = "sgit";
 const std::string G_CONFIG_FIX = "fix";
 const std::string G_CONFIG_DICT = "dict";
 
-//由于配置文件中'.'与属性配置有冲突，需要用'#'替换
-const std::string G_FIX42 = "FIX#4#2";
-
 struct STUFixInfo
 {
   STUFixInfo() 
