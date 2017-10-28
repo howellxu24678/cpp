@@ -91,14 +91,18 @@ protected:
 
   virtual bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp) = 0;
 
+	virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
+
+	virtual void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType) = 0;
+
   virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
+
+	std::string GetRealAccont(const FIX::Message& oRecvMsg);
 
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 
-
   void ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
-
 
   void ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest);
 
@@ -492,12 +496,15 @@ public:
 
   bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
+	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+
+	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
 private:
   //真实资金账号->代码类别
-  std::map<std::string, Convert::EnCvtType>   m_Acct2SymbolType;
+  std::map<std::string, Convert::EnCvtType>   m_mapRealAcct2SymbolType;
 
-  ////真实资金账号->SessionKey
-  //std::map<std::string, std::string>          m_map
+  //真实资金账号->SessionKey
+  std::map<std::string, std::string>          m_mapRealAcct2SessionKey;
 };
 
 
@@ -509,6 +516,10 @@ public:
   virtual ~CSgitTdSpiDirect();
 
   bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
+
+	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+
+	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
 private:
 
   Convert::EnCvtType											m_enSymbolType;

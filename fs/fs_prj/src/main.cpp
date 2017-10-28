@@ -110,6 +110,12 @@ void TestExpireCache()
 
 int main( int argc, char** argv )
 {
+	std::string ss1 = "12";
+	Convert::EnCvtType enSymbolType1 = (Convert::EnCvtType)atoi(ss1.c_str());
+
+	std::string ss2 = "5";
+	Convert::EnCvtType enSymbolType2 = (Convert::EnCvtType)atoi(ss2.c_str());
+
   TestExpireCache();
 	std::string ssConfigPath = "";
 	if(argc < 2)

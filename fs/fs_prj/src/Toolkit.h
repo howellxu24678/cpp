@@ -5,12 +5,14 @@
 #include "Poco/Util/IniFileConfiguration.h"
 #include "Poco/String.h"
 #include "quickfix/Message.h"
+#include "Convert.h"
 
 
 
 class CToolkit
 {
 public:
+	//含有字母为别名账户
   static bool IsAliasAcct(const std::string &ssAcct);
 
 	static bool GetStrinIfSet(
@@ -31,8 +33,10 @@ public:
 
   static std::string GetSessionKey(const FIX::Message& oRecvMsg);
 
+	//交易业务相关请求
   static bool IsTdRequest(const FIX::MsgType &msgType);
 
+	//行情业务相关请求
   static bool IsMdRequest(const FIX::MsgType &msgType);
 
   //配置段如果出现'.'，解析会有起义，将FIX.4.2 转为 FIX#4#2
@@ -40,5 +44,7 @@ public:
 
   //FIX#4#2 转为 FIX.4.2
   static std::string SessionProp2ID(const std::string &ssSessionKey);
+
+	static bool CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrMsg);
 };
 #endif // __TOOLKIT_H__

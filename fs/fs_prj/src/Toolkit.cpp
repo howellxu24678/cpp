@@ -80,3 +80,11 @@ std::string CToolkit::SessionProp2ID(const std::string &ssSessionKey)
   return Poco::replace(ssSessionKey, "FIX#4#2", "FIX.4.2");
 }
 
+bool CToolkit::CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrMsg)
+{
+	if (enSymbolType == Convert::Reuters || enSymbolType == Convert::Original || enSymbolType == Convert::Bloomberg) return true;
+
+	ssErrMsg = "unsupported symbol type";
+	return false;
+}
+

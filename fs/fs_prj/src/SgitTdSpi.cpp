@@ -409,6 +409,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	FIX::Price price;
 	FIX::Side side;
 	FIX::OpenClose openClose;
+	FIX::IDSource idSource;
 
 	//oNewOrderSingle.get(account);
 	oNewOrderSingle.get(clOrdID);
@@ -418,10 +419,11 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(price);
 	oNewOrderSingle.get(side);
 	oNewOrderSingle.get(openClose);
+	oNewOrderSingle.getIfSet(idSource);
 
-  //std::string ssRealAccount = m_stuTdParam.m_pSgitCtx->GetRealAccont(oNewOrderSingle);
+  std::string ssRealAccount = GetRealAccont(oNewOrderSingle);
   //STUOrder
-  //stuOrder.m_ssAccout = ssRealAccount;
+  stuOrder.m_ssAccout = ssRealAccount;
   stuOrder.m_ssClOrdID = clOrdID.getValue();
   stuOrder.m_cOrderStatus = THOST_FTDC_OST_NoTradeQueueing;
   stuOrder.m_ssSymbol = symbol.getValue();
@@ -439,13 +441,27 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   stuOrder.m_ssOrderRef = ssOrderRef;
   
 	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
-	//strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
+	strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
 	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
-	//strncpy(
-	//	stuInputOrder.InstrumentID, 
-	//	m_enSymbolType == Convert::Original ? 
-	//	symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-	//	sizeof(stuInputOrder.InstrumentID));
+	
+	Convert::EnCvtType enSymbolType = Convert::Unknow;
+	if(!idSource.getValue().empty())
+	{
+		//校验一下
+		enSymbolType = (Convert::EnCvtType)atoi(idSource.getValue().c_str());
+		if (!CToolkit::CheckIfValid(enSymbolType, ssErrMsg)) return false;
+
+		SetSymbolType(ssRealAccount, enSymbolType);
+	}
+	else
+	{
+		enSymbolType = GetSymbolType(ssRealAccount);
+	}
+	strncpy(
+		stuInputOrder.InstrumentID, 
+		enSymbolType == Convert::Original ? 
+		symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+		sizeof(stuInputOrder.InstrumentID));
 
 	stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
 	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
@@ -678,6 +694,25 @@ bool CSgitTdSpi::LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const s
   return true;
 }
 
+std::string CSgitTdSpi::GetRealAccont(const FIX::Message& oRecvMsg)
+{
+	FIX::Account account;
+	oRecvMsg.getField(account);
+
+	if (!CToolkit::IsAliasAcct(account.getValue())) return account.getValue();
+
+	std::string ssKey = CToolkit::GetSessionKey(oRecvMsg) + "|" + account.getValue();
+	std::map<std::string, std::string>::const_iterator cit = 
+		m_mapAcctAlias2Real.find(ssKey);
+	if(cit != m_mapAcctAlias2Real.end()) 
+		return cit->second;
+	else
+	{
+		LOG(ERROR_LOG_LEVEL, "Can not find real account by key:%s", ssKey.c_str());
+		return "unknow";
+	}
+}
+
 double CSgitTdSpi::STUOrder::AvgPx() const
 {
   double dTurnover = 0.0;
@@ -762,23 +797,42 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
 {
   LOG(INFO_LOG_LEVEL, "ssSessionProp:%s", ssSessionProp.c_str());
 
-  std::string ssProp = ssSessionProp + ".AccountList";
-  if (!apSgitConf->hasProperty(ssProp))
+  std::string ssAcctListProp = ssSessionProp + ".AccountList";
+  if (!apSgitConf->hasProperty(ssAcctListProp))
   {
-    LOG(ERROR_LOG_LEVEL, "Can not find property:%s", ssProp.c_str());
+    LOG(ERROR_LOG_LEVEL, "Can not find property:%s", ssAcctListProp.c_str());
     return false;
   }
 
-  StringTokenizer stAccountList(apSgitConf->getString(ssProp), ";", 
+  StringTokenizer stAccountList(apSgitConf->getString(ssAcctListProp), ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   std::string ssKey = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)
   {
-
+		m_mapRealAcct2SessionKey[*it] = CToolkit::SessionProp2ID(ssSessionProp);
+		if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
+		{
+			m_mapRealAcct2SymbolType[*it] = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
+		}
   }
 
-
   return true;
+}
+
+Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcct)
+{
+	std::map<std::string, Convert::EnCvtType>::const_iterator cit = m_mapRealAcct2SymbolType.find(ssRealAcct);
+	if (cit != m_mapRealAcct2SymbolType.end())
+	{
+		return cit->second;
+	}
+
+	return Convert::Unknow;
+}
+
+void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
+{
+	m_mapRealAcct2SymbolType[ssRealAcct] = enSymbolType;
 }
 
 
@@ -805,6 +859,16 @@ bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, cons
   }
 
   return true;
+}
+
+Convert::EnCvtType CSgitTdSpiDirect::GetSymbolType(const std::string &ssRealAcct)
+{
+	return m_enSymbolType;
+}
+
+void CSgitTdSpiDirect::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
+{
+	m_enSymbolType = enSymbolType;
 }
 
 

@@ -325,13 +325,21 @@ void CSgitContext::Deal(const FIX::Message& oMsg)
   if(CToolkit::IsTdRequest(msgType))
   {
 		SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oMsg);
-		if (!spTdSpi) return;
+		if (!spTdSpi)
+		{
+			LOG(ERROR_LOG_LEVEL, "Can not find Tdspi for SessionID:%s", oMsg.getSessionID().toString().c_str());
+			return;
+		}
 		spTdSpi->OnMessage(oMsg);
   }
   else if(CToolkit::IsMdRequest(msgType))
   {
     SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oMsg);
-		if(!spMdSpi) return;
+		if(!spMdSpi)
+		{
+			LOG(ERROR_LOG_LEVEL, "Can not find Mdspi for SessionID:%s", oMsg.getSessionID().toString().c_str());
+			return;
+		}
 		spMdSpi->OnMessage(oMsg);
   }
 }

@@ -60,8 +60,8 @@ protected:
 
   void AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo);
 
-  //预先发起登录
-  bool PreLogin();
+  ////预先发起登录
+  //bool PreLogin();
 private:
   std::string                           m_ssSgitCfgPath;
   Convert                               m_oConvert;
