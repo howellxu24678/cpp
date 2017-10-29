@@ -1,7 +1,7 @@
 #ifndef __SGITTRADESPI_H__
 #define __SGITTRADESPI_H__
 
-
+#include <fstream>
 #include "Poco/Util/IniFileConfiguration.h"
 #include "Poco/ExpireCache.h"
 #include "Poco/RWLock.h"
@@ -34,6 +34,7 @@ public:
       , m_ssUserId("")
       , m_ssPassword("")
       , m_ssSessionID("")
+			, m_ssDataPath("")
     {}
 
     CSgitContext        *m_pSgitCtx;
@@ -42,6 +43,7 @@ public:
     std::string         m_ssPassword;
     std::string         m_ssSessionID;
     std::string         m_ssSgitCfgPath;
+		std::string					m_ssDataPath;
   };
 
   enum EnTdSpiRole {HubTran, Direct};
@@ -98,6 +100,34 @@ protected:
   virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
 	std::string GetRealAccont(const FIX::Message& oRecvMsg);
+
+	bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
+
+	//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
+
+	bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
+
+	bool Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue);
+
+	void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
+
+	void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
+
+	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
+
+	void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
+
+	void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
+
+	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
+
+	bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
+
+	bool GetStuOrder(const std::string &ssOrderRef, STUOrder &stuOrder);
+
+	std::string GetOrderRefDatFileName();
+
+	bool OpenDatFile();
 
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
@@ -440,29 +470,6 @@ protected:
   /// 当收到合约价位查询应答时回调该函数
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
-	
-	bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
-
-	//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
-
-	bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
-
-	bool Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue);
-
-  void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
-
-  void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
-
-	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
-
-	void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
-
-  void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
-
-	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
-
-  bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
-
   STUTdParam                              m_stuTdParam;
 private:
   //CThostFtdcTraderApi											*m_pTdReqApi;
@@ -475,16 +482,18 @@ private:
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
 	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
-	ExpireCache<std::string, std::string>		m_chOrderRef2ClOrderID;
+	std::map<std::string, std::string>			m_mapOrderRef2ClOrderID;
 
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
-	ExpireCache<std::string, std::string>		m_chClOrderID2OrderRef;
+	std::map<std::string, std::string>			m_mapClOrderID2OrderRef;
 
   //OrderRef -> STUOrder (报单引用->委托)
-  ExpireCache<std::string, STUOrder>		  m_chOrderRef2Order;
+  std::map<std::string, STUOrder>					m_mapOrderRef2Order;
 
   //账户别名->真实账户
   std::map<std::string, std::string>      m_mapAcctAlias2Real;
+
+	std::fstream														m_fOrderRef2ClOrderID;
 };
 
 //处理经过hub转发

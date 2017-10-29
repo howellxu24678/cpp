@@ -28,15 +28,16 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   //, m_enSymbolType(Convert::Unknow)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
-	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
-	, m_chClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
-  , m_chOrderRef2Order(12*60*60*1000)//超时设为12小时
+	//, m_mapOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
+	//, m_mapClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
+ // , m_mapOrderRef2Order(12*60*60*1000)//超时设为12小时
 {
-
+	
 }
 
 CSgitTdSpi::~CSgitTdSpi()
 {
+	m_fOrderRef2ClOrderID.close();
   //释放Api内存
   if( m_stuTdParam.m_pTdReqApi )
   {
@@ -90,7 +91,7 @@ void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
     return;
   }
 
-	m_chOrderRef2Order.add(stuOrder.m_ssOrderRef, stuOrder);
+	m_mapOrderRef2Order[stuOrder.m_ssOrderRef] = stuOrder;
 
 	int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
@@ -127,16 +128,12 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d, ErrorMsg:%s", 
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
   
-  Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(pInputOrder->OrderRef);
-  if (spStuOrder.isNull())
-  {
-    LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", pInputOrder->OrderRef);
-    return;
-  }
+	STUOrder stuOrder;
+	if(!GetStuOrder(pInputOrder->OrderRef, stuOrder)) return;
 
-  spStuOrder->Update(*pInputOrder);
+  stuOrder.Update(*pInputOrder);
 
-	SendExecutionReport(*spStuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	SendExecutionReport(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
 void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -146,20 +143,16 @@ void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAc
     pInputOrderAction->OrderRef, pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange, 
 		pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-	Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(pInputOrderAction->OrderRef);
-	if (spStuOrder.isNull())
-	{
-		LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", pInputOrderAction->OrderRef);
-		return;
-	}
+	STUOrder stuOrder;
+	if(!GetStuOrder(pInputOrderAction->OrderRef, stuOrder)) return;
 
 	if(pRspInfo->ErrorID != 0)
 	{
-		SendOrderCancelReject(*spStuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+		SendOrderCancelReject(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 	}
 	else
 	{
-		SendExecutionReport(*spStuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, true);
+		SendExecutionReport(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, true);
 	}
 }
 
@@ -170,27 +163,23 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
      pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(pOrder->OrderRef);
-  if (spStuOrder.isNull())
-  {
-    LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", pOrder->OrderRef);
-    return;
-  }
+	STUOrder stuOrder;
+	if(!GetStuOrder(pOrder->OrderRef, stuOrder)) return;
 
-  spStuOrder->Update(*pOrder);
+  stuOrder.Update(*pOrder);
 
   //订单被拒绝
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
     || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected)
   {
-    SendExecutionReport(*spStuOrder, -1, "Reject by Exchange");
+    SendExecutionReport(stuOrder, -1, "Reject by Exchange");
   }
   //撤单回报
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
   {
     //撤单的回报中应把订单剩余数量置0
-    spStuOrder->m_iLeavesQty = 0;
-    SendExecutionReport(*spStuOrder);
+    stuOrder.m_iLeavesQty = 0;
+    SendExecutionReport(stuOrder);
   }
 }
 
@@ -202,15 +191,11 @@ void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
     pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
 
-  Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(pTrade->OrderRef);
-  if (spStuOrder.isNull())
-  {
-    LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", pTrade->OrderRef);
-    return;
-  }
+	STUOrder stuOrder;
+	if(!GetStuOrder(pTrade->OrderRef, stuOrder)) return;
 
-  spStuOrder->Update(*pTrade);
-  SendExecutionReport(pTrade->OrderRef);
+  stuOrder.Update(*pTrade);
+  SendExecutionReport(stuOrder);
 }
 
 void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
@@ -297,26 +282,18 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
 
 void CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
 {
-  Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(ssOrderRef);
-  if (spStuOrder.isNull())
-  {
-    LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", ssOrderRef.c_str());
-    return;
-  }
+	STUOrder stuOrder;
+	if(!GetStuOrder(ssOrderRef, stuOrder)) return;
 
-  return SendExecutionReport(*spStuOrder, iErrCode, ssErrMsg);
+  return SendExecutionReport(stuOrder, iErrCode, ssErrMsg);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
 {
-	Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(ssOrderRef);
-	if (spStuOrder.isNull())
-	{
-		LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", ssOrderRef.c_str());
-		return;
-	}
+	STUOrder stuOrder;
+	if(!GetStuOrder(ssOrderRef, stuOrder)) return;
 
-	return SendOrderCancelReject(*spStuOrder, iErrCode, ssErrMsg);
+	return SendOrderCancelReject(stuOrder, iErrCode, ssErrMsg);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg)
@@ -362,39 +339,42 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
 
 bool CSgitTdSpi::GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef)
 {
-	return Get(m_chClOrderID2OrderRef, ssClOrdID, ssOrderRef);
+	return Get(m_mapClOrderID2OrderRef, ssClOrdID, ssOrderRef);
 }
 
-bool CSgitTdSpi::Get( ExpireCache<std::string, std::string>& oExpCache, const std::string& ssKey, std::string& ssValue)
+bool CSgitTdSpi::Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue)
 {
-	if(!oExpCache.has(ssKey))
+	std::map<std::string, std::string>::const_iterator cit = oMap.find(ssKey);
+	if (cit == oMap.end())
 	{
-		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in ExpireCache", ssKey.c_str());
+		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in map", ssKey.c_str());
 		return false;
 	}
 
-	ssValue = *oExpCache.get(ssKey);
+	ssValue = cit->second;
 	return true;
 }
 
 bool CSgitTdSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg)
 {
-	if (m_chOrderRef2ClOrderID.has(ssOrderRef))
+	if(m_mapOrderRef2ClOrderID.count(ssOrderRef) > 0)
 	{
     ssErrMsg = "OrderRef:" + ssOrderRef + " is duplicate";
 		LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
     return false;
 	}
-  m_chOrderRef2ClOrderID.add(ssOrderRef, ssClOrdID);
+  m_mapOrderRef2ClOrderID[ssOrderRef] = ssClOrdID;
 	
 
-	if (m_chClOrderID2OrderRef.has(ssClOrdID))
+	if(m_mapClOrderID2OrderRef.count(ssClOrdID) > 0)
 	{
     ssErrMsg = "ClOrdID:" + ssClOrdID + " is duplicate";
     LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
 		return false;
 	}
-	m_chClOrderID2OrderRef.add(ssClOrdID, ssOrderRef);
+	m_mapClOrderID2OrderRef[ssClOrdID] = ssOrderRef;
+
+
 
   return true;
 }
@@ -459,7 +439,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	}
 	strncpy(
 		stuInputOrder.InstrumentID, 
-		enSymbolType == Convert::Original ? 
+		enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
 		symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
 		sizeof(stuInputOrder.InstrumentID));
 
@@ -513,14 +493,9 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   }
 
 	//将撤单请求ID赋值到原有委托结构体中
-  Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(ssOrderRef);
-  if (spStuOrder.isNull())
-  {
-    ssErrMsg = "Can not find orderRef:" + ssOrderRef + " in cache";
-    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
-    return false;
-  }
-  spStuOrder->m_ssCancelClOrdID = origClOrdID.getValue();
+	STUOrder stuOrder;
+	if(!GetStuOrder(ssOrderRef, stuOrder)) return false;
+  stuOrder.m_ssCancelClOrdID = origClOrdID.getValue();
 
   memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
   stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
@@ -589,14 +564,10 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
     pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  Poco::SharedPtr<STUOrder> spStuOrder = m_chOrderRef2Order.get(pOrder->OrderRef);
-  if (spStuOrder.isNull())
-  {
-    LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_chOrderRef2Order", pOrder->OrderRef);
-    return;
-  }
+	STUOrder stuOrder;
+	if(!GetStuOrder(pOrder->OrderRef, stuOrder)) return;
 
-  spStuOrder->Update(*pOrder);
+  stuOrder.Update(*pOrder);
 
   int iErrCode = pRspInfo->ErrorID;
   std::string ssErrMsg = pRspInfo->ErrorMsg;
@@ -612,10 +583,10 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
   {
     //撤单的回报中应把订单剩余数量置0
-    spStuOrder->m_iLeavesQty = 0;
+    stuOrder.m_iLeavesQty = 0;
   }
 
-  SendExecutionReport(*spStuOrder, iErrCode, ssErrMsg);
+  SendExecutionReport(stuOrder, iErrCode, ssErrMsg);
 }
 
 void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -644,6 +615,8 @@ void CSgitTdSpi::OnMessage(const FIX::Message& oMsg)
 
 bool CSgitTdSpi::Init()
 {
+	if (!OpenDatFile()) return false;
+
   if(!LoadConfig()) return false;
 
   return true;
@@ -711,6 +684,48 @@ std::string CSgitTdSpi::GetRealAccont(const FIX::Message& oRecvMsg)
 		LOG(ERROR_LOG_LEVEL, "Can not find real account by key:%s", ssKey.c_str());
 		return "unknow";
 	}
+}
+
+bool CSgitTdSpi::GetStuOrder(const std::string &ssOrderRef, STUOrder &stuOrder)
+{
+	std::map<std::string, STUOrder>::iterator it = m_mapOrderRef2Order.find(ssOrderRef);
+	if (it == m_mapOrderRef2Order.end())
+	{
+		LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_mapOrderRef2Order", ssOrderRef.c_str());
+		return false;
+	}
+	stuOrder = it->second;
+
+	return true;
+}
+
+std::string CSgitTdSpi::GetOrderRefDatFileName()
+{
+	return m_stuTdParam.m_ssDataPath + Poco::replace(Poco::replace(Poco::replace(m_stuTdParam.m_ssSessionID, ">", "_"), ".", "_"), ":", "_") + "_ref.dat";
+}
+
+bool CSgitTdSpi::OpenDatFile()
+{
+	std::string ssFileName = GetOrderRefDatFileName();
+	m_fOrderRef2ClOrderID.open(ssFileName, std::fstream::in | std::fstream::out | std::fstream::app);
+	if (m_fOrderRef2ClOrderID.bad())
+	{
+		LOG(ERROR_LOG_LEVEL, "Failed to open file:%s", ssFileName.c_str());
+		return false;
+	}
+
+	string s1, s2;
+	while(m_fOrderRef2ClOrderID >> s1 >> s2)
+	{
+		LOG(INFO_LOG_LEVEL, "s1:%s, s2:%s", s1.c_str(), s2.c_str());
+	}
+	//m_fOrderRef2ClOrderID.seekp(std::ios::end);
+	m_fOrderRef2ClOrderID.clear();
+	string s3 = "5646546", s4 = "adfwead234";
+	m_fOrderRef2ClOrderID << s3 << " " << s4 << endl; 
+
+
+	return true;
 }
 
 double CSgitTdSpi::STUOrder::AvgPx() const

@@ -164,7 +164,11 @@ bool CSgitContext::InitSgitApi()
   m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
   std::string ssFlowPath = "";
-  CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath); 
+  CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath);
+	if (!ssFlowPath.empty()) FIX::file_mkdir(ssFlowPath.c_str());
+
+	std::string ssDataPath = m_apSgitConf->getString("global.DataPath");
+	FIX::file_mkdir(ssDataPath.c_str());
 
   std::string ssTdServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
   std::string ssMdServerAddr = m_apSgitConf->getString("global.QuoteServerAddr");
@@ -198,6 +202,7 @@ bool CSgitContext::InitSgitApi()
     stuTdParam.m_ssPassword = stTdUserIdPassword[1];
     stuTdParam.m_ssSessionID = ssSessionID;
     stuTdParam.m_ssSgitCfgPath = m_ssSgitCfgPath;
+		stuTdParam.m_ssDataPath = ssDataPath;
 
 		if(!LinkSessionID2TdSpi(ssSessionID, 
 			CreateTdSpi(ssFlowPath, ssTdServerAddr, stuTdParam, CSgitTdSpi::HubTran))) return false;
