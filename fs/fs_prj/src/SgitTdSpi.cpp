@@ -37,7 +37,7 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
 
 CSgitTdSpi::~CSgitTdSpi()
 {
-	m_fOrderRef2ClOrderID.close();
+	m_fOrderRef2ClOrdID.close();
   //释放Api内存
   if( m_stuTdParam.m_pTdReqApi )
   {
@@ -339,7 +339,7 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
 
 bool CSgitTdSpi::GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef)
 {
-	return Get(m_mapClOrderID2OrderRef, ssClOrdID, ssOrderRef);
+	return Get(m_mapClOrdID2OrderRef, ssClOrdID, ssOrderRef);
 }
 
 bool CSgitTdSpi::Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue)
@@ -357,24 +357,22 @@ bool CSgitTdSpi::Get( std::map<std::string, std::string> &oMap, const std::strin
 
 bool CSgitTdSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg)
 {
-	if(m_mapOrderRef2ClOrderID.count(ssOrderRef) > 0)
+	if(m_mapOrderRef2ClOrdID.count(ssOrderRef) > 0)
 	{
     ssErrMsg = "OrderRef:" + ssOrderRef + " is duplicate";
 		LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
     return false;
 	}
-  m_mapOrderRef2ClOrderID[ssOrderRef] = ssClOrdID;
+  m_mapOrderRef2ClOrdID[ssOrderRef] = ssClOrdID;
 	
 
-	if(m_mapClOrderID2OrderRef.count(ssClOrdID) > 0)
+	if(m_mapClOrdID2OrderRef.count(ssClOrdID) > 0)
 	{
     ssErrMsg = "ClOrdID:" + ssClOrdID + " is duplicate";
     LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
 		return false;
 	}
-	m_mapClOrderID2OrderRef[ssClOrdID] = ssOrderRef;
-
-
+	m_mapClOrdID2OrderRef[ssClOrdID] = ssOrderRef;
 
   return true;
 }
@@ -418,6 +416,8 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s", ssOrderRef.c_str(), clOrdID.getValue().c_str());
 	if(!AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue(), ssErrMsg)) return false;
+	WriteDatFile(ssOrderRef, clOrdID.getValue());
+
   stuOrder.m_ssOrderRef = ssOrderRef;
   
 	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
@@ -707,25 +707,31 @@ std::string CSgitTdSpi::GetOrderRefDatFileName()
 bool CSgitTdSpi::OpenDatFile()
 {
 	std::string ssFileName = GetOrderRefDatFileName();
-	m_fOrderRef2ClOrderID.open(ssFileName, std::fstream::in | std::fstream::out | std::fstream::app);
-	if (m_fOrderRef2ClOrderID.bad())
+	m_fOrderRef2ClOrdID.open(ssFileName, std::fstream::in | std::fstream::out | std::fstream::app);
+	if (m_fOrderRef2ClOrdID.bad())
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to open file:%s", ssFileName.c_str());
 		return false;
 	}
 
-	string s1, s2;
-	while(m_fOrderRef2ClOrderID >> s1 >> s2)
+	//加载OrderRef和ClOrdID
+	string ssOrderRef = "", ssClOrdID = "", ssErrMsg = "";
+	while(m_fOrderRef2ClOrdID >> ssOrderRef >> ssClOrdID)
 	{
-		LOG(INFO_LOG_LEVEL, "s1:%s, s2:%s", s1.c_str(), s2.c_str());
+		LOG(INFO_LOG_LEVEL, "ssOrderRef:%s, ssClOrdID:%s", ssOrderRef.c_str(), ssClOrdID.c_str());
+		if(!AddOrderRefClOrdID(ssOrderRef, ssClOrdID, ssErrMsg)) return false;
 	}
-	//m_fOrderRef2ClOrderID.seekp(std::ios::end);
-	m_fOrderRef2ClOrderID.clear();
-	string s3 = "5646546", s4 = "adfwead234";
-	m_fOrderRef2ClOrderID << s3 << " " << s4 << endl; 
 
+	m_fOrderRef2ClOrdID.clear();
 
 	return true;
+}
+
+void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID)
+{
+	Poco::FastMutex::ScopedLock oScopedLock(m_fastMutexOrderRef2ClOrdID);
+
+	m_fOrderRef2ClOrdID << ssOrderRef << " " << ssClOrdID << endl;
 }
 
 double CSgitTdSpi::STUOrder::AvgPx() const

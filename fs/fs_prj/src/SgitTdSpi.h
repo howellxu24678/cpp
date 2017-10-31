@@ -129,6 +129,8 @@ protected:
 
 	bool OpenDatFile();
 
+	void WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID);
+
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 
@@ -482,10 +484,10 @@ private:
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
 	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
-	std::map<std::string, std::string>			m_mapOrderRef2ClOrderID;
+	std::map<std::string, std::string>			m_mapOrderRef2ClOrdID;
 
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
-	std::map<std::string, std::string>			m_mapClOrderID2OrderRef;
+	std::map<std::string, std::string>			m_mapClOrdID2OrderRef;
 
   //OrderRef -> STUOrder (报单引用->委托)
   std::map<std::string, STUOrder>					m_mapOrderRef2Order;
@@ -493,7 +495,8 @@ private:
   //账户别名->真实账户
   std::map<std::string, std::string>      m_mapAcctAlias2Real;
 
-	std::fstream														m_fOrderRef2ClOrderID;
+	std::fstream														m_fOrderRef2ClOrdID;
+	Poco::FastMutex													m_fastMutexOrderRef2ClOrdID;
 };
 
 //处理经过hub转发

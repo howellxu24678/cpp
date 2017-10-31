@@ -86,7 +86,7 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 {
 	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
 
-  if (!m_pSigtCtx) m_pSigtCtx->Deal(message);
+  if (m_pSigtCtx) m_pSigtCtx->Deal(message);
 
  // m_pSigtCtx->AddFixInfo(message);
 	//crack( message, sessionID ); 
