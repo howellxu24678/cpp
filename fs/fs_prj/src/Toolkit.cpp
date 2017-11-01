@@ -4,6 +4,7 @@
 
 #include "Poco/DateTimeFormat.h"
 #include "Poco/DateTimeFormatter.h"
+#include "Poco/StringTokenizer.h"
 
 bool CToolkit::IsAliasAcct(const std::string &ssAcct)
 {
@@ -94,5 +95,15 @@ bool CToolkit::CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrM
 
 	ssErrMsg = "unsupported symbol type";
 	return false;
+}
+
+void CToolkit::Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID)
+{
+	std::string ssSessionKey = CToolkit::SessionProp2ID(ssSessionProp);
+	StringTokenizer stSession(ssSessionKey, "|", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+
+	if (stSession.count() < 1) return;
+	oSessionID.fromString(stSession[0]);
+	if (stSession.count() > 1) ssOnBehalfCompID = stSession[1];
 }
 

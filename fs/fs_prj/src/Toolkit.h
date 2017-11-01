@@ -46,5 +46,7 @@ public:
   static std::string SessionProp2ID(const std::string &ssSessionKey);
 
 	static bool CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrMsg);
+
+	static void Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
 };
 #endif // __TOOLKIT_H__

@@ -126,36 +126,6 @@ SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::SessionID& oSessionID)
   return m_spMdSpi;
 }
 
-//SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const std::string &ssKey)
-//{
-//  std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(ssKey);
-//  if (cit != m_mapSessionID2TdSpi.end())
-//  {
-//    return cit->second;
-//  }
-//
-//  LOG(ERROR_LOG_LEVEL, "Can not find TdSpi by key:%s", ssKey.c_str());
-//  return NULL;
-//}
-
-//std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
-//{
-//	FIX::Account account;
-//	oRecvMsg.getField(account);
-//
-//	if(!CToolkit::IsAliasAcct(account.getValue())) return account.getValue();
-//
-//	std::string ssAcctAliasKey = CToolkit::GenAcctAliasKey(oRecvMsg, account.getValue());
-//	std::map<std::string, std::string>::const_iterator cit = m_mapAlias2Acct.find(ssAcctAliasKey);
-//	if (cit != m_mapAlias2Acct.end())
-//	{
-//		return cit->second;
-//	}
-//
-//	LOG(ERROR_LOG_LEVEL, "Can not find Real Account by key:%s", ssAcctAliasKey.c_str());
-//	return "";
-//}
-
 bool CSgitContext::InitSgitApi()
 {
   LOG(INFO_LOG_LEVEL, "TdApi version:%s, MdApi version:%s", 
@@ -228,90 +198,90 @@ std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::
 
 void CSgitContext::Send(const std::string &ssAcct, FIX::Message &oMsg)
 {
-  /*
-  1. 找到原始送入的账户（真名？别名？）
-  2. 原始SessionID
-  3. header中的信息
-  */
-  STUFixInfo stuFixInfo;
-  if(!GetFixInfo(ssAcct, stuFixInfo))
-  {
-    LOG(ERROR_LOG_LEVEL, "Failed to get fixinto by account:%s", ssAcct.c_str());
-    return;
-  }
+  ///*
+  //1. 找到原始送入的账户（真名？别名？）
+  //2. 原始SessionID
+  //3. header中的信息
+  //*/
+  //STUFixInfo stuFixInfo;
+  //if(!GetFixInfo(ssAcct, stuFixInfo))
+  //{
+  //  LOG(ERROR_LOG_LEVEL, "Failed to get fixinto by account:%s", ssAcct.c_str());
+  //  return;
+  //}
 
-  SetFixInfo(stuFixInfo, oMsg);
-  try
-  {
-    FIX::Session::sendToTarget( oMsg, stuFixInfo.m_oSessionID );
-  }
-  catch ( FIX::SessionNotFound& e) 
-  {
-    LOG(ERROR_LOG_LEVEL, "%s", e.what());
-  }
+  //SetFixInfo(stuFixInfo, oMsg);
+  //try
+  //{
+  //  FIX::Session::sendToTarget( oMsg, stuFixInfo.m_oSessionID );
+  //}
+  //catch ( FIX::SessionNotFound& e) 
+  //{
+  //  LOG(ERROR_LOG_LEVEL, "%s", e.what());
+  //}
 }
 
-void CSgitContext::AddFixInfo(const FIX::Message& oMsg)
-{
-  STUFixInfo stuFixInfo;
-  stuFixInfo.m_oSessionID = oMsg.getSessionID();
-  stuFixInfo.m_oHeader = oMsg.getHeader();
-  AddFixInfo(CToolkit::GetSessionKey(oMsg), stuFixInfo);
-
-
-  FIX::Account account;
-  oMsg.getFieldIfSet(account);
-  if (account.getValue().empty()) return;
-
-  stuFixInfo.m_ssAcctRecv = account.getValue();
-  //AddFixInfo(GetRealAccont(oMsg), stuFixInfo);
-}
-
-void CSgitContext::AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo)
-{
-  if (m_mapAcct2FixInfo.count(ssKey) > 0) return;
-  m_mapAcct2FixInfo[ssKey] = stuFixInfo;
-}
-
-bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
-{
-  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapAcct2FixInfo.find(ssAcct);
-  if(cit != m_mapAcct2FixInfo.end())
-  {
-    stuFixInfo = cit->second;
-    return true;
-  }
-
-  return false;
-}
-
-void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
-{
-  if (!stuFixInfo.m_ssAcctRecv.empty())
-    oMsg.setField(FIX::Account(stuFixInfo.m_ssAcctRecv));
-
-  
-  FIX::OnBehalfOfCompID onBehalfOfCompID;
-  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfCompID.getField()))
-  {
-    FIX::DeliverToCompID deliverToCompID(stuFixInfo.m_oHeader.getField(onBehalfOfCompID.getField()));
-    oMsg.getHeader().setField(deliverToCompID);
-  }
-
-  FIX::SenderSubID senderSubID;
-  if (stuFixInfo.m_oHeader.isSetField(senderSubID.getField()))
-  {
-    FIX::TargetSubID targetSubID(stuFixInfo.m_oHeader.getField(senderSubID.getField()));
-    oMsg.getHeader().setField(targetSubID);
-  }
-
-  FIX::OnBehalfOfSubID onBehalfOfSubID;
-  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfSubID.getField()))
-  {
-    FIX::DeliverToSubID deliverToSubID(stuFixInfo.m_oHeader.getField(onBehalfOfSubID.getField()));
-    oMsg.getHeader().setField(deliverToSubID);
-  }
-}
+//void CSgitContext::AddFixInfo(const FIX::Message& oMsg)
+//{
+//  STUFixInfo stuFixInfo;
+//  stuFixInfo.m_oSessionID = oMsg.getSessionID();
+//  stuFixInfo.m_oHeader = oMsg.getHeader();
+//  AddFixInfo(CToolkit::GetSessionKey(oMsg), stuFixInfo);
+//
+//
+//  FIX::Account account;
+//  oMsg.getFieldIfSet(account);
+//  if (account.getValue().empty()) return;
+//
+//  stuFixInfo.m_ssAcctRecv = account.getValue();
+//  //AddFixInfo(GetRealAccont(oMsg), stuFixInfo);
+//}
+//
+//void CSgitContext::AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo)
+//{
+//  if (m_mapAcct2FixInfo.count(ssKey) > 0) return;
+//  m_mapAcct2FixInfo[ssKey] = stuFixInfo;
+//}
+//
+//bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
+//{
+//  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapAcct2FixInfo.find(ssAcct);
+//  if(cit != m_mapAcct2FixInfo.end())
+//  {
+//    stuFixInfo = cit->second;
+//    return true;
+//  }
+//
+//  return false;
+//}
+//
+//void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
+//{
+//  if (!stuFixInfo.m_ssAcctRecv.empty())
+//    oMsg.setField(FIX::Account(stuFixInfo.m_ssAcctRecv));
+//
+//  
+//  FIX::OnBehalfOfCompID onBehalfOfCompID;
+//  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfCompID.getField()))
+//  {
+//    FIX::DeliverToCompID deliverToCompID(stuFixInfo.m_oHeader.getField(onBehalfOfCompID.getField()));
+//    oMsg.getHeader().setField(deliverToCompID);
+//  }
+//
+//  FIX::SenderSubID senderSubID;
+//  if (stuFixInfo.m_oHeader.isSetField(senderSubID.getField()))
+//  {
+//    FIX::TargetSubID targetSubID(stuFixInfo.m_oHeader.getField(senderSubID.getField()));
+//    oMsg.getHeader().setField(targetSubID);
+//  }
+//
+//  FIX::OnBehalfOfSubID onBehalfOfSubID;
+//  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfSubID.getField()))
+//  {
+//    FIX::DeliverToSubID deliverToSubID(stuFixInfo.m_oHeader.getField(onBehalfOfSubID.getField()));
+//    oMsg.getHeader().setField(deliverToSubID);
+//  }
+//}
 
 std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enDstType)
 {
@@ -348,26 +318,4 @@ void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSession
 		spMdSpi->OnMessage(oMsg, oSessionID);
   }
 }
-
-//bool CSgitContext::InitFixUserConf()
-//{
-//	AbstractConfiguration::Keys kProp;
-//	m_apSgitConf->keys(kProp);
-//
-//	for (AbstractConfiguration::Keys::iterator itProp = kProp.begin(); itProp != kProp.end(); itProp++)
-//	{
-//    if (strncmp(itProp->c_str(), G_FIX42.c_str(), G_FIX42.size()) == 0)
-//    {
-//      if(m_apSgitConf->hasProperty(*itProp + ".SymbolType"))
-//      {
-//        ScopedWriteRWLock scopeWriteLock(m_rwFixUser2CvtType);
-//        m_mapFixUser2CvtType[*itProp] = (Convert::EnCvtType) m_apSgitConf->getInt(*itProp + ".SymbolType");
-//      }
-//      LOG(INFO_LOG_LEVEL, "itProp:%s", itProp->c_str());
-//    }
-//	}
-//
-//	return true;
-//}
-
 

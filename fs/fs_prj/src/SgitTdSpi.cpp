@@ -8,29 +8,10 @@
 #include "Poco/StringTokenizer.h"
 #include "Toolkit.h"
 
-//CSgitTdSpi::CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi,  const std::string &ssUserId, const std::string &ssPassword) 
-//  : m_stuTdParam.m_pSgitCtx(pSgitCtx)
-//  , m_stuTdParam.m_pTdReqApi(pReqApi)
-//  , m_ssUserId(ssUserId)
-//  , m_ssPassword(ssPassword)
-//  , m_enSymbolType(Convert::Unknow)
-//	, m_acRequestId(0)
-//	, m_acOrderRef(0)
-//	, m_chOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
-//	, m_chClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
-//  , m_chOrderRef2Order(12*60*60*1000)//超时设为12小时
-//{
-//
-//}
-
 CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   : m_stuTdParam(stuTdParam)
-  //, m_enSymbolType(Convert::Unknow)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
-	//, m_mapOrderRef2ClOrderID(12*60*60*1000)//超时设为12小时
-	//, m_mapClOrderID2OrderRef(12*60*60*1000)//超时设为12小时
- // , m_mapOrderRef2Order(12*60*60*1000)//超时设为12小时
 {
 	
 }
@@ -43,7 +24,7 @@ CSgitTdSpi::~CSgitTdSpi()
   {
     m_stuTdParam.m_pTdReqApi->RegisterSpi(nullptr);
     m_stuTdParam.m_pTdReqApi->Release();
-    m_stuTdParam.m_pTdReqApi = nullptr;
+    m_stuTdParam.m_pTdReqApi = NULL;
   }
 }
 
@@ -278,6 +259,8 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
   }
 
   m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
+
+	//FIX::Session::sendToTarget(executionReport,)
 }
 
 void CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
@@ -831,16 +814,20 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
     return false;
   }
 
+	Poco::SharedPtr<STUserInfo> spUserInfo(new STUserInfo());
+	CToolkit::Convert2SessionIDBehalfCompID(ssSessionProp, spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
+
+	if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
+	{
+		spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
+	}
+
   StringTokenizer stAccountList(apSgitConf->getString(ssAcctListProp), ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   std::string ssKey = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)
   {
-		m_mapRealAcct2SessionKey[*it] = CToolkit::SessionProp2ID(ssSessionProp);
-		if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
-		{
-			m_mapRealAcct2SymbolType[*it] = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
-		}
+		m_mapRealAcct2UserInfo[*it] = spUserInfo;
   }
 
   return true;
@@ -866,7 +853,6 @@ void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssRealAcct, Convert::En
 
 CSgitTdSpiDirect::CSgitTdSpiDirect(const STUTdParam &stuTdParam)
   : CSgitTdSpi(stuTdParam)
-  , m_enSymbolType(Convert::Unknow)
 {
 
 }
@@ -880,9 +866,10 @@ bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, cons
 {
   LOG(INFO_LOG_LEVEL, "ssProp:%s", ssSessionProp.c_str());
 
+	CToolkit::Convert2SessionIDBehalfCompID(ssSessionProp, m_stuserInfo.m_oSessionID, m_stuserInfo.m_ssOnBehalfOfCompID);
   if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
   {
-    m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
+    m_stuserInfo.m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
   }
 
   return true;
@@ -890,12 +877,12 @@ bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, cons
 
 Convert::EnCvtType CSgitTdSpiDirect::GetSymbolType(const std::string &ssRealAcct)
 {
-	return m_enSymbolType;
+	return m_stuserInfo.m_enCvtType;
 }
 
 void CSgitTdSpiDirect::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
 {
-	m_enSymbolType = enSymbolType;
+	m_stuserInfo.m_enCvtType = enSymbolType;
 }
 
 

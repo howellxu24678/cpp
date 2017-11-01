@@ -12,15 +12,19 @@ const std::string G_CONFIG_SGIT = "sgit";
 const std::string G_CONFIG_FIX = "fix";
 const std::string G_CONFIG_DICT = "dict";
 
-struct STUFixInfo
+
+//保存Fix用户的关键信息，回复消息时需要用到
+struct STUserInfo
 {
-  STUFixInfo() 
-    : m_ssAcctRecv("")
+  STUserInfo() 
+		: m_ssOnBehalfOfCompID("")
+    , m_ssAcctRecv("")
     , m_enCvtType(Convert::Unknow)
   {}
 
   FIX::SessionID      m_oSessionID;
-  FIX::Header         m_oHeader;
+  //FIX::Header         m_oHeader;
+	std::string					m_ssOnBehalfOfCompID;
   //收到的原始资金账号
   std::string         m_ssAcctRecv;
   //代码类型

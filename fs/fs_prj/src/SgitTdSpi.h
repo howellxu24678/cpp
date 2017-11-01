@@ -474,11 +474,6 @@ protected:
 
   STUTdParam                              m_stuTdParam;
 private:
-  //CThostFtdcTraderApi											*m_pTdReqApi;
-  //CSgitContext														*m_pSgitCtx;
-  //std::string															m_ssUserId;
-  //std::string															m_ssPassword;
-
   AtomicCounter														m_acRequestId;
 
 	AtomicCounter														m_acOrderRef;
@@ -513,10 +508,9 @@ public:
 	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
 private:
   //真实资金账号->代码类别
-  std::map<std::string, Convert::EnCvtType>   m_mapRealAcct2SymbolType;
+  std::map<std::string, Convert::EnCvtType>						m_mapRealAcct2SymbolType;
 
-  //真实资金账号->SessionKey
-  std::map<std::string, std::string>          m_mapRealAcct2SessionKey;
+	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
 };
 
 
@@ -534,6 +528,6 @@ public:
 	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
 private:
 
-  Convert::EnCvtType											m_enSymbolType;
+	STUserInfo															m_stuserInfo;
 };
 #endif // __SGITTRADESPI_H__

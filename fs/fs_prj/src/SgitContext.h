@@ -25,8 +25,6 @@ public:
 
   SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::SessionID& oSessionID);
 
-  //std::string GetRealAccont(const FIX::Message& oRecvMsg);
-
   char CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType);
 
   std::string CvtSymbol(const std::string &ssSymbol, const Convert::EnCvtType enDstType);
@@ -35,14 +33,12 @@ public:
 
   void Send(const std::string &ssAcct, FIX::Message &oMsg);
 
-  void AddFixInfo(const FIX::Message& oMsg);
+  //void AddFixInfo(const FIX::Message& oMsg);
 
 protected:
   bool InitConvert();
 
   bool InitSgitApi();
-
-	//bool InitFixUserConf();
 
   SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 
@@ -50,15 +46,11 @@ protected:
 
   bool LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi);
 
-  //SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
+  //bool GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo);
 
-	//SharedPtr<CSgitMdSpi> GetMdSpi(const std::string &ssKey);
+  //void SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg);
 
-  bool GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo);
-
-  void SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg);
-
-  void AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo);
+  //void AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo);
 
   ////预先发起登录
   //bool PreLogin();
@@ -75,7 +67,7 @@ private:
   //std::map<std::string, std::string>              m_mapAlias2Acct;
 
   //真实资金账户->SessionID + onBehalfOfCompID + 原始送入账户 + 所用代码类型 --用于交易推送
-  std::map<std::string, STUFixInfo>               m_mapAcct2FixInfo;
+  std::map<std::string, STUserInfo>               m_mapAcct2FixInfo;
   RWLock                                          m_rwAcct2FixInfo;
 
   //fix用户(SessionID+onBehalfOfCompID)->代码类型 --用于行情推送
