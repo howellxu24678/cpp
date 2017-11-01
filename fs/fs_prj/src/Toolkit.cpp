@@ -53,9 +53,17 @@ std::string CToolkit::GetUuid()
 
 std::string CToolkit::GetSessionKey(const FIX::Message& oRecvMsg)
 {
+  FIX::BeginString beginString;
+  FIX::SenderCompID senderCompID;
+  FIX::TargetCompID targetCompID;
   FIX::OnBehalfOfCompID onBehalfOfCompId;
+  oRecvMsg.getHeader().getField(beginString);
+  oRecvMsg.getHeader().getField(senderCompID);
+  oRecvMsg.getHeader().getField(targetCompID);
   oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
-  return oRecvMsg.getSessionID().toString() + "|" + onBehalfOfCompId.getValue();
+
+  FIX::SessionID oSessionID(beginString.getValue(), targetCompID.getValue(), senderCompID.getValue());
+  return oSessionID.toString() + "|" + onBehalfOfCompId.getValue();
 }
 
 bool CToolkit::IsTdRequest(const FIX::MsgType &msgType)

@@ -23,7 +23,7 @@ public:
   CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword);
   ~CSgitMdSpi();
 
-  void OnMessage(const FIX::Message& oMsg);
+  void OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
 
   void MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest);
 

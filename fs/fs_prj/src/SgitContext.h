@@ -19,11 +19,11 @@ public:
 
   bool Init();
 
-  void Deal(const FIX::Message& oMsg);
+  void Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
 
-  SharedPtr<CSgitTdSpi> GetTdSpi(const FIX::Message& oMsg);
+  SharedPtr<CSgitTdSpi> GetTdSpi(const FIX::SessionID& oSessionID);
 
-  SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::Message& oMsg);
+  SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::SessionID& oSessionID);
 
   //std::string GetRealAccont(const FIX::Message& oRecvMsg);
 
@@ -50,7 +50,7 @@ protected:
 
   bool LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi);
 
-  SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
+  //SharedPtr<CSgitTdSpi> GetTdSpi(const std::string &ssKey);
 
 	//SharedPtr<CSgitMdSpi> GetMdSpi(const std::string &ssKey);
 

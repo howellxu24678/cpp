@@ -108,35 +108,35 @@ bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr
 	return true;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::Message& oMsg)
+SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::SessionID& oSessionID)
 {
   ScopedReadRWLock scopeReadLock(m_rwSessionID2TdSpi);
-	std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(oMsg.getSessionID().toString());
+	std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(oSessionID.toString());
 	if (cit != m_mapSessionID2TdSpi.end())
 	{
 		return cit->second;
 	}
 
-	LOG(ERROR_LOG_LEVEL, "Can not find TdSpi by SessionID:%s", oMsg.getSessionID().toString().c_str());
+	LOG(ERROR_LOG_LEVEL, "Can not find TdSpi by SessionID:%s", oSessionID.toString().c_str());
 	return NULL;
 }
 
-SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::Message& oMsg)
+SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::SessionID& oSessionID)
 {
   return m_spMdSpi;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const std::string &ssKey)
-{
-  std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(ssKey);
-  if (cit != m_mapSessionID2TdSpi.end())
-  {
-    return cit->second;
-  }
-
-  LOG(ERROR_LOG_LEVEL, "Can not find TdSpi by key:%s", ssKey.c_str());
-  return NULL;
-}
+//SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const std::string &ssKey)
+//{
+//  std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(ssKey);
+//  if (cit != m_mapSessionID2TdSpi.end())
+//  {
+//    return cit->second;
+//  }
+//
+//  LOG(ERROR_LOG_LEVEL, "Can not find TdSpi by key:%s", ssKey.c_str());
+//  return NULL;
+//}
 
 //std::string CSgitContext::GetRealAccont(const FIX::Message& oRecvMsg)
 //{
@@ -318,7 +318,7 @@ std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Conve
 	return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
 
-void CSgitContext::Deal(const FIX::Message& oMsg)
+void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
 {
   const FIX::BeginString& beginString = 
     FIELD_GET_REF( oMsg.getHeader(), BeginString);
@@ -329,23 +329,23 @@ void CSgitContext::Deal(const FIX::Message& oMsg)
 
   if(CToolkit::IsTdRequest(msgType))
   {
-		SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oMsg);
+		SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oSessionID);
 		if (!spTdSpi)
 		{
-			LOG(ERROR_LOG_LEVEL, "Can not find Tdspi for SessionID:%s", oMsg.getSessionID().toString().c_str());
+			LOG(ERROR_LOG_LEVEL, "Can not find Tdspi for SessionID:%s", oSessionID.toString().c_str());
 			return;
 		}
-		spTdSpi->OnMessage(oMsg);
+		spTdSpi->OnMessage(oMsg, oSessionID);
   }
   else if(CToolkit::IsMdRequest(msgType))
   {
-    SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oMsg);
+    SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oSessionID);
 		if(!spMdSpi)
 		{
-			LOG(ERROR_LOG_LEVEL, "Can not find Mdspi for SessionID:%s", oMsg.getSessionID().toString().c_str());
+			LOG(ERROR_LOG_LEVEL, "Can not find Mdspi for SessionID:%s", oSessionID.toString().c_str());
 			return;
 		}
-		spMdSpi->OnMessage(oMsg);
+		spMdSpi->OnMessage(oMsg, oSessionID);
   }
 }
 

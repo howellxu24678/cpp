@@ -66,7 +66,7 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
   LOG(INFO_LOG_LEVEL, "userID:%s,MaxOrderRef:%s,errID:%d,errMsg:%s", 
     pRspUserLogin->UserID, pRspUserLogin->MaxOrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-	m_acOrderRef = atoi(pRspUserLogin->MaxOrderRef);
+	m_acOrderRef = MAX(m_acOrderRef, atoi(pRspUserLogin->MaxOrderRef));
 
   //fs是否不需要这一步
   if (!pRspInfo->ErrorID)
@@ -594,7 +594,7 @@ void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bo
   LOG(ERROR_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,RequestID:%d", pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
 }
 
-void CSgitTdSpi::OnMessage(const FIX::Message& oMsg)
+void CSgitTdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
 {
   FIX::MsgType msgType;
   oMsg.getHeader().getField(msgType);
@@ -615,7 +615,7 @@ void CSgitTdSpi::OnMessage(const FIX::Message& oMsg)
 
 bool CSgitTdSpi::Init()
 {
-	if (!OpenDatFile()) return false;
+	if (!LoadDatFile()) return false;
 
   if(!LoadConfig()) return false;
 
@@ -704,7 +704,7 @@ std::string CSgitTdSpi::GetOrderRefDatFileName()
 	return m_stuTdParam.m_ssDataPath + Poco::replace(Poco::replace(Poco::replace(m_stuTdParam.m_ssSessionID, ">", "_"), ".", "_"), ":", "_") + "_ref.dat";
 }
 
-bool CSgitTdSpi::OpenDatFile()
+bool CSgitTdSpi::LoadDatFile()
 {
 	std::string ssFileName = GetOrderRefDatFileName();
 	m_fOrderRef2ClOrdID.open(ssFileName, std::fstream::in | std::fstream::out | std::fstream::app);
@@ -723,6 +723,12 @@ bool CSgitTdSpi::OpenDatFile()
 	}
 
 	m_fOrderRef2ClOrdID.clear();
+
+  if (m_mapOrderRef2ClOrdID.size() > 0)
+  {
+    std::map<std::string, std::string>::reverse_iterator rit = m_mapOrderRef2ClOrdID.rbegin();
+    m_acOrderRef = MAX(atoi(rit->first.c_str()), m_acOrderRef);
+  }
 
 	return true;
 }

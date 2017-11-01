@@ -86,7 +86,7 @@ public:
 
   virtual bool Init();
 
-  void OnMessage(const FIX::Message& oMsg);
+  void OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
 
 protected:
   bool LoadConfig();
@@ -127,7 +127,7 @@ protected:
 
 	std::string GetOrderRefDatFileName();
 
-	bool OpenDatFile();
+	bool LoadDatFile();
 
 	void WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID);
 

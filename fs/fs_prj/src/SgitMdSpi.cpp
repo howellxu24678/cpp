@@ -198,7 +198,7 @@ bool CSgitMdSpi::CheckValid(
   return true;
 }
 
-void CSgitMdSpi::OnMessage(const FIX::Message& oMsg)
+void CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
 {
   AddFixInfo(oMsg);
 
