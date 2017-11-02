@@ -835,10 +835,10 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
 
 Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcct)
 {
-	std::map<std::string, Convert::EnCvtType>::const_iterator cit = m_mapRealAcct2SymbolType.find(ssRealAcct);
-	if (cit != m_mapRealAcct2SymbolType.end())
+	std::map<std::string, Poco::SharedPtr<STUserInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
+	if (cit != m_mapRealAcct2UserInfo.end())
 	{
-		return cit->second;
+		return cit->second->m_enCvtType;
 	}
 
 	return Convert::Unknow;
@@ -846,7 +846,11 @@ Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcc
 
 void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
 {
-	m_mapRealAcct2SymbolType[ssRealAcct] = enSymbolType;
+	std::map<std::string, Poco::SharedPtr<STUserInfo>>::iterator it = m_mapRealAcct2UserInfo.find(ssRealAcct);
+	if(it != m_mapRealAcct2UserInfo.end())
+	{
+		it->second->m_enCvtType = enSymbolType;
+	}
 }
 
 

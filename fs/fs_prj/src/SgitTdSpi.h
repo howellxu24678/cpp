@@ -507,9 +507,6 @@ public:
 
 	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
 private:
-  //真实资金账号->代码类别
-  std::map<std::string, Convert::EnCvtType>						m_mapRealAcct2SymbolType;
-
 	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
 };
 
