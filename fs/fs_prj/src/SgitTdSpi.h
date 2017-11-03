@@ -131,6 +131,8 @@ protected:
 
 	void WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID);
 
+  void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder);
+
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
 

@@ -144,10 +144,10 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
      pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
+  UpsertOrder(*pOrder);
+
 	STUOrder stuOrder;
 	if(!GetStuOrder(pOrder->OrderRef, stuOrder)) return;
-
-  stuOrder.Update(*pOrder);
 
   //订单被拒绝
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
@@ -197,13 +197,6 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
-
-//void CSgitTdSpi::Init()
-//{
-//  AutoPtr<IniFileConfiguration> apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
-//  m_ssPassword = apSgitConf->getString(m_ssUserId + ".PassWord");
-//  m_enSymbolType = (Convert::EnCvtType)apSgitConf->getInt(m_ssUserId + ".SymbolType");
-//}
 
 void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/)
 {
@@ -721,6 +714,26 @@ void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &
 	Poco::FastMutex::ScopedLock oScopedLock(m_fastMutexOrderRef2ClOrdID);
 
 	m_fOrderRef2ClOrdID << ssOrderRef << " " << ssClOrdID << endl;
+}
+
+void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder)
+{
+  ////OrderRef -> STUOrder (报单引用->委托)
+  //std::map<std::string, STUOrder>					m_mapOrderRef2Order;
+  //stuOrder.Update(*pOrder);
+
+  std::map<std::string, STUOrder>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
+  if (itFind != m_mapOrderRef2Order.end())
+  {
+    itFind->second.Update(stuFtdcOrder);
+  }
+  else
+  {
+    STUOrder stuOrder;
+    //todo 转换
+
+    m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = stuOrder;
+  }
 }
 
 double CSgitTdSpi::STUOrder::AvgPx() const
