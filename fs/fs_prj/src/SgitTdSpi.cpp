@@ -217,15 +217,15 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
   executionReport.set(FIX::AvgPx(oStuOrder.AvgPx()));
   executionReport.set(FIX::ExecTransType(FIX::ExecTransType_NEW));
 
-  if (bIsPendingCancel || oStuOrder.m_vTradeRec.size() < 1)
+  if (bIsPendingCancel || oStuOrder.m_mapTradeRec.size() < 1)
   {
     executionReport.set(FIX::LastPx(0));
     executionReport.set(FIX::LastShares(0));
   }
   else
   {
-    executionReport.set(FIX::LastPx(oStuOrder.m_vTradeRec.back().m_dMatchPrice));
-    executionReport.set(FIX::LastShares(oStuOrder.m_vTradeRec.back().m_iMatchVolume));
+    executionReport.set(FIX::LastPx(oStuOrder.m_mapTradeRec.rend()->second.m_dMatchPrice));
+    executionReport.set(FIX::LastShares(oStuOrder.m_mapTradeRec.rend()->second.m_iMatchVolume));
   }
 
 	//³·µ¥Ó¦´ð
@@ -740,11 +740,11 @@ double CSgitTdSpi::STUOrder::AvgPx() const
 {
   double dTurnover = 0.0;
   int iTotalVolume = 0;
-  for (std::vector<STUTradeRec>::const_iterator cit = m_vTradeRec.begin(); cit != m_vTradeRec.end(); cit++)
-  {
-    dTurnover += cit->m_dMatchPrice * cit->m_iMatchVolume;
-    iTotalVolume += cit->m_iMatchVolume;
-  }
+	for (std::map<std::string, STUTradeRec>::const_iterator cit = m_mapTradeRec.begin(); cit != m_mapTradeRec.end(); cit++)
+	{
+		dTurnover += cit->second.m_dMatchPrice * cit->second.m_iMatchVolume;
+		iTotalVolume += cit->second.m_iMatchVolume; 
+	}
 
   if (iTotalVolume == 0) return 0.0;
 
@@ -773,7 +773,7 @@ void CSgitTdSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder)
 
 void CSgitTdSpi::STUOrder::Update(const CThostFtdcTradeField& oTrade)
 {
-  m_vTradeRec.push_back(STUTradeRec(oTrade.Price, oTrade.Volume));
+  m_mapTradeRec[oTrade.TradeID] = STUTradeRec(oTrade.Price, oTrade.Volume);
   m_iCumQty += oTrade.Volume;
   m_iLeavesQty = m_iOrderQty - m_iCumQty;
 }
@@ -792,7 +792,6 @@ CSgitTdSpi::STUOrder::STUOrder()
 	, m_iLeavesQty(0)
 	, m_iCumQty(0)
 {
-	m_vTradeRec.clear();
 }
 
 CSgitTdSpi::STUTradeRec::STUTradeRec()

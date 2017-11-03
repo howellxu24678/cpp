@@ -71,7 +71,10 @@ public:
     double                    m_dPrice;//44价格
 		int						            m_iLeavesQty;//151
 		int						            m_iCumQty;//14
-    std::vector<STUTradeRec>  m_vTradeRec;
+		//成交记录
+		std::map<std::string, STUTradeRec> m_mapTradeRec;
+
+    //std::vector<STUTradeRec>  m_vTradeRec;
 
 		STUOrder();
     double AvgPx() const;
@@ -80,7 +83,6 @@ public:
     void Update(const CThostFtdcTradeField& oTrade);
 	};
 
-  //CSgitTdSpi(CSgitContext *pSgitCtx, CThostFtdcTraderApi *pReqApi, const std::string &ssUserId, const std::string &ssPassword);
   CSgitTdSpi(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpi();
 
