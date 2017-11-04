@@ -7,6 +7,7 @@
 #include "Poco/UUIDGenerator.h"
 #include "Poco/StringTokenizer.h"
 #include "Toolkit.h"
+#include "quickfix/Session.h"
 
 CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   : m_stuTdParam(stuTdParam)
@@ -251,7 +252,9 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
 		executionReport.set(FIX::ExecType(chOrderStatus));
   }
 
-  m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
+  //m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
+
+	Send(oStuOrder.m_ssAccout, executionReport);
 
 	//FIX::Session::sendToTarget(executionReport,)
 }
@@ -865,6 +868,27 @@ void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssRealAcct, Convert::En
 	}
 }
 
+void CSgitTdSpiHubTran::Send(const std::string &ssRealAcct, FIX::Message& oMsg)
+{
+	std::map<std::string, Poco::SharedPtr<STUserInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
+	if (cit == m_mapRealAcct2UserInfo.end())
+	{
+		LOG(ERROR_LOG_LEVEL, "Can not find UserInfo by real account:%s", ssRealAcct.c_str());
+		return;
+	}
+
+	CToolkit::SetUserInfo(*(cit->second), oMsg);
+
+	try
+	{
+		FIX::Session::sendToTarget(oMsg, cit->second->m_oSessionID);
+	}
+	catch ( FIX::SessionNotFound& e) 
+	{
+		LOG(ERROR_LOG_LEVEL, "%s", e.what());
+	}
+}
+
 
 
 CSgitTdSpiDirect::CSgitTdSpiDirect(const STUTdParam &stuTdParam)
@@ -899,6 +923,20 @@ Convert::EnCvtType CSgitTdSpiDirect::GetSymbolType(const std::string &ssRealAcct
 void CSgitTdSpiDirect::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
 {
 	m_stuserInfo.m_enCvtType = enSymbolType;
+}
+
+void CSgitTdSpiDirect::Send(const std::string &ssRealAcct, FIX::Message& oMsg)
+{
+	CToolkit::SetUserInfo(m_stuserInfo, oMsg);
+
+	try
+	{
+		FIX::Session::sendToTarget(oMsg, m_stuserInfo.m_oSessionID);
+	}
+	catch ( FIX::SessionNotFound& e) 
+	{
+		LOG(ERROR_LOG_LEVEL, "%s", e.what());
+	}
 }
 
 

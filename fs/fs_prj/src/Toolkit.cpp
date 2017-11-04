@@ -107,3 +107,8 @@ void CToolkit::Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, F
 	if (stSession.count() > 1) ssOnBehalfCompID = stSession[1];
 }
 
+void CToolkit::SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg)
+{
+
+}
+

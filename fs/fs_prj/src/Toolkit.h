@@ -6,6 +6,7 @@
 #include "Poco/String.h"
 #include "quickfix/Message.h"
 #include "Convert.h"
+#include "Const.h"
 
 
 
@@ -48,5 +49,7 @@ public:
 	static bool CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrMsg);
 
 	static void Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
+
+	static void SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg);
 };
 #endif // __TOOLKIT_H__

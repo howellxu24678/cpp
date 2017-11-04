@@ -74,8 +74,6 @@ public:
 		//³É½»¼ÇÂ¼
 		std::map<std::string, STUTradeRec> m_mapTradeRec;
 
-    //std::vector<STUTradeRec>  m_vTradeRec;
-
 		STUOrder();
     double AvgPx() const;
     void Update(const CThostFtdcInputOrderField& oInputOrder);
@@ -98,6 +96,8 @@ protected:
 	virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
 
 	virtual void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType) = 0;
+
+	virtual void Send(const std::string &ssRealAcct, FIX::Message& oMsg) = 0;
 
   virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
@@ -510,6 +510,8 @@ public:
 	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
 	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
+
+	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
 	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
 };
@@ -527,6 +529,8 @@ public:
 	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
 	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
+
+	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
 
 	STUserInfo															m_stuserInfo;
