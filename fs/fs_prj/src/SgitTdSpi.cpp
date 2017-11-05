@@ -1,13 +1,15 @@
 #include "SgitTdSpi.h"
 #include "SgitContext.h"
 #include "Log.h"
-#include "quickfix/fix42/ExecutionReport.h"
-#include "quickfix/fix42/OrderCancelReject.h"
+#include "Toolkit.h"
+
 #include "Poco/Format.h"
 #include "Poco/UUIDGenerator.h"
 #include "Poco/StringTokenizer.h"
-#include "Toolkit.h"
+
 #include "quickfix/Session.h"
+#include "quickfix/fix42/ExecutionReport.h"
+#include "quickfix/fix42/OrderCancelReject.h"
 
 CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   : m_stuTdParam(stuTdParam)
@@ -254,7 +256,7 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
 
   //m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
 
-	Send(oStuOrder.m_ssAccout, executionReport);
+	Send(oStuOrder.m_ssRealAccount, executionReport);
 
 	//FIX::Session::sendToTarget(executionReport,)
 }
@@ -286,7 +288,7 @@ void CSgitTdSpi::SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, 
 
 	orderCancelReject.set(FIX::Text(ssErrMsg));
 
-	m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, orderCancelReject);
+	m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssRealAccount, orderCancelReject);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg)
@@ -358,7 +360,7 @@ bool CSgitTdSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std::st
 
 bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg)
 {
-	//FIX::Account account;
+	FIX::Account account;
 	FIX::ClOrdID clOrdID;
 	FIX::Symbol symbol;
 	FIX::OrderQty orderQty;
@@ -368,7 +370,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	FIX::OpenClose openClose;
 	FIX::IDSource idSource;
 
-	//oNewOrderSingle.get(account);
+	oNewOrderSingle.get(account);
 	oNewOrderSingle.get(clOrdID);
 	oNewOrderSingle.get(symbol);
 	oNewOrderSingle.get(orderQty);
@@ -378,9 +380,9 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(openClose);
 	oNewOrderSingle.getIfSet(idSource);
 
-  std::string ssRealAccount = GetRealAccont(oNewOrderSingle);
   //STUOrder
-  stuOrder.m_ssAccout = ssRealAccount;
+	stuOrder.m_ssRecvAccount = account.getValue();
+	stuOrder.m_ssRealAccount = GetRealAccont(oNewOrderSingle);
   stuOrder.m_ssClOrdID = clOrdID.getValue();
   stuOrder.m_cOrderStatus = THOST_FTDC_OST_NoTradeQueueing;
   stuOrder.m_ssSymbol = symbol.getValue();
@@ -389,8 +391,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   stuOrder.m_dPrice = price.getValue();
   stuOrder.m_iLeavesQty = (int)orderQty.getValue();
   stuOrder.m_iCumQty = 0;
-
-	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
+	
 	//由于不能确保送入的ClOrdID(11)严格递增，在这里递增生成一个报单引用并做关联
 	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s", ssOrderRef.c_str(), clOrdID.getValue().c_str());
@@ -399,23 +400,24 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 
   stuOrder.m_ssOrderRef = ssOrderRef;
   
-	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
-	strncpy(stuInputOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
-	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
-	
+	//代码类型校验
 	Convert::EnCvtType enSymbolType = Convert::Unknow;
 	if(!idSource.getValue().empty())
 	{
-		//校验一下
 		enSymbolType = (Convert::EnCvtType)atoi(idSource.getValue().c_str());
 		if (!CToolkit::CheckIfValid(enSymbolType, ssErrMsg)) return false;
 
-		SetSymbolType(ssRealAccount, enSymbolType);
+		SetSymbolType(stuOrder.m_ssRealAccount, enSymbolType);
 	}
 	else
 	{
-		enSymbolType = GetSymbolType(ssRealAccount);
+		enSymbolType = GetSymbolType(stuOrder.m_ssRealAccount);
 	}
+
+	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
+	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
+	strncpy(stuInputOrder.InvestorID, stuOrder.m_ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
+	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
 	strncpy(
 		stuInputOrder.InstrumentID, 
 		enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
@@ -509,6 +511,22 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   return true;
 }
 
+void CSgitTdSpi::Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder)
+{
+	stuOrder.m_ssRealAccount = stuFtdcOrder.InvestorID;
+	stuOrder.m_ssOrderRef = stuFtdcOrder.OrderRef;
+	stuOrder.m_ssOrderID = stuFtdcOrder.OrderSysID;
+	stuOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, stuFtdcOrder.OrderStatus, Convert::Fix);
+	Convert::EnCvtType enSymbolType = GetSymbolType(stuOrder.m_ssRealAccount);
+	stuOrder.m_ssSymbol = enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+		stuFtdcOrder.InstrumentID : m_stuTdParam.m_pSgitCtx->CvtSymbol(stuFtdcOrder.InstrumentID, enSymbolType);
+	stuOrder.m_cSide = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::Side, stuFtdcOrder.Direction, Convert::Fix);
+	stuOrder.m_iOrderQty = stuFtdcOrder.VolumeTotalOriginal;
+	stuOrder.m_dPrice = stuFtdcOrder.LimitPrice;
+	//stuOrder.m_iLeavesQty = stuFtdcOrder.VolumeTotal;
+	//stuOrder.m_iCumQty = 
+}
+
 void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest)
 {
   FIX::Symbol symbol;
@@ -546,7 +564,7 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
 	STUOrder stuOrder;
 	if(!GetStuOrder(pOrder->OrderRef, stuOrder)) return;
 
-  stuOrder.Update(*pOrder);
+  stuOrder.Update(*pOrder, m_stuTdParam);
 
   int iErrCode = pRspInfo->ErrorID;
   std::string ssErrMsg = pRspInfo->ErrorMsg;
@@ -634,13 +652,20 @@ bool CSgitTdSpi::LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const s
   {
     ssKey = CToolkit::SessionProp2ID(ssSessionProp) + "|" + *it;
     ssRealAcct = apSgitConf->getString(ssSessionProp + "." + *it);
-    std::pair<std::map<std::string, std::string>::iterator, bool> ret = m_mapAcctAlias2Real.insert(
-      std::pair<std::string, std::string>(ssKey, ssRealAcct));
+    std::pair<std::map<std::string, std::string>::iterator, bool> ret;
+		ret = m_mapAlias2RealAcct.insert(std::pair<std::string, std::string>(ssKey, ssRealAcct));
     if(!ret.second)
     {
       LOG(ERROR_LOG_LEVEL, "Alias account key:%s is dulplicated", ssKey.c_str());
       return false;
     }
+
+		ret  = m_mapReal2AliasAcct.insert(std::pair<std::string, std::string>(ssRealAcct, *it));
+		if (!ret.second)
+		{
+			LOG(ERROR_LOG_LEVEL, "Real account key:%s is dulplicated", ssRealAcct.c_str());
+			return false;
+		}
   }
 
   return true;
@@ -655,8 +680,8 @@ std::string CSgitTdSpi::GetRealAccont(const FIX::Message& oRecvMsg)
 
 	std::string ssKey = CToolkit::GetSessionKey(oRecvMsg) + "|" + account.getValue();
 	std::map<std::string, std::string>::const_iterator cit = 
-		m_mapAcctAlias2Real.find(ssKey);
-	if(cit != m_mapAcctAlias2Real.end()) 
+		m_mapAlias2RealAcct.find(ssKey);
+	if(cit != m_mapAlias2RealAcct.end()) 
 		return cit->second;
 	else
 	{
@@ -728,13 +753,12 @@ void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder)
   std::map<std::string, STUOrder>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
   if (itFind != m_mapOrderRef2Order.end())
   {
-    itFind->second.Update(stuFtdcOrder);
+    itFind->second.Update(stuFtdcOrder, m_stuTdParam);
   }
   else
   {
     STUOrder stuOrder;
-    //todo 转换
-
+		Cvt(stuFtdcOrder, stuOrder);
     m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = stuOrder;
   }
 }
@@ -762,14 +786,14 @@ void CSgitTdSpi::STUOrder::Update(const CThostFtdcInputOrderField& oInputOrder)
   }
 }
 
-void CSgitTdSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder)
+void CSgitTdSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder, const STUTdParam &stuTdParam)
 {
   if (m_ssOrderID.empty() && strlen(oOrder.OrderSysID) > 0)
   {
     m_ssOrderID = oOrder.OrderSysID;
   }
 
-  m_cOrderStatus = oOrder.OrderStatus;
+	m_cOrderStatus = stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oOrder.OrderStatus, Convert::Fix);
   //m_iLeavesQty = oOrder.VolumeTotal;
   //m_iCumQty = m_iOrderQty - m_iLeavesQty;
 }
@@ -782,7 +806,7 @@ void CSgitTdSpi::STUOrder::Update(const CThostFtdcTradeField& oTrade)
 }
 
 CSgitTdSpi::STUOrder::STUOrder()
-	: m_ssAccout("")
+	: m_ssRealAccount("")
   , m_ssOrderRef("")
   , m_ssOrderID("")
 	, m_ssClOrdID("")

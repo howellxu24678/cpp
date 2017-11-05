@@ -2,17 +2,19 @@
 #define __SGITTRADESPI_H__
 
 #include <fstream>
+
+#include "Convert.h"
+
+#include "sgit/SgitFtdcTraderApi.h"
+
 #include "Poco/Util/IniFileConfiguration.h"
 #include "Poco/ExpireCache.h"
 #include "Poco/RWLock.h"
-
-#include "sgit/SgitFtdcTraderApi.h"
 
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
 #include "quickfix/fix42/OrderStatusRequest.h"
 
-#include "Convert.h"
 #include "Const.h"
 
 using namespace fstech;
@@ -59,7 +61,8 @@ public:
 
 	struct STUOrder
 	{
-    std::string               m_ssAccout;//资金账号（真实）
+		std::string								m_ssRecvAccount;//客户请求带的资金账号
+		std::string               m_ssRealAccount;//真实资金账号
     std::string               m_ssOrderRef;//报单引用
     std::string               m_ssOrderID;//37合同编号
 		std::string		            m_ssClOrdID;//11委托编号(撤单回报时为41)
@@ -77,7 +80,7 @@ public:
 		STUOrder();
     double AvgPx() const;
     void Update(const CThostFtdcInputOrderField& oInputOrder);
-    void Update(const CThostFtdcOrderField& oOrder);
+    void Update(const CThostFtdcOrderField& oOrder, const STUTdParam &stuTdParam);
     void Update(const CThostFtdcTradeField& oTrade);
 	};
 
@@ -124,6 +127,8 @@ protected:
 	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
 
 	bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
+
+	void  Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder);
 
 	bool GetStuOrder(const std::string &ssOrderRef, STUOrder &stuOrder);
 
@@ -492,7 +497,10 @@ private:
   std::map<std::string, STUOrder>					m_mapOrderRef2Order;
 
   //账户别名->真实账户
-  std::map<std::string, std::string>      m_mapAcctAlias2Real;
+  std::map<std::string, std::string>      m_mapAlias2RealAcct;
+
+	//真实账户->账户别名
+	std::map<std::string, std::string>			m_mapReal2AliasAcct;
 
 	std::fstream														m_fOrderRef2ClOrdID;
 	Poco::FastMutex													m_fastMutexOrderRef2ClOrdID;

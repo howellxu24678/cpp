@@ -109,6 +109,14 @@ void CToolkit::Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, F
 
 void CToolkit::SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg)
 {
+	if (!stuUserInfo.m_ssOnBehalfOfCompID.empty())
+	{
+		oMsg.getHeader().setField(FIX::DeliverToCompID(stuUserInfo.m_ssOnBehalfOfCompID));
+	}
 
+	if (!stuUserInfo.m_ssAcctRecv.empty())
+	{
+		oMsg.setField(FIX::Account(stuUserInfo.m_ssAcctRecv));
+	}
 }
 
