@@ -113,10 +113,5 @@ void CToolkit::SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg)
 	{
 		oMsg.getHeader().setField(FIX::DeliverToCompID(stuUserInfo.m_ssOnBehalfOfCompID));
 	}
-
-	if (!stuUserInfo.m_ssAcctRecv.empty())
-	{
-		oMsg.setField(FIX::Account(stuUserInfo.m_ssAcctRecv));
-	}
 }
 

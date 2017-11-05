@@ -201,34 +201,34 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
-void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/)
+void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/)
 {
   std::string& ssUUid = CToolkit::GetUuid();
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s,OrderID:%s,uuid:%s", 
-    oStuOrder.m_ssOrderRef.c_str(), oStuOrder.m_ssClOrdID.c_str(), oStuOrder.m_ssOrderID.c_str(), ssUUid.c_str());
+    stuOrder.m_ssOrderRef.c_str(), stuOrder.m_ssClOrdID.c_str(), stuOrder.m_ssOrderID.c_str(), ssUUid.c_str());
 
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport();
-  executionReport.set(FIX::ClOrdID(oStuOrder.m_ssClOrdID));
-  executionReport.set(FIX::OrderID(oStuOrder.m_ssOrderID.length() < 1 ? " " : oStuOrder.m_ssOrderID));
+  executionReport.set(FIX::ClOrdID(stuOrder.m_ssClOrdID));
+  executionReport.set(FIX::OrderID(stuOrder.m_ssOrderID.length() < 1 ? " " : stuOrder.m_ssOrderID));
   executionReport.set(FIX::ExecID(ssUUid));
-  executionReport.set(FIX::Symbol(oStuOrder.m_ssSymbol));
-  executionReport.set(FIX::Price(oStuOrder.m_dPrice));
-  executionReport.set(FIX::OrderQty(oStuOrder.m_iOrderQty));
-  executionReport.set(FIX::Side(oStuOrder.m_cSide));
-  executionReport.set(FIX::LeavesQty(oStuOrder.m_iLeavesQty));
-  executionReport.set(FIX::CumQty(oStuOrder.m_iCumQty));
-  executionReport.set(FIX::AvgPx(oStuOrder.AvgPx()));
+  executionReport.set(FIX::Symbol(stuOrder.m_ssSymbol));
+  executionReport.set(FIX::Price(stuOrder.m_dPrice));
+  executionReport.set(FIX::OrderQty(stuOrder.m_iOrderQty));
+  executionReport.set(FIX::Side(stuOrder.m_cSide));
+  executionReport.set(FIX::LeavesQty(stuOrder.m_iLeavesQty));
+  executionReport.set(FIX::CumQty(stuOrder.m_iCumQty));
+  executionReport.set(FIX::AvgPx(stuOrder.AvgPx()));
   executionReport.set(FIX::ExecTransType(FIX::ExecTransType_NEW));
 
-  if (bIsPendingCancel || oStuOrder.m_mapTradeRec.size() < 1)
+  if (bIsPendingCancel || stuOrder.m_mapTradeRec.size() < 1)
   {
     executionReport.set(FIX::LastPx(0));
     executionReport.set(FIX::LastShares(0));
   }
   else
   {
-    executionReport.set(FIX::LastPx(oStuOrder.m_mapTradeRec.rend()->second.m_dMatchPrice));
-    executionReport.set(FIX::LastShares(oStuOrder.m_mapTradeRec.rend()->second.m_iMatchVolume));
+    executionReport.set(FIX::LastPx(stuOrder.m_mapTradeRec.rend()->second.m_dMatchPrice));
+    executionReport.set(FIX::LastShares(stuOrder.m_mapTradeRec.rend()->second.m_iMatchVolume));
   }
 
 	//撤单应答
@@ -249,16 +249,22 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& oStuOrder, int iErrCode /*=
 	//正常情况
   else
   {
-		char chOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oStuOrder.m_cOrderStatus, Convert::Fix);
-		executionReport.set(FIX::OrdStatus(chOrderStatus));
-		executionReport.set(FIX::ExecType(chOrderStatus));
+		executionReport.set(FIX::OrdStatus(stuOrder.m_cOrderStatus));
+		executionReport.set(FIX::ExecType(stuOrder.m_cOrderStatus));
   }
 
-  //m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssAccout, executionReport);
+	std::string ssAccount = stuOrder.m_ssRealAccount;
+	if (!stuOrder.m_ssRecvAccount.empty())
+	{
+		ssAccount = stuOrder.m_ssRecvAccount;
+	}
+	else if (m_mapReal2AliasAcct.count(stuOrder.m_ssRealAccount) > 0)
+	{
+		ssAccount = m_mapReal2AliasAcct[stuOrder.m_ssRealAccount];
+	}
+	executionReport.set(FIX::Account(ssAccount));
 
-	Send(oStuOrder.m_ssRealAccount, executionReport);
-
-	//FIX::Session::sendToTarget(executionReport,)
+	Send(stuOrder.m_ssRealAccount, executionReport);
 }
 
 void CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
@@ -277,18 +283,18 @@ void CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCo
 	return SendOrderCancelReject(stuOrder, iErrCode, ssErrMsg);
 }
 
-void CSgitTdSpi::SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg)
+void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg)
 {
 	FIX42::OrderCancelReject orderCancelReject = FIX42::OrderCancelReject(
-		FIX::OrderID(oStuOrder.m_ssOrderID),
-		FIX::ClOrdID(oStuOrder.m_ssCancelClOrdID),
-		FIX::OrigClOrdID(oStuOrder.m_ssClOrdID),
-		FIX::OrdStatus(m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oStuOrder.m_cOrderStatus, Convert::Fix)),
+		FIX::OrderID(stuOrder.m_ssOrderID),
+		FIX::ClOrdID(stuOrder.m_ssCancelClOrdID),
+		FIX::OrigClOrdID(stuOrder.m_ssClOrdID),
+		FIX::OrdStatus(m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, stuOrder.m_cOrderStatus, Convert::Fix)),
 		FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
 
 	orderCancelReject.set(FIX::Text(ssErrMsg));
 
-	m_stuTdParam.m_pSgitCtx->Send(oStuOrder.m_ssRealAccount, orderCancelReject);
+	m_stuTdParam.m_pSgitCtx->Send(stuOrder.m_ssRealAccount, orderCancelReject);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg)
@@ -368,7 +374,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	FIX::Price price;
 	FIX::Side side;
 	FIX::OpenClose openClose;
-	FIX::IDSource idSource;
+	
 
 	oNewOrderSingle.get(account);
 	oNewOrderSingle.get(clOrdID);
@@ -378,13 +384,13 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(price);
 	oNewOrderSingle.get(side);
 	oNewOrderSingle.get(openClose);
-	oNewOrderSingle.getIfSet(idSource);
+	//oNewOrderSingle.getIfSet(idSource);
 
   //STUOrder
 	stuOrder.m_ssRecvAccount = account.getValue();
 	stuOrder.m_ssRealAccount = GetRealAccont(oNewOrderSingle);
   stuOrder.m_ssClOrdID = clOrdID.getValue();
-  stuOrder.m_cOrderStatus = THOST_FTDC_OST_NoTradeQueueing;
+  stuOrder.m_cOrderStatus = FIX::OrdStatus_PENDING_NEW;
   stuOrder.m_ssSymbol = symbol.getValue();
   stuOrder.m_cSide = side.getValue();
   stuOrder.m_iOrderQty = (int)orderQty.getValue();
@@ -400,19 +406,8 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 
   stuOrder.m_ssOrderRef = ssOrderRef;
   
-	//代码类型校验
 	Convert::EnCvtType enSymbolType = Convert::Unknow;
-	if(!idSource.getValue().empty())
-	{
-		enSymbolType = (Convert::EnCvtType)atoi(idSource.getValue().c_str());
-		if (!CToolkit::CheckIfValid(enSymbolType, ssErrMsg)) return false;
-
-		SetSymbolType(stuOrder.m_ssRealAccount, enSymbolType);
-	}
-	else
-	{
-		enSymbolType = GetSymbolType(stuOrder.m_ssRealAccount);
-	}
+	if(!CheckIdSource(oNewOrderSingle, enSymbolType, ssErrMsg)) return false;
 
 	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
 	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
@@ -484,26 +479,30 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,ClOrdID:%s", ssOrderActionRef.c_str(), clOrdID.getValue().c_str());
   if(!AddOrderRefClOrdID(ssOrderActionRef, clOrdID.getValue(), ssErrMsg)) return false;
 
+
+	Convert::EnCvtType enSymbolType = Convert::Unknow;
+	if (!CheckIdSource(oOrderCancel, enSymbolType, ssErrMsg)) return false;
+
   //1.OrderSysID+ExchangeID
   if (!orderID.getValue().empty() && !securityExchange.getValue().empty())
   {
     strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
-    //strncpy(
-    //  stuInputOrderAction.ExchangeID, 
-    //  m_enSymbolType == Convert::Original ? 
-    //  securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
-    //  sizeof(stuInputOrderAction.ExchangeID));
+		strncpy(
+			stuInputOrderAction.ExchangeID, 
+			enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
+			securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
+			sizeof(stuInputOrderAction.ExchangeID));
   }
   //2.OrderRef+UserID+InstrumentID
   else
   {
     strncpy(stuInputOrderAction.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
     strncpy(stuInputOrderAction.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrderAction.UserID));
-    //strncpy(
-    //  stuInputOrderAction.InstrumentID, 
-    //  m_enSymbolType == Convert::Original ? 
-    //  symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-    //  sizeof(stuInputOrderAction.InstrumentID));
+		strncpy(
+			stuInputOrderAction.InstrumentID, 
+			enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
+			symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+			sizeof(stuInputOrderAction.InstrumentID));
   }
 
   stuInputOrderAction.RequestID = m_acRequestId++;
@@ -523,8 +522,6 @@ void CSgitTdSpi::Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrde
 	stuOrder.m_cSide = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::Side, stuFtdcOrder.Direction, Convert::Fix);
 	stuOrder.m_iOrderQty = stuFtdcOrder.VolumeTotalOriginal;
 	stuOrder.m_dPrice = stuFtdcOrder.LimitPrice;
-	//stuOrder.m_iLeavesQty = stuFtdcOrder.VolumeTotal;
-	//stuOrder.m_iCumQty = 
 }
 
 void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest)
@@ -746,10 +743,6 @@ void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &
 
 void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder)
 {
-  ////OrderRef -> STUOrder (报单引用->委托)
-  //std::map<std::string, STUOrder>					m_mapOrderRef2Order;
-  //stuOrder.Update(*pOrder);
-
   std::map<std::string, STUOrder>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
   if (itFind != m_mapOrderRef2Order.end())
   {
@@ -761,6 +754,27 @@ void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder)
 		Cvt(stuFtdcOrder, stuOrder);
     m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = stuOrder;
   }
+}
+
+
+bool CSgitTdSpi::CheckIdSource(const FIX::Message& oRecvMsg, Convert::EnCvtType &enSymbolType, std::string& ssErrMsg)
+{
+	FIX::IDSource idSource;
+	oRecvMsg.getFieldIfSet(idSource);
+
+	if(!idSource.getValue().empty())
+	{
+		enSymbolType = (Convert::EnCvtType)atoi(idSource.getValue().c_str());
+		if (!CToolkit::CheckIfValid(enSymbolType, ssErrMsg)) return false;
+
+		SetSymbolType(CToolkit::GetSessionKey(oRecvMsg), enSymbolType);
+	}
+	else
+	{
+		enSymbolType = GetSymbolType(CToolkit::GetSessionKey(oRecvMsg));
+	}
+
+	return true;
 }
 
 double CSgitTdSpi::STUOrder::AvgPx() const
@@ -801,6 +815,7 @@ void CSgitTdSpi::STUOrder::Update(const CThostFtdcOrderField& oOrder, const STUT
 void CSgitTdSpi::STUOrder::Update(const CThostFtdcTradeField& oTrade)
 {
   m_mapTradeRec[oTrade.TradeID] = STUTradeRec(oTrade.Price, oTrade.Volume);
+
   m_iCumQty += oTrade.Volume;
   m_iLeavesQty = m_iOrderQty - m_iCumQty;
 }
@@ -861,13 +876,16 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
 		spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
 	}
 
+	std::set<std::string> oSet;
   StringTokenizer stAccountList(apSgitConf->getString(ssAcctListProp), ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   std::string ssKey = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)
   {
+		oSet.insert(*it);
 		m_mapRealAcct2UserInfo[*it] = spUserInfo;
   }
+	m_mapSessionKey2AcctSet[CToolkit::SessionProp2ID(ssSessionProp)] = oSet;
 
   return true;
 }
@@ -883,9 +901,10 @@ Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcc
 	return Convert::Unknow;
 }
 
-void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
+//to do
+void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
 {
-	std::map<std::string, Poco::SharedPtr<STUserInfo>>::iterator it = m_mapRealAcct2UserInfo.find(ssRealAcct);
+	std::map<std::string, Poco::SharedPtr<STUserInfo>>::iterator it = m_mapRealAcct2UserInfo.find(ssSessionKey);
 	if(it != m_mapRealAcct2UserInfo.end())
 	{
 		it->second->m_enCvtType = enSymbolType;
@@ -944,7 +963,7 @@ Convert::EnCvtType CSgitTdSpiDirect::GetSymbolType(const std::string &ssRealAcct
 	return m_stuserInfo.m_enCvtType;
 }
 
-void CSgitTdSpiDirect::SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType)
+void CSgitTdSpiDirect::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
 {
 	m_stuserInfo.m_enCvtType = enSymbolType;
 }

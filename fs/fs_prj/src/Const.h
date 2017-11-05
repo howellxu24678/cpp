@@ -18,15 +18,11 @@ struct STUserInfo
 {
   STUserInfo() 
 		: m_ssOnBehalfOfCompID("")
-    , m_ssAcctRecv("")
     , m_enCvtType(Convert::Unknow)
   {}
 
   FIX::SessionID      m_oSessionID;
-  //FIX::Header         m_oHeader;
 	std::string					m_ssOnBehalfOfCompID;
-  //收到的原始资金账号
-  std::string         m_ssAcctRecv;
   //代码类型
   Convert::EnCvtType  m_enCvtType;
 };

@@ -65,8 +65,8 @@ public:
 		std::string               m_ssRealAccount;//真实资金账号
     std::string               m_ssOrderRef;//报单引用
     std::string               m_ssOrderID;//37合同编号
-		std::string		            m_ssClOrdID;//11委托编号(撤单回报时为41)
-    std::string               m_ssCancelClOrdID;//撤单请求编号 撤单回报时为11
+		std::string		            m_ssClOrdID;//11委托请求编号(撤单回报时为41)
+    std::string               m_ssCancelClOrdID;//要撤掉的原始委托请求编号 撤单回报时为11
 		char					            m_cOrderStatus;//39
 		std::string		            m_ssSymbol;//55
 		char					            m_cSide;//54
@@ -98,7 +98,7 @@ protected:
 
 	virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
 
-	virtual void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType) = 0;
+	virtual void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType) = 0;
 
 	virtual void Send(const std::string &ssRealAcct, FIX::Message& oMsg) = 0;
 
@@ -108,19 +108,22 @@ protected:
 
 	bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
 
+	//代码类型校验
+	bool CheckIdSource(const FIX::Message& oRecvMsg, Convert::EnCvtType &enSymbolType, std::string& ssErrMsg);
+
 	//bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
 
 	bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
 
 	bool Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue);
 
-	void SendExecutionReport(const STUOrder& oStuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
+	void SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
 
 	void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
 	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
-	void SendOrderCancelReject(const STUOrder& oStuOrder, int iErrCode, const std::string& ssErrMsg);
+	void SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg);
 
 	void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
 
@@ -517,11 +520,14 @@ public:
 
 	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
-	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
+	void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
 	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
 	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
+
+	//SessionKey -> 真实资金账号列表
+	std::map<std::string, std::set<std::string>>				m_mapSessionKey2AcctSet; 
 };
 
 
@@ -536,7 +542,7 @@ public:
 
 	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
-	void SetSymbolType(const std::string &ssRealAcct, Convert::EnCvtType enSymbolType);
+	void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
 	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
