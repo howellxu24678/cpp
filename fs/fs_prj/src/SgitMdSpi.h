@@ -110,7 +110,7 @@ private:
   RWLock                                                m_rwLockSnapShot;
 
 
-  std::map<std::string, STUserInfo>                     m_mapSessionKey2FixInfo;
+  std::map<std::string, STUFIXInfo>                     m_mapSessionKey2FixInfo;
   RWLock                                                m_rwLockSessionKey2FixInfo;
 };
 

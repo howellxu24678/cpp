@@ -24,6 +24,11 @@ using namespace Poco::Util;
 
 const std::string ssOrderRefFormat = "%012d";
 
+
+/*
+执行回报推送的流程：1.报单引用-》委托单(包括成交信息)-》资金账号
+资金账号-》FIX路由信息
+*/
 class CSgitContext;
 class CSgitTdSpi : public CThostFtdcTraderSpi
 {
@@ -96,9 +101,9 @@ protected:
 
   virtual bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp) = 0;
 
-	virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
+	//virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
 
-	virtual void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType) = 0;
+	//virtual void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType) = 0;
 
 	virtual void Send(const std::string &ssRealAcct, FIX::Message& oMsg) = 0;
 
@@ -141,7 +146,7 @@ protected:
 
 	void WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID);
 
-  void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder);
+  void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder);
 
 	///报单录入请求
 	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
@@ -518,14 +523,14 @@ public:
 
   bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
-	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+	//Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
-	void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
+	//void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
 	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
   //真实账号->所用代码类型等信息 --用于交易推送
-	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
+	std::map<std::string, Poco::SharedPtr<STUFIXInfo>>	m_mapRealAcct2UserInfo;
 
 	////SessionKey -> 真实资金账号列表
 	//std::map<std::string, std::set<std::string>>				m_mapSessionKey2AcctSet; 
@@ -541,13 +546,13 @@ public:
 
   bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
-	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+	//Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
-	void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
+	//void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
 	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
 
-	STUserInfo															m_stuserInfo;
+	STUFIXInfo															m_stuserInfo;
 };
 #endif // __SGITTRADESPI_H__

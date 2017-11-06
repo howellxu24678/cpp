@@ -50,6 +50,6 @@ public:
 
 	static void Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
 
-	static void SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg);
+	static void SetUserInfo(const STUFIXInfo &stuUserInfo, FIX::Message &oMsg);
 };
 #endif // __TOOLKIT_H__

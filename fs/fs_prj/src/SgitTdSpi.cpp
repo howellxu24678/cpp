@@ -147,10 +147,8 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
      pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  UpsertOrder(*pOrder);
-
 	STUOrder stuOrder;
-	if(!GetStuOrder(pOrder->OrderRef, stuOrder)) return;
+  UpsertOrder(*pOrder, stuOrder);;
 
   //¶©µ¥±»¾Ü¾ø
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
@@ -384,7 +382,6 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(price);
 	oNewOrderSingle.get(side);
 	oNewOrderSingle.get(openClose);
-	//oNewOrderSingle.getIfSet(idSource);
 
   //STUOrder
 	stuOrder.m_ssRecvAccount = account.getValue();
@@ -741,16 +738,16 @@ void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &
 	m_fOrderRef2ClOrdID << ssOrderRef << " " << ssClOrdID << endl;
 }
 
-void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder)
+void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder)
 {
   std::map<std::string, STUOrder>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
   if (itFind != m_mapOrderRef2Order.end())
   {
     itFind->second.Update(stuFtdcOrder, m_stuTdParam);
+		stuOrder = itFind->second;
   }
   else
   {
-    STUOrder stuOrder;
 		Cvt(stuFtdcOrder, stuOrder);
     m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = stuOrder;
   }
@@ -767,11 +764,11 @@ bool CSgitTdSpi::CheckIdSource(const FIX::Message& oRecvMsg, Convert::EnCvtType 
 		enSymbolType = (Convert::EnCvtType)atoi(idSource.getValue().c_str());
 		if (!CToolkit::CheckIfValid(enSymbolType, ssErrMsg)) return false;
 
-		SetSymbolType(CToolkit::GetSessionKey(oRecvMsg), enSymbolType);
+		m_stuTdParam.m_pSgitCtx->SetSymbolType(CToolkit::GetSessionKey(oRecvMsg), enSymbolType);
 	}
 	else
 	{
-		enSymbolType = GetSymbolType(CToolkit::GetSessionKey(oRecvMsg));
+		enSymbolType = m_stuTdParam.m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(oRecvMsg));
 	}
 
 	return true;
@@ -868,54 +865,50 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
     return false;
   }
 
-	Poco::SharedPtr<STUserInfo> spUserInfo(new STUserInfo());
+	Poco::SharedPtr<STUFIXInfo> spUserInfo(new STUFIXInfo());
 	CToolkit::Convert2SessionIDBehalfCompID(ssSessionProp, spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
 
 	if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
 	{
-		spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
+		m_stuTdParam.m_pSgitCtx->SetSymbolType(CToolkit::SessionProp2ID(ssSessionProp), 
+			(Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType"));
 	}
 
-	//std::set<std::string> oSet;
   StringTokenizer stAccountList(apSgitConf->getString(ssAcctListProp), ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   std::string ssKey = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)
   {
-		//oSet.insert(*it);
 		m_mapRealAcct2UserInfo[*it] = spUserInfo;
   }
-
-  m_stuTdParam.m_pSgitCtx->SetSymbolType(CToolkit::SessionProp2ID(ssSessionProp), spUserInfo->m_enCvtType);
-	//m_mapSessionKey2AcctSet[CToolkit::SessionProp2ID(ssSessionProp)] = oSet;
 
   return true;
 }
 
-Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcct)
-{
-	std::map<std::string, Poco::SharedPtr<STUserInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
-	if (cit != m_mapRealAcct2UserInfo.end())
-	{
-		return cit->second->m_enCvtType;
-	}
-
-	return Convert::Unknow;
-}
+//Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcct)
+//{
+//	std::map<std::string, Poco::SharedPtr<STUFIXInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
+//	if (cit != m_mapRealAcct2UserInfo.end())
+//	{
+//		return cit->second->m_enCvtType;
+//	}
+//
+//	return Convert::Unknow;
+//}
 
 //to do
-void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
-{
-	std::map<std::string, Poco::SharedPtr<STUserInfo>>::iterator it = m_mapRealAcct2UserInfo.find(ssSessionKey);
-	if(it != m_mapRealAcct2UserInfo.end())
-	{
-		it->second->m_enCvtType = enSymbolType;
-	}
-}
+//void CSgitTdSpiHubTran::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
+//{
+//	std::map<std::string, Poco::SharedPtr<STUFIXInfo>>::iterator it = m_mapRealAcct2UserInfo.find(ssSessionKey);
+//	if(it != m_mapRealAcct2UserInfo.end())
+//	{
+//		it->second->m_enCvtType = enSymbolType;
+//	}
+//}
 
 void CSgitTdSpiHubTran::Send(const std::string &ssRealAcct, FIX::Message& oMsg)
 {
-	std::map<std::string, Poco::SharedPtr<STUserInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
+	std::map<std::string, Poco::SharedPtr<STUFIXInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
 	if (cit == m_mapRealAcct2UserInfo.end())
 	{
 		LOG(ERROR_LOG_LEVEL, "Can not find UserInfo by real account:%s", ssRealAcct.c_str());
@@ -962,15 +955,15 @@ bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, cons
   return true;
 }
 
-Convert::EnCvtType CSgitTdSpiDirect::GetSymbolType(const std::string &ssRealAcct)
-{
-	return m_stuserInfo.m_enCvtType;
-}
-
-void CSgitTdSpiDirect::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
-{
-	m_stuserInfo.m_enCvtType = enSymbolType;
-}
+//Convert::EnCvtType CSgitTdSpiDirect::GetSymbolType(const std::string &ssRealAcct)
+//{
+//	return m_stuserInfo.m_enCvtType;
+//}
+//
+//void CSgitTdSpiDirect::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
+//{
+//	m_stuserInfo.m_enCvtType = enSymbolType;
+//}
 
 void CSgitTdSpiDirect::Send(const std::string &ssRealAcct, FIX::Message& oMsg)
 {
