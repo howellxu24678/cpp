@@ -876,16 +876,18 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
 		spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
 	}
 
-	std::set<std::string> oSet;
+	//std::set<std::string> oSet;
   StringTokenizer stAccountList(apSgitConf->getString(ssAcctListProp), ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   std::string ssKey = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)
   {
-		oSet.insert(*it);
+		//oSet.insert(*it);
 		m_mapRealAcct2UserInfo[*it] = spUserInfo;
   }
-	m_mapSessionKey2AcctSet[CToolkit::SessionProp2ID(ssSessionProp)] = oSet;
+
+  m_stuTdParam.m_pSgitCtx->SetSymbolType(CToolkit::SessionProp2ID(ssSessionProp), spUserInfo->m_enCvtType);
+	//m_mapSessionKey2AcctSet[CToolkit::SessionProp2ID(ssSessionProp)] = oSet;
 
   return true;
 }
@@ -954,6 +956,8 @@ bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, cons
   {
     m_stuserInfo.m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
   }
+
+  m_stuTdParam.m_pSgitCtx->SetSymbolType(CToolkit::SessionProp2ID(ssSessionProp), m_stuserInfo.m_enCvtType);
 
   return true;
 }

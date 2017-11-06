@@ -524,10 +524,11 @@ public:
 
 	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
+  //真实账号->所用代码类型等信息 --用于交易推送
 	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
 
-	//SessionKey -> 真实资金账号列表
-	std::map<std::string, std::set<std::string>>				m_mapSessionKey2AcctSet; 
+	////SessionKey -> 真实资金账号列表
+	//std::map<std::string, std::set<std::string>>				m_mapSessionKey2AcctSet; 
 };
 
 

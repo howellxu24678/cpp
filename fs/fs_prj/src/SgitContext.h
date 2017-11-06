@@ -33,7 +33,9 @@ public:
 
   void Send(const std::string &ssAcct, FIX::Message &oMsg);
 
-  //void AddFixInfo(const FIX::Message& oMsg);
+  void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
+
+  Convert::EnCvtType GetSymbolType(const std::string &ssSessionKey);
 
 protected:
   bool InitConvert();
@@ -55,27 +57,31 @@ protected:
   ////预先发起登录
   //bool PreLogin();
 private:
-  std::string                           m_ssSgitCfgPath;
-  Convert                               m_oConvert;
-  std::string                           m_ssCvtCfgPath;
+  std::string                                         m_ssSgitCfgPath;
+  Convert                                             m_oConvert;
+  std::string                                         m_ssCvtCfgPath;
 
-	AutoPtr<IniFileConfiguration>					m_apSgitConf;
+	AutoPtr<IniFileConfiguration>					              m_apSgitConf;
 
-  SharedPtr<CSgitMdSpi>                          m_spMdSpi;
+  SharedPtr<CSgitMdSpi>                               m_spMdSpi;
 
   ////账户别名(SessionID+onBehalfOfCompID)->真实资金账户
   //std::map<std::string, std::string>              m_mapAlias2Acct;
 
-  //真实资金账户->SessionID + onBehalfOfCompID + 原始送入账户 + 所用代码类型 --用于交易推送
-  std::map<std::string, STUserInfo>               m_mapAcct2FixInfo;
-  RWLock                                          m_rwAcct2FixInfo;
+  ////真实资金账户->SessionID + onBehalfOfCompID + 原始送入账户 + 所用代码类型 --用于交易推送
+  //std::map<std::string, Poco::SharedPtr<STUserInfo>>  m_mapAcct2FixInfo;
+  //RWLock                                              m_rwAcct2FixInfo;
 
-  //fix用户(SessionID+onBehalfOfCompID)->代码类型 --用于行情推送
-  std::map<std::string, Convert::EnCvtType>       m_mapFixUser2CvtType;
-  RWLock                                          m_rwFixUser2CvtType;
+  //fix用户(SessionID+onBehalfOfCompID)->代码类型 --用于交易行情推送
+  std::map<std::string, Convert::EnCvtType>           m_mapFixUser2SymbolType;
+  RWLock                                              m_rwFixUser2SymbolType;
+
+  ////fix用户(SessionID+onBehalfOfCompID)->所用代码类型等信息 --用于交易行情推送
+  ////std::map<std::string, SharedPtr<STUserInfo>>        m_mapFixUser2Info;
+  ////RWLock                                              m_rwFixUser2Info;
 
   //SessionID->TdSpi实例
-  std::map<std::string, SharedPtr<CSgitTdSpi>>    m_mapSessionID2TdSpi;
-  RWLock                                          m_rwSessionID2TdSpi;
+  std::map<std::string, SharedPtr<CSgitTdSpi>>        m_mapSessionID2TdSpi;
+  RWLock                                              m_rwSessionID2TdSpi;
 };
 #endif // __SGITAPIMANAGER_H__

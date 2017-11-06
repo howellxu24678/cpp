@@ -319,3 +319,18 @@ void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSession
   }
 }
 
+void CSgitContext::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
+{
+  ScopedWriteRWLock scopeWriteLock(m_rwFixUser2SymbolType);
+  m_mapFixUser2SymbolType[ssSessionKey] = enSymbolType;
+}
+
+Convert::EnCvtType CSgitContext::GetSymbolType(const std::string &ssSessionKey)
+{
+  ScopedReadRWLock scopeReadLock(m_rwFixUser2SymbolType);
+  std::map<std::string, Convert::EnCvtType>::const_iterator citFind = m_mapFixUser2SymbolType.find(ssSessionKey);
+  if (citFind != m_mapFixUser2SymbolType.end()) return citFind->second;
+
+  return Convert::Unknow;
+}
+
