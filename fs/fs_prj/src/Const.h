@@ -14,17 +14,17 @@ const std::string G_CONFIG_DICT = "dict";
 
 
 //保存Fix用户的关键信息，回复消息时需要用到
-struct STUFIXInfo
+struct STUserInfo
 {
-  STUFIXInfo() 
+  STUserInfo() 
 		: m_ssOnBehalfOfCompID("")
-    //, m_enCvtType(Convert::Unknow)
+    , m_enCvtType(Convert::Unknow)
   {}
 
   FIX::SessionID      m_oSessionID;
 	std::string					m_ssOnBehalfOfCompID;
-  ////代码类型
-  //Convert::EnCvtType  m_enCvtType;
+  //代码类型
+  Convert::EnCvtType  m_enCvtType;
 };
 
 #endif // __CONST_H__

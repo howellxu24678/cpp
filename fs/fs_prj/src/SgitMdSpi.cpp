@@ -15,7 +15,7 @@ CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const
   strncpy(m_stuLogin.Password, ssPassword.c_str(), sizeof(m_stuLogin.Password));
 
   m_mapCode2SubSession.clear();
-  m_lSubAllCodeSession.clear();
+  m_setSubAllCodeSession.clear();
   m_mapSnapshot.clear();
 }
 

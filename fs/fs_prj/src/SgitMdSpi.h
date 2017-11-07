@@ -102,16 +102,15 @@ private:
   std::map<std::string, std::set<std::string>>          m_mapCode2SubSession; 
 
   //订阅全量代码的session
-  std::set<std::string>                                 m_lSubAllCodeSession;
+  std::set<std::string>                                 m_setSubAllCodeSession;
+
+  std::map<std::string, STUserInfo>                     m_mapSessionKey2FixInfo;
+  RWLock                                                m_rwLockSessionKey2FixInfo;
 
   //保存全市场行情快照
   std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
   //全市场行情快照读写锁
   RWLock                                                m_rwLockSnapShot;
-
-
-  std::map<std::string, STUFIXInfo>                     m_mapSessionKey2FixInfo;
-  RWLock                                                m_rwLockSessionKey2FixInfo;
 };
 
 #endif // __SGITMDSPI_H__

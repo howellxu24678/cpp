@@ -196,96 +196,9 @@ std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::
   return m_oConvert.CvtSymbol(ssSymbol, enDstType);
 }
 
-void CSgitContext::Send(const std::string &ssAcct, FIX::Message &oMsg)
-{
-  ///*
-  //1. 找到原始送入的账户（真名？别名？）
-  //2. 原始SessionID
-  //3. header中的信息
-  //*/
-  //STUFixInfo stuFixInfo;
-  //if(!GetFixInfo(ssAcct, stuFixInfo))
-  //{
-  //  LOG(ERROR_LOG_LEVEL, "Failed to get fixinto by account:%s", ssAcct.c_str());
-  //  return;
-  //}
-
-  //SetFixInfo(stuFixInfo, oMsg);
-  //try
-  //{
-  //  FIX::Session::sendToTarget( oMsg, stuFixInfo.m_oSessionID );
-  //}
-  //catch ( FIX::SessionNotFound& e) 
-  //{
-  //  LOG(ERROR_LOG_LEVEL, "%s", e.what());
-  //}
-}
-
-//void CSgitContext::AddFixInfo(const FIX::Message& oMsg)
-//{
-//  STUFixInfo stuFixInfo;
-//  stuFixInfo.m_oSessionID = oMsg.getSessionID();
-//  stuFixInfo.m_oHeader = oMsg.getHeader();
-//  AddFixInfo(CToolkit::GetSessionKey(oMsg), stuFixInfo);
-//
-//
-//  FIX::Account account;
-//  oMsg.getFieldIfSet(account);
-//  if (account.getValue().empty()) return;
-//
-//  stuFixInfo.m_ssAcctRecv = account.getValue();
-//  //AddFixInfo(GetRealAccont(oMsg), stuFixInfo);
-//}
-//
-//void CSgitContext::AddFixInfo(const std::string &ssKey, const STUFixInfo &stuFixInfo)
-//{
-//  if (m_mapAcct2FixInfo.count(ssKey) > 0) return;
-//  m_mapAcct2FixInfo[ssKey] = stuFixInfo;
-//}
-//
-//bool CSgitContext::GetFixInfo(const std::string &ssAcct, STUFixInfo &stuFixInfo)
-//{
-//  std::map<std::string, STUFixInfo>::const_iterator cit = m_mapAcct2FixInfo.find(ssAcct);
-//  if(cit != m_mapAcct2FixInfo.end())
-//  {
-//    stuFixInfo = cit->second;
-//    return true;
-//  }
-//
-//  return false;
-//}
-//
-//void CSgitContext::SetFixInfo(const STUFixInfo &stuFixInfo, FIX::Message &oMsg)
-//{
-//  if (!stuFixInfo.m_ssAcctRecv.empty())
-//    oMsg.setField(FIX::Account(stuFixInfo.m_ssAcctRecv));
-//
-//  
-//  FIX::OnBehalfOfCompID onBehalfOfCompID;
-//  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfCompID.getField()))
-//  {
-//    FIX::DeliverToCompID deliverToCompID(stuFixInfo.m_oHeader.getField(onBehalfOfCompID.getField()));
-//    oMsg.getHeader().setField(deliverToCompID);
-//  }
-//
-//  FIX::SenderSubID senderSubID;
-//  if (stuFixInfo.m_oHeader.isSetField(senderSubID.getField()))
-//  {
-//    FIX::TargetSubID targetSubID(stuFixInfo.m_oHeader.getField(senderSubID.getField()));
-//    oMsg.getHeader().setField(targetSubID);
-//  }
-//
-//  FIX::OnBehalfOfSubID onBehalfOfSubID;
-//  if (stuFixInfo.m_oHeader.isSetField(onBehalfOfSubID.getField()))
-//  {
-//    FIX::DeliverToSubID deliverToSubID(stuFixInfo.m_oHeader.getField(onBehalfOfSubID.getField()));
-//    oMsg.getHeader().setField(deliverToSubID);
-//  }
-//}
-
 std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Convert::EnCvtType enDstType)
 {
-	return m_oConvert.CvtExchange(ssExchange, enDstType);
+  return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
 
 void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
@@ -319,18 +232,25 @@ void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSession
   }
 }
 
-void CSgitContext::SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
+void CSgitContext::AddUserInfo(const std::string &ssSessionKey, SharedPtr<STUserInfo> spStuFixInfo)
 {
-  ScopedWriteRWLock scopeWriteLock(m_rwFixUser2SymbolType);
-  m_mapFixUser2SymbolType[ssSessionKey] = enSymbolType;
+  ScopedWriteRWLock scopeWriteLock(m_rwFixUser2Info);
+  m_mapFixUser2Info[ssSessionKey] = spStuFixInfo;
 }
 
 Convert::EnCvtType CSgitContext::GetSymbolType(const std::string &ssSessionKey)
 {
-  ScopedReadRWLock scopeReadLock(m_rwFixUser2SymbolType);
-  std::map<std::string, Convert::EnCvtType>::const_iterator citFind = m_mapFixUser2SymbolType.find(ssSessionKey);
-  if (citFind != m_mapFixUser2SymbolType.end()) return citFind->second;
+  ScopedReadRWLock scopeReadLock(m_rwFixUser2Info);
+  std::map<std::string, SharedPtr<STUserInfo>>::const_iterator citFind = m_mapFixUser2Info.find(ssSessionKey);
+  if (citFind != m_mapFixUser2Info.end()) return citFind->second->m_enCvtType;
 
   return Convert::Unknow;
+}
+
+void CSgitContext::UpdateSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
+{
+  ScopedWriteRWLock scopeWriteLock(m_rwFixUser2Info);
+  std::map<std::string, SharedPtr<STUserInfo>>::iterator itFind = m_mapFixUser2Info.find(ssSessionKey);
+  if (itFind != m_mapFixUser2Info.end()) itFind->second->m_enCvtType = enSymbolType;
 }
 

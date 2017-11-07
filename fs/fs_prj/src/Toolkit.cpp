@@ -5,6 +5,8 @@
 #include "Poco/DateTimeFormat.h"
 #include "Poco/DateTimeFormatter.h"
 #include "Poco/StringTokenizer.h"
+#include "quickfix/Session.h"
+#include "Log.h"
 
 bool CToolkit::IsAliasAcct(const std::string &ssAcct)
 {
@@ -107,11 +109,34 @@ void CToolkit::Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, F
 	if (stSession.count() > 1) ssOnBehalfCompID = stSession[1];
 }
 
-void CToolkit::SetUserInfo(const STUFIXInfo &stuUserInfo, FIX::Message &oMsg)
+void CToolkit::SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg)
 {
 	if (!stuUserInfo.m_ssOnBehalfOfCompID.empty())
 	{
 		oMsg.getHeader().setField(FIX::DeliverToCompID(stuUserInfo.m_ssOnBehalfOfCompID));
 	}
+}
+
+void CToolkit::Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg)
+{
+  FIX::BeginString beginString;
+  FIX::SenderCompID senderCompID;
+  FIX::TargetCompID targetCompID;
+  FIX::OnBehalfOfCompID onBehalfOfCompId;
+  oRecvMsg.getHeader().getField(beginString);
+  oRecvMsg.getHeader().getField(senderCompID);
+  oRecvMsg.getHeader().getField(targetCompID);
+  oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
+
+  FIX::SessionID oSendSessionID(beginString.getValue(), targetCompID.getValue(), senderCompID.getValue());
+
+  try
+  {
+    FIX::Session::sendToTarget(oSendMsg, oSendSessionID);
+  }
+  catch ( FIX::SessionNotFound& e) 
+  {
+    LOG(ERROR_LOG_LEVEL, "msg:%s, err:%s", oSendMsg.toString(), e.what());
+  }
 }
 

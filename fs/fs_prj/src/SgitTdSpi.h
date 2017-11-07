@@ -101,11 +101,11 @@ protected:
 
   virtual bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp) = 0;
 
-	//virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
+	virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;
 
-	//virtual void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType) = 0;
+  virtual Poco::SharedPtr<STUserInfo> GetUserInfo(const std::string &ssRealAcct) = 0;
 
-	virtual void Send(const std::string &ssRealAcct, FIX::Message& oMsg) = 0;
+	void SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMsg);
 
   virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
@@ -125,6 +125,8 @@ protected:
 	void SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
 
 	void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
+
+  void SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg);
 
 	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
@@ -523,14 +525,16 @@ public:
 
   bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
-	//Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+
+  Poco::SharedPtr<STUserInfo> GetUserInfo(const std::string &ssRealAcct);
 
 	//void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
-	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
+	//void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
 private:
   //真实账号->所用代码类型等信息 --用于交易推送
-	std::map<std::string, Poco::SharedPtr<STUFIXInfo>>	m_mapRealAcct2UserInfo;
+	std::map<std::string, Poco::SharedPtr<STUserInfo>>	m_mapRealAcct2UserInfo;
 
 	////SessionKey -> 真实资金账号列表
 	//std::map<std::string, std::set<std::string>>				m_mapSessionKey2AcctSet; 
@@ -544,15 +548,19 @@ public:
   CSgitTdSpiDirect(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpiDirect();
 
+  virtual bool Init();
+
   bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
-	//Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
+	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
+  Poco::SharedPtr<STUserInfo> GetUserInfo(const std::string &ssRealAcct);
 	//void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
-	void Send(const std::string &ssRealAcct, FIX::Message& oMsg);
+	/*void Send(const std::string &ssRealAcct, FIX::Message& oMsg);*/
 private:
+  Poco::SharedPtr<STUserInfo>                   m_spUserInfo;
 
-	STUFIXInfo															m_stuserInfo;
+	//STUserInfo															m_stuserInfo;
 };
 #endif // __SGITTRADESPI_H__
