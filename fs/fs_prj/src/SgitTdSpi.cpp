@@ -327,7 +327,7 @@ void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, c
 		FIX::OrderID(stuOrder.m_ssOrderID),
 		FIX::ClOrdID(stuOrder.m_ssCancelClOrdID),
 		FIX::OrigClOrdID(stuOrder.m_ssClOrdID),
-		FIX::OrdStatus(m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, stuOrder.m_cOrderStatus, Convert::Fix)),
+		FIX::OrdStatus(stuOrder.m_cOrderStatus),
 		FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
 
 	orderCancelReject.set(FIX::Text(ssErrMsg));
