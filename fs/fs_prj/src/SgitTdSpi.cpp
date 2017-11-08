@@ -298,7 +298,7 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStat
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport(
     FIX::OrderID(orderID.getValue().empty() ? " " : orderID.getValue()),
     FIX::ExecID(CToolkit::GetUuid()),
-    FIX::ExecTransType(FIX::ExecTransType_CORRECT),
+    FIX::ExecTransType(FIX::ExecTransType_STATUS),
     FIX::ExecType(FIX::ExecType_NEW),
     FIX::OrdStatus(FIX::OrdStatus_NEW),
     FIX::Symbol(symbol),
