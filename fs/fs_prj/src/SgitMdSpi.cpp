@@ -139,18 +139,17 @@ void CSgitMdSpi::SendSnapShot(const FIX42::MarketDataRequest& oMarketDataRequest
   FIX::MDReqID mdReqID;
   oMarketDataRequest.get(mdReqID);
 
+  Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(oMarketDataRequest));
   CThostFtdcDepthMarketDataField stuMarketData;
-  for(std::set<std::string>::const_iterator cit = symbolSet.begin(); cit != symbolSet.end(); cit++)
+  for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    if (!GetMarketData(*cit, stuMarketData)) continue;
+    if (!GetMarketData(*citSymbol, stuMarketData)) continue;
     
     FIX42::MarketDataSnapshotFullRefresh MdSnapShot = FIX42::MarketDataSnapshotFullRefresh();
     MdSnapShot.setField(mdReqID);
-
+    MdSnapShot.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+      *citSymbol : m_pSgitCtx->CvtSymbol(*citSymbol, enSymbolType)));
   }
-
-
-
 }
 
 void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
