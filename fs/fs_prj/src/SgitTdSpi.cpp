@@ -100,7 +100,7 @@ void CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderAction,iRet:%d", iRet);
-		SendOrderCancelReject(stuInputOrderAction.OrderRef, iRet, "Failed to call api:ReqOrderAction");
+		SendOrderCancelReject(oOrderCancel, "Failed to call api:ReqOrderAction");
     return;
 	}
 }
@@ -325,7 +325,7 @@ void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, c
 {
 	FIX42::OrderCancelReject orderCancelReject = FIX42::OrderCancelReject(
 		FIX::OrderID(stuOrder.m_ssOrderID),
-		FIX::ClOrdID(stuOrder.m_ssCancelClOrdID),
+		FIX::ClOrdID(" "),
 		FIX::OrigClOrdID(stuOrder.m_ssClOrdID),
 		FIX::OrdStatus(stuOrder.m_cOrderStatus),
 		FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
@@ -349,7 +349,7 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
     FIX::OrderID(orderID.getValue().empty() ? "" : orderID.getValue()),
     FIX::ClOrdID(clOrderID),
     FIX::OrigClOrdID(origClOrdID),
-    FIX::OrdStatus(FIX::OrdStatus_SUSPENDED),
+    FIX::OrdStatus(FIX::OrdStatus_NEW),
     FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
 
   orderCancelReject.set(FIX::Text(ssErrMsg));
@@ -357,10 +357,10 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
   CToolkit::Send(oOrderCancel, orderCancelReject);
 }
 
-//bool CSgitTradeSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
-//{
-//	return Get(m_chOrderRef2ClOrderID, ssOrderRef, ssClOrdID);
-//}
+bool CSgitTdSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
+{
+  return Get(m_mapOrderRef2ClOrdID, ssOrderRef, ssClOrdID);
+}
 
 bool CSgitTdSpi::GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef)
 {
@@ -505,10 +505,10 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
     return false;
   }
 
-	//将撤单请求ID赋值到原有委托结构体中
-	STUOrder stuOrder;
-	if(!GetStuOrder(ssOrderRef, stuOrder)) return false;
-  stuOrder.m_ssCancelClOrdID = origClOrdID.getValue();
+	////将撤单请求ID赋值到原有委托结构体中
+	//STUOrder stuOrder;
+	//if(!GetStuOrder(ssOrderRef, stuOrder)) return false;
+ // stuOrder.m_ssCancelClOrdID = origClOrdID.getValue();
 
   memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
   stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
@@ -551,6 +551,7 @@ void CSgitTdSpi::Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrde
 {
 	stuOrder.m_ssRealAccount = stuFtdcOrder.InvestorID;
 	stuOrder.m_ssOrderRef = stuFtdcOrder.OrderRef;
+  GetClOrdID(stuFtdcOrder.OrderRef, stuOrder.m_ssClOrdID);
 	stuOrder.m_ssOrderID = stuFtdcOrder.OrderSysID;
 	stuOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, stuFtdcOrder.OrderStatus, Convert::Fix);
 	Convert::EnCvtType enSymbolType = GetSymbolType(stuOrder.m_ssRealAccount);
@@ -922,7 +923,7 @@ CSgitTdSpi::STUOrder::STUOrder()
   , m_ssOrderRef("")
   , m_ssOrderID("")
 	, m_ssClOrdID("")
-	, m_ssCancelClOrdID("")
+	//, m_ssCancelClOrdID("")
 	, m_cOrderStatus(THOST_FTDC_OST_NoTradeQueueing)
 	, m_ssSymbol("")
 	, m_cSide('*')

@@ -2,6 +2,8 @@
 #include "SgitContext.h"
 #include "Log.h"
 #include "quickfix/fix42/MarketDataRequestReject.h"
+#include "quickfix/fix42/MarketDataSnapshotFullRefresh.h"
+#include "quickfix/fix42/MarketDataIncrementalRefresh.h"
 #include "Toolkit.h"
 
 
@@ -53,10 +55,10 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   switch(subscriptionRequestType.getValue())
   {
   case FIX::SubscriptionRequestType_SNAPSHOT:
-    SendSnapShot(symbolSet, mdReqID.getValue(), oMarketDataRequest.getSessionID().toString());
+    SendSnapShot(oMarketDataRequest, symbolSet);
     break;
   case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
-    SendSnapShot(symbolSet, mdReqID.getValue(), oMarketDataRequest.getSessionID().toString());
+    SendSnapShot(oMarketDataRequest, symbolSet);
     AddSub(symbolSet, oMarketDataRequest.getSessionID().toString());
     break;
   case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
@@ -64,28 +66,6 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   default:
     break;
   }
-
-  //char **ppInstrumentID = new char* [iSymCount];
-  //for (int i = 0; i < iSymCount; i++)
-  //{
-  //  oMarketDataRequest.getGroup(i + 1, symGroup);
-  //  symGroup.get(symbol);
-  //  LOG(DEBUG_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
-
-  //  iSymLen = symbol.getValue().size();
-  //  ppInstrumentID[i] = new char[iSymLen + 1];
-  //  memset(ppInstrumentID[i], 0, iSymLen + 1);
-  //  strncpy(ppInstrumentID[i], symbol.getValue().c_str(), iSymLen);
-  //}
-  //m_pMdReqApi->SubscribeMarketData(ppInstrumentID, iSymCount);
-
-  //for (int i = 0; i < iSymCount; i++)
-  //{
-  //  delete[] ppInstrumentID[i];
-  //  ppInstrumentID[i] = NULL;
-  //}
-  //delete[] ppInstrumentID;
-  //ppInstrumentID = NULL;
 }
 
 void CSgitMdSpi::OnFrontConnected()
@@ -154,8 +134,22 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
 
 }
 
-void CSgitMdSpi::SendSnapShot(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID)
+void CSgitMdSpi::SendSnapShot(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
 {
+  FIX::MDReqID mdReqID;
+  oMarketDataRequest.get(mdReqID);
+
+  CThostFtdcDepthMarketDataField stuMarketData;
+  for(std::set<std::string>::const_iterator cit = symbolSet.begin(); cit != symbolSet.end(); cit++)
+  {
+    if (!GetMarketData(*cit, stuMarketData)) continue;
+    
+    FIX42::MarketDataSnapshotFullRefresh MdSnapShot = FIX42::MarketDataSnapshotFullRefresh();
+    MdSnapShot.setField(mdReqID);
+
+  }
+
+
 
 }
 
@@ -214,5 +208,14 @@ void CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSess
 void CSgitMdSpi::AddFixInfo(const FIX::Message& oMsg)
 {
 
+}
+
+bool CSgitMdSpi::GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarketDataField &stuMarketData)
+{
+  ScopedReadRWLock scopeReadLock(m_rwLockSnapShot);
+
+  if (m_mapSnapshot.count(ssSymbol) < 1) return false;
+  stuMarketData = m_mapSnapshot[ssSymbol];
+  return true;
 }
 

@@ -28,6 +28,23 @@ public:
   void MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest);
 
 protected:
+
+  bool GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarketDataField &stuMarketData);
+
+  bool CheckValid(
+    const std::set<std::string> &symbolSet,
+    const std::string &ssMDReqID, 
+    const std::string &ssSessionID, 
+    const std::string &ssSessionKey);
+
+  //发送快照
+  void SendSnapShot(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+
+  //建立订阅关系
+  void AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
+
+  void AddFixInfo(const FIX::Message& oMsg);
+
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
   virtual void OnFrontConnected();
 
@@ -74,20 +91,6 @@ protected:
 
   ///递延交割行情
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
-
-	bool CheckValid(
-    const std::set<std::string> &symbolSet,
-    const std::string &ssMDReqID, 
-    const std::string &ssSessionID, 
-    const std::string &ssSessionKey);
-
-  //发送快照
-  void SendSnapShot(const std::set<std::string> &symbolSet, const std::string &ssMDReqID, const std::string &ssSessionID);
-
-  //建立订阅关系
-  void AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
-
-  void AddFixInfo(const FIX::Message& oMsg);
 
 private:
   CThostFtdcMdApi													              *m_pMdReqApi;

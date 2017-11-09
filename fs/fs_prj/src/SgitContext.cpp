@@ -38,8 +38,6 @@ bool CSgitContext::Init()
 		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("au1801", Convert::Bloomberg), Convert::Original).c_str());
 
     if(!InitSgitApi()) return false;
-
-		//if(!InitFixUserConf()) return false;
   }
   catch ( std::exception & e)
   {
@@ -67,8 +65,8 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, c
 
   pTdReqApi->IsReviveNtyCapital(false);
   pTdReqApi->RegisterSpi(spTdSpi);
-  pTdReqApi->SubscribePublicTopic(THOST_TERT_QUICK);
-  pTdReqApi->SubscribePrivateTopic(THOST_TERT_QUICK);
+  pTdReqApi->SubscribePublicTopic(THOST_TERT_RESUME);
+  pTdReqApi->SubscribePrivateTopic(THOST_TERT_RESUME);
 
   pTdReqApi->RegisterFront(const_cast<char*>(ssTradeServerAddr.c_str()));
   pTdReqApi->Init();
