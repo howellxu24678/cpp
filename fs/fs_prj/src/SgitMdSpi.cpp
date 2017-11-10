@@ -141,6 +141,7 @@ void CSgitMdSpi::SendSnapShot(const FIX42::MarketDataRequest& oMarketDataRequest
 
   Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(oMarketDataRequest));
   CThostFtdcDepthMarketDataField stuMarketData;
+  std::string ssExchange = "";
   for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
     if (!GetMarketData(*citSymbol, stuMarketData)) continue;
@@ -149,6 +150,14 @@ void CSgitMdSpi::SendSnapShot(const FIX42::MarketDataRequest& oMarketDataRequest
     MdSnapShot.setField(mdReqID);
     MdSnapShot.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
       *citSymbol : m_pSgitCtx->CvtSymbol(*citSymbol, enSymbolType)));
+    
+    ssExchange = enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+      stuMarketData.ExchangeID : m_pSgitCtx->CvtExchange(stuMarketData.ExchangeID, enSymbolType);
+    MdSnapShot.setField(FIX::SecurityType(ssExchange));
+    MdSnapShot.setField(FIX::SecurityExchange(ssExchange));
+
+    FIX42::MarketDataSnapshotFullRefresh::NoMDEntries noMdEntriesGroup = FIX42::MarketDataSnapshotFullRefresh::NoMDEntries();
+    //noMdEntriesGroup.setField(FIX::NoMDEntries());
   }
 }
 
