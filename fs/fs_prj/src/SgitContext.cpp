@@ -29,13 +29,13 @@ bool CSgitContext::Init()
   {
     if(!InitConvert()) return false;
 
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg), Convert::Original).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF112", Convert::Bloomberg).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("FG801", Convert::Bloomberg).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("FG801", Convert::Bloomberg), Convert::Original).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("au1801", Convert::Bloomberg).c_str());
-		LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("au1801", Convert::Bloomberg), Convert::Original).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg), Convert::Original).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF112", Convert::Bloomberg).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("FG801", Convert::Bloomberg).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("FG801", Convert::Bloomberg), Convert::Original).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("au1801", Convert::Bloomberg).c_str());
+		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("au1801", Convert::Bloomberg), Convert::Original).c_str());
 
     if(!InitSgitApi()) return false;
   }
@@ -48,10 +48,14 @@ bool CSgitContext::Init()
   return true;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
+SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
 {
-  CThostFtdcTraderApi *pTdReqApi = CThostFtdcTraderApi::CreateFtdcTraderApi(ssFlowPath.c_str());
+  CThostFtdcTraderApi *pTdReqApi = CThostFtdcTraderApi::CreateFtdcTraderApi(m_ssFlowPath.c_str());
+  stuTdParam.m_pSgitCtx = this;
   stuTdParam.m_pTdReqApi = pTdReqApi;
+  stuTdParam.m_ssSgitCfgPath = m_ssSgitCfgPath;
+  stuTdParam.m_ssDataPath = m_ssDataPath;
+
   SharedPtr<CSgitTdSpi> spTdSpi = NULL;
   if (enTdSpiRole == CSgitTdSpi::HubTran)
   {
@@ -68,11 +72,25 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssFlowPath, c
   pTdReqApi->SubscribePublicTopic(THOST_TERT_RESUME);
   pTdReqApi->SubscribePrivateTopic(THOST_TERT_RESUME);
 
-  pTdReqApi->RegisterFront(const_cast<char*>(ssTradeServerAddr.c_str()));
+  pTdReqApi->RegisterFront(const_cast<char*>(m_ssTdServerAddr.c_str()));
   pTdReqApi->Init();
 
-  LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
-    stuTdParam.m_ssUserId.c_str(), ssTradeServerAddr.c_str());
+  return spTdSpi;
+}
+
+SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
+{
+  CSgitTdSpi::STUTdParam stuTdParam;
+  stuTdParam.m_ssSessionID = ssSessionID;
+
+  SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(stuTdParam, enTdSpiRole);
+  if (!spTdSpi)
+  {
+    LOG(ERROR_LOG_LEVEL, "Failed to CreateTdSpi for sessionID:%s", stuTdParam.m_ssSessionID.c_str());
+    return NULL;
+  }
+
+  if(!LinkSessionID2TdSpi(stuTdParam.m_ssSessionID, spTdSpi)) return NULL;
 
   return spTdSpi;
 }
@@ -131,24 +149,24 @@ bool CSgitContext::InitSgitApi()
 
   m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
-  std::string ssFlowPath = "";
-  CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", ssFlowPath);
-	if (!ssFlowPath.empty()) FIX::file_mkdir(ssFlowPath.c_str());
+  CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", m_ssFlowPath);
+	if (!m_ssFlowPath.empty()) FIX::file_mkdir(m_ssFlowPath.c_str());
 
-	std::string ssDataPath = m_apSgitConf->getString("global.DataPath");
-	FIX::file_mkdir(ssDataPath.c_str());
+	m_ssDataPath = m_apSgitConf->getString("global.DataPath");
+	FIX::file_mkdir(m_ssDataPath.c_str());
 
-  std::string ssTdServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
+  m_ssTdServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
   std::string ssMdServerAddr = m_apSgitConf->getString("global.QuoteServerAddr");
   std::string ssQuoteAccount = m_apSgitConf->getString("global.QuoteAccount");
   LOG(INFO_LOG_LEVEL, "QuoteAccount:%s", ssQuoteAccount.c_str());
   StringTokenizer stQuoteUserIdPassword(ssQuoteAccount, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-  CreateMdSpi(ssFlowPath, ssMdServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
+  CreateMdSpi(m_ssFlowPath, ssMdServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
 
   std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSessionProp = "", ssSessionID = "";
 
   if (!m_apSgitConf->hasProperty(ssTradeAccountListKey)) return true;
 
+  //读取配置文件中需要预先登录的UserID和密码进行登录
 	StringTokenizer stTradeAccountList(m_apSgitConf->getString(ssTradeAccountListKey), ";", 
 		StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 	for (StringTokenizer::Iterator it = stTradeAccountList.begin(); it != stTradeAccountList.end(); it++)
@@ -162,20 +180,24 @@ bool CSgitContext::InitSgitApi()
 			return false;
 		}
 
-    ssSessionID = m_apSgitConf->getString(ssFixSessionProp);
+    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(m_apSgitConf->getString(ssFixSessionProp), CSgitTdSpi::HubTran);
+    if (!spTdSpi)
+    {
+      LOG(ERROR_LOG_LEVEL, "Failed to CreateTdSpi for SessionID:%s", m_apSgitConf->getString(ssFixSessionProp).c_str());
+      return false;
+    }
 
-    CSgitTdSpi::STUTdParam stuTdParam;
-    stuTdParam.m_pSgitCtx = this;
-    stuTdParam.m_ssUserId = stTdUserIdPassword[0];
-    stuTdParam.m_ssPassword = stTdUserIdPassword[1];
-    stuTdParam.m_ssSessionID = ssSessionID;
-    stuTdParam.m_ssSgitCfgPath = m_ssSgitCfgPath;
-		stuTdParam.m_ssDataPath = ssDataPath;
-
-		if(!LinkSessionID2TdSpi(ssSessionID, 
-			CreateTdSpi(ssFlowPath, ssTdServerAddr, stuTdParam, CSgitTdSpi::HubTran))) return false;
+    std::string ssErrMsg = "";
+    if(!spTdSpi->ReqUserLogin(stTdUserIdPassword[0], stTdUserIdPassword[1], ssErrMsg))
+    {
+      LOG(ERROR_LOG_LEVEL, "Failed to ReqUserLogin for UserID:%s,errMsg:%s", stTdUserIdPassword[0].c_str(), ssErrMsg.c_str());
+      return false;
+    }
+    
+    LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
+      stTdUserIdPassword[0].c_str(), m_ssTdServerAddr.c_str());
 	}
-  
+
   return true;
 }
 
@@ -250,5 +272,14 @@ void CSgitContext::UpdateSymbolType(const std::string &ssSessionKey, Convert::En
   ScopedWriteRWLock scopeWriteLock(m_rwFixUser2Info);
   std::map<std::string, SharedPtr<STUserInfo>>::iterator itFind = m_mapFixUser2Info.find(ssSessionKey);
   if (itFind != m_mapFixUser2Info.end()) itFind->second->m_enCvtType = enSymbolType;
+}
+
+SharedPtr<CSgitTdSpi> CSgitContext::GetOrCreateTdSpi(const FIX::SessionID& oSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
+{
+  SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oSessionID);
+  if (spTdSpi) return spTdSpi;
+
+  LOG(INFO_LOG_LEVEL, "Attempt to create TdSpi for:%s", oSessionID.toString().c_str());
+  return CreateTdSpi(oSessionID.toString(), enTdSpiRole);
 }
 

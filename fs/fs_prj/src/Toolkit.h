@@ -48,7 +48,9 @@ public:
 
 	static bool CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrMsg);
 
-	static void Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
+  //SessionKey ×ªÎªSessionIDºÍonBehalfCompID
+	static void SessionKey2SessionIDBehalfCompID(const std::string &ssSessionKey, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
+
 
 	static void SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg);
 

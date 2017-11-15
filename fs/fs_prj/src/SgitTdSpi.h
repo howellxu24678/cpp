@@ -10,6 +10,7 @@
 #include "Poco/Util/IniFileConfiguration.h"
 #include "Poco/ExpireCache.h"
 #include "Poco/RWLock.h"
+#include "Poco/Event.h"
 
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
@@ -38,16 +39,16 @@ public:
     STUTdParam()
       : m_pSgitCtx(NULL)
       , m_pTdReqApi(NULL)
-      , m_ssUserId("")
-      , m_ssPassword("")
+      //, m_ssUserId("")
+      //, m_ssPassword("")
       , m_ssSessionID("")
 			, m_ssDataPath("")
     {}
 
     CSgitContext        *m_pSgitCtx;
     CThostFtdcTraderApi *m_pTdReqApi;
-    std::string         m_ssUserId;
-    std::string         m_ssPassword;
+    //std::string         m_ssUserId;
+    //std::string         m_ssPassword;
     std::string         m_ssSessionID;
     std::string         m_ssSgitCfgPath;
 		std::string					m_ssDataPath;
@@ -97,6 +98,9 @@ public:
 
   void OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
 
+  virtual bool ReqUserLogin(const std::string &ssUserID, const std::string &ssPassword, std::string &ssErrMsg);
+
+  virtual void ReqUserLogout(){}
 protected:
   bool LoadConfig();
 
@@ -493,8 +497,17 @@ protected:
   virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
   STUTdParam                              m_stuTdParam;
-private:
+  std::string                             m_ssUserID;
   AtomicCounter														m_acRequestId;
+  bool                                    m_bNeedKeepLogin;   //是否需要在前置机连上的回调中自动进行用户登录
+private:
+  std::string                             m_ssPassword;
+
+  Event                                   m_oEventConnected;  //前置机连接上事件
+  Event                                   m_oEventLoginResp;  //登录应答事件
+  bool                                    m_bLastLoginOk;     //记录最新的一次登录是否成功
+  int                                     m_iLoginRespErrID;  //登录响应错误码
+  std::string                             m_ssLoginRespErrMsg;//登录响应错误信息
 
 	AtomicCounter														m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
@@ -556,12 +569,10 @@ public:
 	Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct);
 
   Poco::SharedPtr<STUserInfo> GetUserInfo(const std::string &ssRealAcct);
-	//void SetSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType);
 
-	/*void Send(const std::string &ssRealAcct, FIX::Message& oMsg);*/
+  virtual void ReqUserLogout();
+
 private:
   Poco::SharedPtr<STUserInfo>                   m_spUserInfo;
-
-	//STUserInfo															m_stuserInfo;
 };
 #endif // __SGITTRADESPI_H__

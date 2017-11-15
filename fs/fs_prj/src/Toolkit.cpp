@@ -99,9 +99,8 @@ bool CToolkit::CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrM
 	return false;
 }
 
-void CToolkit::Convert2SessionIDBehalfCompID(const std::string &ssSessionProp, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID)
+void CToolkit::SessionKey2SessionIDBehalfCompID(const std::string &ssSessionKey, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID)
 {
-	std::string ssSessionKey = CToolkit::SessionProp2ID(ssSessionProp);
 	StringTokenizer stSession(ssSessionKey, "|", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 
 	if (stSession.count() < 1) return;

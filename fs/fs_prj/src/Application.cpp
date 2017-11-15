@@ -47,6 +47,12 @@ void Application::onLogon( const FIX::SessionID& sessionID )
 void Application::onLogout( const FIX::SessionID& sessionID ) 
 {
 	LOG(INFO_LOG_LEVEL, "%s", sessionID.toString().c_str());
+
+  SharedPtr<CSgitTdSpi> spTdSpi = NULL;
+  if (m_pSigtCtx && (spTdSpi = m_pSigtCtx->GetTdSpi(sessionID)))
+  {
+    spTdSpi->ReqUserLogout();
+  }
 }
 void Application::toAdmin( FIX::Message& message,
                            const FIX::SessionID& sessionID ) 
@@ -92,16 +98,35 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 	//crack( message, sessionID ); 
 }
 
-void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID&)
+void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID& oSessionID)
 {
+  FIX::SenderSubID senderSubID;
   FIX::RawData rawData;
+
+  oMsg.getHeader().getIfSet(senderSubID);  
   oMsg.getIfSet(rawData);
 
-  if (rawData.getValue().empty()) return;
+  if (senderSubID.getValue().empty() || rawData.getValue().empty()) return;
+  LOG(INFO_LOG_LEVEL, "senderSubID:%s,rawData:%s", senderSubID.getValue().c_str(), rawData.getValue().c_str());
 
-  LOG(INFO_LOG_LEVEL, "rawData:%s", rawData.getValue().c_str());
+  //如果没有找到对应的api实例，创建实例，并登录。如果找到，直接登录
+  SharedPtr<CSgitTdSpi> spTdSpi = NULL;
+  std::string ssErrMsg = "";
+  if (m_pSigtCtx)
+  {
+    spTdSpi = m_pSigtCtx->GetOrCreateTdSpi(oSessionID, CSgitTdSpi::Direct);
+  }
+  else
+  {
+    ssErrMsg = "CSgitContext is unvalid";
+    throw FIX::RejectLogon(ssErrMsg);
+  }
 
-  //throw FIX::DoNotSend();
+  //登录成功，返回，此时会回复正常登录应答
+  if (spTdSpi && spTdSpi->ReqUserLogin(senderSubID.getValue(), rawData.getValue(), ssErrMsg)) return;
+
+  //其他情况返回登录失败
+  throw FIX::RejectLogon(ssErrMsg);
 }
 
 //void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID&)

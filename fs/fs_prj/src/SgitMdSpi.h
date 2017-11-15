@@ -3,6 +3,7 @@
 
 #include "sgit/SgitFtdcMdApi.h"
 #include "quickfix/fix42/MarketDataRequest.h"
+#include "quickfix/fix42/MarketDataSnapshotFullRefresh.h"
 #include "Convert.h"
 #include <float.h>
 #include "Poco/RWLock.h"
@@ -38,7 +39,9 @@ protected:
     const std::string &ssSessionKey);
 
   //发送快照
-  void SendSnapShot(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+  void SendMarketData(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+
+  void AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, char chEntryType, double dPrice, int iVolume = 0, int iPos = 0);
 
   //建立订阅关系
   void AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);

@@ -21,6 +21,8 @@ public:
 
   void Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
 
+  SharedPtr<CSgitTdSpi> GetOrCreateTdSpi(const FIX::SessionID& oSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
+
   SharedPtr<CSgitTdSpi> GetTdSpi(const FIX::SessionID& oSessionID);
 
   SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::SessionID& oSessionID);
@@ -42,7 +44,9 @@ protected:
 
   bool InitSgitApi();
 
-  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssFlowPath, const std::string &ssTradeServerAddr, CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
+  SharedPtr<CSgitTdSpi> CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
+
+  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 
   void CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr, const std::string &ssTradeId, const std::string &ssPassword);
 
@@ -54,6 +58,9 @@ private:
   std::string                                         m_ssCvtCfgPath;
 
 	AutoPtr<IniFileConfiguration>					              m_apSgitConf;
+  std::string                                         m_ssFlowPath;
+  std::string                                         m_ssDataPath;
+  std::string                                         m_ssTdServerAddr;
 
   SharedPtr<CSgitMdSpi>                               m_spMdSpi;
 

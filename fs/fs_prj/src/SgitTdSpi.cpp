@@ -15,8 +15,11 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   : m_stuTdParam(stuTdParam)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
+  , m_oEventConnected(false)
+  , m_oEventLoginResp(false)
+  , m_bNeedKeepLogin(false)
+  , m_bLastLoginOk(false)
 {
-	
 }
 
 CSgitTdSpi::~CSgitTdSpi()
@@ -33,13 +36,19 @@ CSgitTdSpi::~CSgitTdSpi()
 
 void CSgitTdSpi::OnFrontConnected()
 {
-	CThostFtdcReqUserLoginField stuLogin;
-	memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
-	strncpy(stuLogin.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuLogin.UserID));
-	strncpy(stuLogin.Password, m_stuTdParam.m_ssPassword.c_str(), sizeof(stuLogin.Password));
-	m_stuTdParam.m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
+  m_oEventConnected.set();
+  
+  if (m_bNeedKeepLogin && m_bLastLoginOk)
+  {
+    CThostFtdcReqUserLoginField stuLogin;
+    memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
+    strncpy(stuLogin.UserID, m_ssUserID.c_str(), sizeof(stuLogin.UserID));
+    strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
+    m_stuTdParam.m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
 
-	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s",stuLogin.UserID);
+    LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", m_ssUserID.c_str());
+  }
+  //如果之前的账号登录成功，自动进行登录（保活），如果登录不成功（包含自动登出）则不管
 }
 
 void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, 
@@ -50,11 +59,11 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
   LOG(INFO_LOG_LEVEL, "userID:%s,MaxOrderRef:%s,errID:%d,errMsg:%s", 
     pRspUserLogin->UserID, pRspUserLogin->MaxOrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-	m_acOrderRef = MAX(m_acOrderRef, atoi(pRspUserLogin->MaxOrderRef));
-
-  //fs是否不需要这一步
+  //登录成功
   if (!pRspInfo->ErrorID)
   {
+    m_acOrderRef = MAX(m_acOrderRef, atoi(pRspUserLogin->MaxOrderRef));
+
     CThostFtdcSettlementInfoConfirmField stuConfirm;
     memset(&stuConfirm, 0, sizeof(CThostFtdcSettlementInfoConfirmField));
     strncpy(stuConfirm.InvestorID, pRspUserLogin->UserID, sizeof(stuConfirm.InvestorID));
@@ -62,6 +71,12 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
 
     m_stuTdParam.m_pTdReqApi->ReqSettlementInfoConfirm(&stuConfirm, m_acRequestId++);
   }
+
+  m_bLastLoginOk = !pRspInfo->ErrorID;
+  m_iLoginRespErrID = pRspInfo->ErrorID;
+  m_ssLoginRespErrMsg = pRspInfo->ErrorMsg;
+
+  m_oEventLoginResp.set();
 }
 
 void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
@@ -447,7 +462,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	if(!CheckIdSource(oNewOrderSingle, enSymbolType, ssErrMsg)) return false;
 
 	memset(&stuInputOrder, 0, sizeof(CThostFtdcInputOrderField));
-	strncpy(stuInputOrder.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrder.UserID));
+	strncpy(stuInputOrder.UserID, m_ssUserID.c_str(), sizeof(stuInputOrder.UserID));
 	strncpy(stuInputOrder.InvestorID, stuOrder.m_ssRealAccount.c_str(), sizeof(stuInputOrder.InvestorID));
 	strncpy(stuInputOrder.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrder.OrderRef));
 	strncpy(
@@ -534,7 +549,7 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   else
   {
     strncpy(stuInputOrderAction.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
-    strncpy(stuInputOrderAction.UserID, m_stuTdParam.m_ssUserId.c_str(), sizeof(stuInputOrderAction.UserID));
+    strncpy(stuInputOrderAction.UserID, m_ssUserID.c_str(), sizeof(stuInputOrderAction.UserID));
 		strncpy(
 			stuInputOrderAction.InstrumentID, 
 			enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
@@ -875,6 +890,36 @@ void CSgitTdSpi::SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMs
   }
 }
 
+bool CSgitTdSpi::ReqUserLogin(const std::string &ssUserID, const std::string &ssPassword, std::string &ssErrMsg)
+{
+  m_bNeedKeepLogin = true;
+
+  m_ssUserID = ssUserID;
+  m_ssPassword = ssPassword;
+
+  if(!m_oEventConnected.tryWait(G_WAIT_TIME))
+  {
+    ssErrMsg = "wait for front connected time out";
+    return false;
+  }
+
+  CThostFtdcReqUserLoginField stuLogin;
+  memset(&stuLogin, 0, sizeof(CThostFtdcReqUserLoginField));
+  strncpy(stuLogin.UserID, m_ssUserID.c_str(), sizeof(stuLogin.UserID));
+  strncpy(stuLogin.Password, m_ssPassword.c_str(), sizeof(stuLogin.Password));
+  m_stuTdParam.m_pTdReqApi->ReqUserLogin(&stuLogin, m_acRequestId++);
+  LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", m_ssUserID.c_str());
+  
+  if (!m_oEventLoginResp.tryWait(G_WAIT_TIME))
+  {
+    ssErrMsg = "wait for front login response time out";
+    return false;
+  }
+
+  return true;
+}
+
+
 double CSgitTdSpi::STUOrder::AvgPx() const
 {
   double dTurnover = 0.0;
@@ -967,7 +1012,7 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
   }
 
 	Poco::SharedPtr<STUserInfo> spUserInfo(new STUserInfo());
-	CToolkit::Convert2SessionIDBehalfCompID(ssSessionProp, spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
+	CToolkit::SessionKey2SessionIDBehalfCompID(CToolkit::SessionProp2ID(ssSessionProp), spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
 
 	if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
 	{
@@ -1057,4 +1102,15 @@ Poco::SharedPtr<STUserInfo> CSgitTdSpiDirect::GetUserInfo(const std::string &ssR
   return m_spUserInfo;
 }
 
+void CSgitTdSpiDirect::ReqUserLogout()
+{
+  m_bNeedKeepLogin = false;
+
+  CThostFtdcUserLogoutField stuLogout;
+  memset(&stuLogout, 0, sizeof(CThostFtdcUserLogoutField));
+  strncpy(stuLogout.UserID, m_ssUserID.c_str(), sizeof(stuLogout.UserID));
+  m_stuTdParam.m_pTdReqApi->ReqUserLogout(&stuLogout, m_acRequestId++);
+
+  LOG(INFO_LOG_LEVEL, "ReqUserLogout userID:%s", m_ssUserID.c_str());
+}
 
