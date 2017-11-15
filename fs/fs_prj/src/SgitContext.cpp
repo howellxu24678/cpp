@@ -279,7 +279,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::GetOrCreateTdSpi(const FIX::SessionID& oSess
   SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oSessionID);
   if (spTdSpi) return spTdSpi;
 
-  LOG(INFO_LOG_LEVEL, "Attempt to create TdSpi for:%s", oSessionID.toString().c_str());
+  LOG(INFO_LOG_LEVEL, "Prepare to create TdSpi for:%s", oSessionID.toString().c_str());
   return CreateTdSpi(oSessionID.toString(), enTdSpiRole);
 }
 

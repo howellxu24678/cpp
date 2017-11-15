@@ -19,6 +19,7 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   , m_oEventLoginResp(false)
   , m_bNeedKeepLogin(false)
   , m_bLastLoginOk(false)
+  , m_ssLoginRespErrMsg("")
 {
 }
 
@@ -916,7 +917,8 @@ bool CSgitTdSpi::ReqUserLogin(const std::string &ssUserID, const std::string &ss
     return false;
   }
 
-  return true;
+  if(!m_bLastLoginOk) Poco::format(ssErrMsg, "failed to login errcode:%d", m_iLoginRespErrID);
+  return m_bLastLoginOk;
 }
 
 
