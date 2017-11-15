@@ -172,7 +172,7 @@ protected:
   ///        0x2001 接收心跳超时
   ///        0x2002 发送心跳失败
   ///        0x2003 收到错误报文
-  virtual void OnFrontDisconnected(int nReason){};
+  virtual void OnFrontDisconnected(int nReason);
 
   ///心跳超时警告。当长时间未收到报文时，该方法被调用。
   ///@param nTimeLapse 距离上次接收报文的时间

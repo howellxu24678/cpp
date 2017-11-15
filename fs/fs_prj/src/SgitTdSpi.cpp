@@ -16,7 +16,7 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
 	, m_acRequestId(0)
 	, m_acOrderRef(0)
   , m_oEventConnected(false)
-  , m_oEventLoginResp(false)
+  , m_oEventLoginResp(true)
   , m_bNeedKeepLogin(false)
   , m_bLastLoginOk(false)
   , m_ssLoginRespErrMsg("")
@@ -50,6 +50,13 @@ void CSgitTdSpi::OnFrontConnected()
     LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", m_ssUserID.c_str());
   }
   //如果之前的账号登录成功，自动进行登录（保活），如果登录不成功（包含自动登出）则不管
+}
+
+void CSgitTdSpi::OnFrontDisconnected(int nReason)
+{
+	m_oEventConnected.reset();
+
+	LOG(INFO_LOG_LEVEL, "%d", nReason);
 }
 
 void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, 
