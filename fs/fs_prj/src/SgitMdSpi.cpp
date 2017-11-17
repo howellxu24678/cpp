@@ -53,10 +53,10 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   switch(subscriptionRequestType.getValue())
   {
   case FIX::SubscriptionRequestType_SNAPSHOT:
-    SendMarketData(oMarketDataRequest, symbolSet);
+    SendMarketDataSet(oMarketDataRequest, symbolSet);
     break;
   case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
-    SendMarketData(oMarketDataRequest, symbolSet);
+    SendMarketDataSet(oMarketDataRequest, symbolSet);
     AddSub(symbolSet, oMarketDataRequest.getSessionID().toString());
     break;
   case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
@@ -133,76 +133,18 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
 
 }
 
-void CSgitMdSpi::SendMarketData(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
+void CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
 {
   FIX::MDReqID mdReqID;
   oMarketDataRequest.get(mdReqID);
 
   Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(oMarketDataRequest));
   CThostFtdcDepthMarketDataField stuMarketData;
-  std::string ssExchange = "";
   for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
     if (!GetMarketData(*citSymbol, stuMarketData)) continue;
-    
-    FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = FIX42::MarketDataSnapshotFullRefresh();
-    oMdSnapShot.setField(mdReqID);
-    oMdSnapShot.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
-      *citSymbol : m_pSgitCtx->CvtSymbol(*citSymbol, enSymbolType)));
-    
-    ssExchange = enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
-      stuMarketData.ExchangeID : m_pSgitCtx->CvtExchange(stuMarketData.ExchangeID, enSymbolType);
-    //oMdSnapShot.setField(FIX::SecurityType(ssExchange));
-    oMdSnapShot.setField(FIX::SecurityExchange(ssExchange));
 
-    AddPrice(oMdSnapShot, FIX::MDEntryType_TRADE, stuMarketData.LastPrice, stuMarketData.Volume);
-    AddPrice(oMdSnapShot, FIX::MDEntryType_OPENING_PRICE, stuMarketData.OpenPrice);
-    AddPrice(oMdSnapShot, FIX::MDEntryType_CLOSING_PRICE, stuMarketData.ClosePrice);
-    AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_HIGH_PRICE, stuMarketData.HighestPrice);
-    AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_LOW_PRICE, stuMarketData.LowestPrice);
-
-    if (stuMarketData.BidVolume1 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice1, stuMarketData.BidVolume1, 1);
-    }
-    if (stuMarketData.AskVolume1 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice1, stuMarketData.AskVolume1, 1);
-    }
-    if (stuMarketData.BidVolume2 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice2, stuMarketData.BidVolume2, 2);
-    }
-    if (stuMarketData.AskVolume2 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice2, stuMarketData.AskVolume2, 2);
-    }
-    if (stuMarketData.BidVolume3 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice3, stuMarketData.BidVolume3, 3);
-    }
-    if (stuMarketData.AskVolume3 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice3, stuMarketData.AskVolume3, 3);
-    }
-    if (stuMarketData.BidVolume4 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice4, stuMarketData.BidVolume4, 4);
-    }
-    if (stuMarketData.AskVolume4 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice4, stuMarketData.AskVolume4, 4);
-    }
-    if (stuMarketData.BidVolume5 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice5, stuMarketData.BidVolume5, 5);
-    }
-    if (stuMarketData.AskVolume5 > 0)
-    {
-      AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice5, stuMarketData.AskVolume5, 5);
-    }
-
-    CToolkit::Send(oMarketDataRequest, oMdSnapShot);
+    CToolkit::Send(oMarketDataRequest, CreateSnapShot(stuMarketData, enSymbolType, mdReqID.getValue()));
   }
 }
 
@@ -280,5 +222,69 @@ bool CSgitMdSpi::GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarket
   if (m_mapSnapshot.count(ssSymbol) < 1) return false;
   stuMarketData = m_mapSnapshot[ssSymbol];
   return true;
+}
+
+
+FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType, const std::string &ssMDReqID /*= ""*/)
+{
+  FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = FIX42::MarketDataSnapshotFullRefresh();
+  if(!ssMDReqID.empty()) oMdSnapShot.setField(FIX::MDReqID(ssMDReqID));
+
+  oMdSnapShot.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+    stuMarketData.InstrumentID : m_pSgitCtx->CvtSymbol(stuMarketData.InstrumentID, enSymbolType)));
+
+  std::string ssExchange = enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+    stuMarketData.ExchangeID : m_pSgitCtx->CvtExchange(stuMarketData.ExchangeID, enSymbolType);
+  //oMdSnapShot.setField(FIX::SecurityType(ssExchange));
+  oMdSnapShot.setField(FIX::SecurityExchange(ssExchange));
+
+  AddPrice(oMdSnapShot, FIX::MDEntryType_TRADE, stuMarketData.LastPrice, stuMarketData.Volume);
+  AddPrice(oMdSnapShot, FIX::MDEntryType_OPENING_PRICE, stuMarketData.OpenPrice);
+  AddPrice(oMdSnapShot, FIX::MDEntryType_CLOSING_PRICE, stuMarketData.ClosePrice);
+  AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_HIGH_PRICE, stuMarketData.HighestPrice);
+  AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_LOW_PRICE, stuMarketData.LowestPrice);
+
+  if (stuMarketData.BidVolume1 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice1, stuMarketData.BidVolume1, 1);
+  }
+  if (stuMarketData.AskVolume1 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice1, stuMarketData.AskVolume1, 1);
+  }
+  if (stuMarketData.BidVolume2 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice2, stuMarketData.BidVolume2, 2);
+  }
+  if (stuMarketData.AskVolume2 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice2, stuMarketData.AskVolume2, 2);
+  }
+  if (stuMarketData.BidVolume3 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice3, stuMarketData.BidVolume3, 3);
+  }
+  if (stuMarketData.AskVolume3 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice3, stuMarketData.AskVolume3, 3);
+  }
+  if (stuMarketData.BidVolume4 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice4, stuMarketData.BidVolume4, 4);
+  }
+  if (stuMarketData.AskVolume4 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice4, stuMarketData.AskVolume4, 4);
+  }
+  if (stuMarketData.BidVolume5 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice5, stuMarketData.BidVolume5, 5);
+  }
+  if (stuMarketData.AskVolume5 > 0)
+  {
+    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice5, stuMarketData.AskVolume5, 5);
+  }
+
+  return oMdSnapShot;
 }
 

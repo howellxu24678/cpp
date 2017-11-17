@@ -39,7 +39,9 @@ protected:
     const std::string &ssSessionKey);
 
   //·¢ËÍ¿ìÕÕ
-  void SendMarketData(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+  void SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+
+  FIX42::MarketDataSnapshotFullRefresh CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType, const std::string &ssMDReqID = "");
 
   void AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, char chEntryType, double dPrice, int iVolume = 0, int iPos = 0);
 
