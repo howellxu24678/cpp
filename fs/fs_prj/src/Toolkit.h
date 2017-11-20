@@ -34,6 +34,9 @@ public:
 
   static std::string GetSessionKey(const FIX::Message& oRecvMsg);
 
+  //SessionKey 转为SessionID和onBehalfCompID
+  static void SessionKey2SessionIDBehalfCompID(const std::string &ssSessionKey, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
+
 	//交易业务相关请求
   static bool IsTdRequest(const FIX::MsgType &msgType);
 
@@ -47,10 +50,6 @@ public:
   static std::string SessionProp2ID(const std::string &ssSessionKey);
 
 	static bool CheckIfValid(Convert::EnCvtType enSymbolType, std::string &ssErrMsg);
-
-  //SessionKey 转为SessionID和onBehalfCompID
-	static void SessionKey2SessionIDBehalfCompID(const std::string &ssSessionKey, FIX::SessionID &oSessionID, std::string &ssOnBehalfCompID);
-
 
 	static void SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg);
 

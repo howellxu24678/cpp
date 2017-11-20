@@ -57,9 +57,10 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
     break;
   case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
     SendMarketDataSet(oMarketDataRequest, symbolSet);
-    AddSub(symbolSet, oMarketDataRequest.getSessionID().toString());
+    AddSub(symbolSet, CToolkit::GetSessionKey(oMarketDataRequest));
     break;
   case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
+    DelSub(symbolSet, CToolkit::GetSessionKey(oMarketDataRequest));
     break;
   default:
     break;
@@ -68,7 +69,6 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
 
 void CSgitMdSpi::OnFrontConnected()
 {
-
 	m_pMdReqApi->ReqUserLogin(&m_stuLogin, m_acRequestId++);
 
 	LOG(INFO_LOG_LEVEL, "ReqUserLogin userID:%s", m_stuLogin.UserID);
@@ -129,8 +129,7 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
   } while (0);
 
   //推送给感兴趣的订阅方
-
-
+  PubMarketData(*pDepthMarketData);
 }
 
 void CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
@@ -160,7 +159,34 @@ void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, cha
 
 void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
 {
+  ScopedWriteRWLock scopeWriteLock(m_rwLockCode2SubSession);
+  for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
+  {
+    if (m_mapCode2SubSession.count(*citSymbol) < 1)
+    {
+      std::set<std::string> sessionSet;
+      sessionSet.insert(ssSessionID);
+      m_mapCode2SubSession[*citSymbol] = sessionSet;
+    }
+    else
+    {
+      m_mapCode2SubSession[*citSymbol].insert(ssSessionID);
+    }
+  }
+}
 
+void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
+{
+  ScopedWriteRWLock scopeWriteLock(m_rwLockCode2SubSession);
+  for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
+  {
+    if (m_mapCode2SubSession.count(*citSymbol) < 1) continue;
+
+    std::set<std::string>::iterator itSession = m_mapCode2SubSession[*citSymbol].find(ssSessionID);
+    if (itSession == m_mapCode2SubSession[*citSymbol].end()) continue;
+
+    m_mapCode2SubSession[*citSymbol].erase(itSession);
+  }
 }
 
 bool CSgitMdSpi::CheckValid(
@@ -287,4 +313,17 @@ FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdc
 
   return oMdSnapShot;
 }
+
+void CSgitMdSpi::PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMarketData)
+{
+  do 
+  {
+    ScopedReadRWLock scopeReadLock(m_rwLockCode2SubSession);
+    if (m_mapCode2SubSession.count(stuDepthMarketData.InstrumentID) < 1) return;
+
+    //创建消息并批量发出
+  } while (0);
+}
+
+
 
