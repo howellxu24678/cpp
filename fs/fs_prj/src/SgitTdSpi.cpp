@@ -886,16 +886,7 @@ void CSgitTdSpi::SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMs
     return;
   }
 
-  CToolkit::SetUserInfo(*spUserInfo, oMsg);
-
-  try
-  {
-    FIX::Session::sendToTarget(oMsg, spUserInfo->m_oSessionID);
-  }
-  catch ( FIX::SessionNotFound& e) 
-  {
-    LOG(ERROR_LOG_LEVEL, "msg:%s, err:%s", oMsg.toString(), e.what());
-  }
+  CToolkit::Send(oMsg, spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
 }
 
 bool CSgitTdSpi::ReqUserLogin(const std::string &ssUserID, const std::string &ssPassword, std::string &ssErrMsg)

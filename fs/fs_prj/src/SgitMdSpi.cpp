@@ -160,17 +160,19 @@ void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, cha
 void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
 {
   ScopedWriteRWLock scopeWriteLock(m_rwLockCode2SubSession);
+  std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    if (m_mapCode2SubSession.count(*citSymbol) < 1)
+    ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
+    if (m_mapCode2SubSession.count(ssOriginalSymbol) < 1)
     {
       std::set<std::string> sessionSet;
       sessionSet.insert(ssSessionID);
-      m_mapCode2SubSession[*citSymbol] = sessionSet;
+      m_mapCode2SubSession[ssOriginalSymbol] = sessionSet;
     }
     else
     {
-      m_mapCode2SubSession[*citSymbol].insert(ssSessionID);
+      m_mapCode2SubSession[ssOriginalSymbol].insert(ssSessionID);
     }
   }
 }
@@ -178,14 +180,16 @@ void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::strin
 void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
 {
   ScopedWriteRWLock scopeWriteLock(m_rwLockCode2SubSession);
+  std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    if (m_mapCode2SubSession.count(*citSymbol) < 1) continue;
+    ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
+    if (m_mapCode2SubSession.count(ssOriginalSymbol) < 1) continue;
 
-    std::set<std::string>::iterator itSession = m_mapCode2SubSession[*citSymbol].find(ssSessionID);
-    if (itSession == m_mapCode2SubSession[*citSymbol].end()) continue;
+    std::set<std::string>::iterator itSession = m_mapCode2SubSession[ssOriginalSymbol].find(ssSessionID);
+    if (itSession == m_mapCode2SubSession[ssOriginalSymbol].end()) continue;
 
-    m_mapCode2SubSession[*citSymbol].erase(itSession);
+    m_mapCode2SubSession[ssOriginalSymbol].erase(itSession);
   }
 }
 
@@ -250,8 +254,7 @@ bool CSgitMdSpi::GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarket
   return true;
 }
 
-
-FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType, const std::string &ssMDReqID /*= ""*/)
+FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType /*= Convert::Original*/, const std::string &ssMDReqID /*= ""*/)
 {
   FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = FIX42::MarketDataSnapshotFullRefresh();
   if(!ssMDReqID.empty()) oMdSnapShot.setField(FIX::MDReqID(ssMDReqID));
@@ -316,13 +319,41 @@ FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdc
 
 void CSgitMdSpi::PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMarketData)
 {
+  //在锁之外创建消息
+  FIX42::MarketDataSnapshotFullRefresh oMktDataSnapshot = CreateSnapShot(stuDepthMarketData);
   do 
   {
     ScopedReadRWLock scopeReadLock(m_rwLockCode2SubSession);
     if (m_mapCode2SubSession.count(stuDepthMarketData.InstrumentID) < 1) return;
 
-    //创建消息并批量发出
+    for (std::set<std::string>::const_iterator citSessionKey = m_mapCode2SubSession[stuDepthMarketData.InstrumentID].begin();
+      citSessionKey != m_mapCode2SubSession[stuDepthMarketData.InstrumentID].end();
+      citSessionKey++)
+    {
+      Send(*citSessionKey, oMktDataSnapshot);
+    }
+
   } while (0);
+}
+
+void CSgitMdSpi::Send(const std::string &ssSessionKey, FIX42::MarketDataSnapshotFullRefresh oMdSnapShot)
+{
+  Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(ssSessionKey);
+  if (!(enSymbolType == Convert::Original || enSymbolType == Convert::Unknow))
+  {
+    FIX::Symbol symbol;
+    FIX::SecurityExchange securityExchange;
+    oMdSnapShot.getField(symbol);
+    oMdSnapShot.getField(securityExchange);
+
+    oMdSnapShot.setField(FIX::Symbol(m_pSgitCtx->CvtSymbol(symbol.getValue(), enSymbolType)));
+    oMdSnapShot.setField(FIX::SecurityExchange(m_pSgitCtx->CvtExchange(securityExchange.getValue(), enSymbolType)));
+  }
+
+  FIX::SessionID oSessionID;
+  std::string ssOnBehalfCompID;
+  CToolkit::SessionKey2SessionIDBehalfCompID(ssSessionKey, oSessionID, ssOnBehalfCompID);
+  CToolkit::Send(oMdSnapShot, oSessionID, ssOnBehalfCompID);
 }
 
 

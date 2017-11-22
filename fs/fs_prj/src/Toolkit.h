@@ -54,5 +54,7 @@ public:
 	static void SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg);
 
   static void Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg);
+
+  static void Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID, const std::string &ssOnBehalfOfCompID);
 };
 #endif // __TOOLKIT_H__

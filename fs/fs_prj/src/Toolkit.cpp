@@ -127,7 +127,18 @@ void CToolkit::Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg)
   oRecvMsg.getHeader().getField(targetCompID);
   oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
 
-  FIX::SessionID oSendSessionID(beginString.getValue(), targetCompID.getValue(), senderCompID.getValue());
+  Send(oSendMsg, 
+    FIX::SessionID(beginString.getValue(), targetCompID.getValue(), senderCompID.getValue()), 
+    onBehalfOfCompId.getValue());
+
+}
+
+void CToolkit::Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID, const std::string &ssOnBehalfOfCompID)
+{
+  if(!ssOnBehalfOfCompID.empty())
+  {
+    oSendMsg.getHeader().setField(FIX::DeliverToCompID(ssOnBehalfOfCompID));
+  }
 
   try
   {
@@ -138,4 +149,5 @@ void CToolkit::Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg)
     LOG(ERROR_LOG_LEVEL, "msg:%s, err:%s", oSendMsg.toString(), e.what());
   }
 }
+
 

@@ -44,7 +44,7 @@ protected:
   //发布行情
   void PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMarketData);
 
-  FIX42::MarketDataSnapshotFullRefresh CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType, const std::string &ssMDReqID = "");
+  FIX42::MarketDataSnapshotFullRefresh CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType = Convert::Original, const std::string &ssMDReqID = "");
 
   void AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, char chEntryType, double dPrice, int iVolume = 0, int iPos = 0);
 
@@ -53,6 +53,8 @@ protected:
 
   //取消订阅关系
   void DelSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
+
+  void Send(const std::string &ssSessionKey, FIX42::MarketDataSnapshotFullRefresh oMdSnapShot);
 
   void AddFixInfo(const FIX::Message& oMsg);
 
