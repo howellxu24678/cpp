@@ -39,6 +39,10 @@ public:
 
   Convert::EnCvtType GetSymbolType(const std::string &ssSessionKey);
 
+  void UpsertLoginStatus(const std::string ssSessionID, bool bStatus);
+
+  bool GetLoginStatus(const std::string ssSessionID);
+
 protected:
   bool InitConvert();
 
@@ -67,6 +71,10 @@ private:
   //fix用户(SessionID+onBehalfOfCompID)->所用代码类型等信息 --用于交易行情推送
   std::map<std::string, SharedPtr<STUserInfo>>        m_mapFixUser2Info;
   RWLock                                              m_rwFixUser2Info;
+
+  //fix会话->登录状态 （登录时才进行行情推送）
+  std::map<std::string, bool>                         m_mapFisSessionID2LoginStatus;
+  RWLock                                              m_rwFisSessionID2LoginStatus;
 
   //SessionID->TdSpi实例
   std::map<std::string, SharedPtr<CSgitTdSpi>>        m_mapSessionID2TdSpi;

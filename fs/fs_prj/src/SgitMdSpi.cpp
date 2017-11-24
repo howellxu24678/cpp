@@ -124,7 +124,7 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
   //LOG(DEBUG_LOG_LEVEL, "InstrumentID:%s,Price:%lf", pDepthMarketData->InstrumentID, pDepthMarketData->LastPrice);
   do 
   {
-    ScopedWriteRWLock scopeWriteLock(m_rwLockSnapShot);
+    ScopedWriteRWLock scopeLock(m_rwLockSnapShot);
     m_mapSnapshot[pDepthMarketData->InstrumentID] = *pDepthMarketData;
   } while (0);
 
@@ -159,7 +159,7 @@ void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, cha
 
 void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
 {
-  ScopedWriteRWLock scopeWriteLock(m_rwLockCode2SubSession);
+  ScopedWriteRWLock scopeLock(m_rwLockCode2SubSession);
   std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
@@ -179,7 +179,7 @@ void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::strin
 
 void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
 {
-  ScopedWriteRWLock scopeWriteLock(m_rwLockCode2SubSession);
+  ScopedWriteRWLock scopeLock(m_rwLockCode2SubSession);
   std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
@@ -247,7 +247,7 @@ void CSgitMdSpi::AddFixInfo(const FIX::Message& oMsg)
 
 bool CSgitMdSpi::GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarketDataField &stuMarketData)
 {
-  ScopedReadRWLock scopeReadLock(m_rwLockSnapShot);
+  ScopedReadRWLock scopeLock(m_rwLockSnapShot);
 
   if (m_mapSnapshot.count(ssSymbol) < 1) return false;
   stuMarketData = m_mapSnapshot[ssSymbol];
@@ -269,7 +269,7 @@ FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdc
 
   AddPrice(oMdSnapShot, FIX::MDEntryType_TRADE, stuMarketData.LastPrice, stuMarketData.Volume);
   AddPrice(oMdSnapShot, FIX::MDEntryType_OPENING_PRICE, stuMarketData.OpenPrice);
-  AddPrice(oMdSnapShot, FIX::MDEntryType_CLOSING_PRICE, stuMarketData.ClosePrice);
+  AddPrice(oMdSnapShot, FIX::MDEntryType_CLOSING_PRICE, stuMarketData.PreClosePrice);
   AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_HIGH_PRICE, stuMarketData.HighestPrice);
   AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_LOW_PRICE, stuMarketData.LowestPrice);
 
@@ -319,13 +319,12 @@ FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdc
 
 void CSgitMdSpi::PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMarketData)
 {
-  //在锁之外创建消息
-  FIX42::MarketDataSnapshotFullRefresh oMktDataSnapshot = CreateSnapShot(stuDepthMarketData);
   do 
   {
-    ScopedReadRWLock scopeReadLock(m_rwLockCode2SubSession);
+    ScopedReadRWLock scopeLock(m_rwLockCode2SubSession);
     if (m_mapCode2SubSession.count(stuDepthMarketData.InstrumentID) < 1) return;
 
+    FIX42::MarketDataSnapshotFullRefresh oMktDataSnapshot = CreateSnapShot(stuDepthMarketData);
     for (std::set<std::string>::const_iterator citSessionKey = m_mapCode2SubSession[stuDepthMarketData.InstrumentID].begin();
       citSessionKey != m_mapCode2SubSession[stuDepthMarketData.InstrumentID].end();
       citSessionKey++)
@@ -353,7 +352,11 @@ void CSgitMdSpi::Send(const std::string &ssSessionKey, FIX42::MarketDataSnapshot
   FIX::SessionID oSessionID;
   std::string ssOnBehalfCompID;
   CToolkit::SessionKey2SessionIDBehalfCompID(ssSessionKey, oSessionID, ssOnBehalfCompID);
-  CToolkit::Send(oMdSnapShot, oSessionID, ssOnBehalfCompID);
+
+  if (m_pSgitCtx->GetLoginStatus(oSessionID.toString()))
+  {
+    CToolkit::Send(oMdSnapShot, oSessionID, ssOnBehalfCompID);
+  }
 }
 
 

@@ -43,10 +43,12 @@ void Application::onCreate( const FIX::SessionID& sessionID )
 void Application::onLogon( const FIX::SessionID& sessionID )
 {
 	LOG(INFO_LOG_LEVEL, "%s", sessionID.toString().c_str());
+  if (m_pSigtCtx) m_pSigtCtx->UpsertLoginStatus(sessionID.toString(), true);
 }
 void Application::onLogout( const FIX::SessionID& sessionID ) 
 {
 	LOG(INFO_LOG_LEVEL, "%s", sessionID.toString().c_str());
+  if (m_pSigtCtx) m_pSigtCtx->UpsertLoginStatus(sessionID.toString(), false);
 
   SharedPtr<CSgitTdSpi> spTdSpi = NULL;
   if (m_pSigtCtx && (spTdSpi = m_pSigtCtx->GetTdSpi(sessionID)))

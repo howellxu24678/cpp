@@ -206,7 +206,7 @@ std::string Convert::CvtSymbol(const std::string &ssSymbol, const EnCvtType enDs
 		}
 	}
 
-	return "unknown" + ssSymbol;
+	return ssSymbol;
 }
 
 std::string Convert::GetSymbolKey(const std::string &ssName, EnCvtType enCvtType)
@@ -358,7 +358,7 @@ std::string Convert::CvtExchange(const std::string &ssExchange, const EnCvtType 
     }
   }
 
-  return "unknow";
+  return ssExchange;
 }
 
 std::string Convert::GetExchangeKey(const std::string &ssName, EnCvtType enCvtType)

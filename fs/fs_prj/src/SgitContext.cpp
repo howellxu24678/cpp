@@ -110,7 +110,7 @@ void CSgitContext::CreateMdSpi(const std::string &ssFlowPath, const std::string 
 
 bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr<CSgitTdSpi> spTdSpi)
 {
-  ScopedWriteRWLock scopeWriteLock(m_rwSessionID2TdSpi);
+  ScopedWriteRWLock scopeLock(m_rwSessionID2TdSpi);
 
 	std::pair<std::map<std::string, SharedPtr<CSgitTdSpi>>::iterator, bool> ret = 
 		m_mapSessionID2TdSpi.insert(std::pair<std::string, SharedPtr<CSgitTdSpi>>(ssSessionID, spTdSpi));
@@ -126,7 +126,7 @@ bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr
 
 SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::SessionID& oSessionID)
 {
-  ScopedReadRWLock scopeReadLock(m_rwSessionID2TdSpi);
+  ScopedReadRWLock scopeLock(m_rwSessionID2TdSpi);
 	std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(oSessionID.toString());
 	if (cit != m_mapSessionID2TdSpi.end())
 	{
@@ -254,13 +254,13 @@ void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSession
 
 void CSgitContext::AddUserInfo(const std::string &ssSessionKey, SharedPtr<STUserInfo> spStuFixInfo)
 {
-  ScopedWriteRWLock scopeWriteLock(m_rwFixUser2Info);
+  ScopedWriteRWLock scopeLock(m_rwFixUser2Info);
   m_mapFixUser2Info[ssSessionKey] = spStuFixInfo;
 }
 
 Convert::EnCvtType CSgitContext::GetSymbolType(const std::string &ssSessionKey)
 {
-  ScopedReadRWLock scopeReadLock(m_rwFixUser2Info);
+  ScopedReadRWLock scopeLock(m_rwFixUser2Info);
   std::map<std::string, SharedPtr<STUserInfo>>::const_iterator citFind = m_mapFixUser2Info.find(ssSessionKey);
   if (citFind != m_mapFixUser2Info.end()) return citFind->second->m_enCvtType;
 
@@ -269,7 +269,7 @@ Convert::EnCvtType CSgitContext::GetSymbolType(const std::string &ssSessionKey)
 
 void CSgitContext::UpdateSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
 {
-  ScopedWriteRWLock scopeWriteLock(m_rwFixUser2Info);
+  ScopedWriteRWLock scopeLock(m_rwFixUser2Info);
   std::map<std::string, SharedPtr<STUserInfo>>::iterator itFind = m_mapFixUser2Info.find(ssSessionKey);
   if (itFind != m_mapFixUser2Info.end()) itFind->second->m_enCvtType = enSymbolType;
 }
@@ -281,5 +281,20 @@ SharedPtr<CSgitTdSpi> CSgitContext::GetOrCreateTdSpi(const FIX::SessionID& oSess
 
   LOG(INFO_LOG_LEVEL, "Prepare to create TdSpi for:%s", oSessionID.toString().c_str());
   return CreateTdSpi(oSessionID.toString(), enTdSpiRole);
+}
+
+void CSgitContext::UpsertLoginStatus(const std::string ssSessionID, bool bStatus)
+{
+  ScopedWriteRWLock scopeLock(m_rwFisSessionID2LoginStatus);
+  m_mapFisSessionID2LoginStatus[ssSessionID] = bStatus;
+}
+
+bool CSgitContext::GetLoginStatus(const std::string ssSessionID)
+{
+  ScopedReadRWLock scopeLock(m_rwFisSessionID2LoginStatus);
+  std::map<std::string, bool>::const_iterator itFind = m_mapFisSessionID2LoginStatus.find(ssSessionID);
+  if (itFind != m_mapFisSessionID2LoginStatus.end()) return itFind->second;
+
+  return false;
 }
 
