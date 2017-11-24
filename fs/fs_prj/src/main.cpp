@@ -77,35 +77,10 @@ bool checkCfgPath(AutoPtr<Poco::Util::IniFileConfiguration> apCfg, const std::st
 	CToolkit::GetStrinIfSet(apCfg, G_CONFIG_GLOBAL_SECTION + "." + ssKey, ssValue);
 	if (!CToolkit::IsExist(ssValue))
 	{
-		std::cout << "Failed to find log cfg file of:" << ssKey << ", path:" << ssValue << std::endl;
+		std::cout << "Failed to find cfg file of:" << ssKey << ", path:" << ssValue << std::endl;
 		return false;
 	}
 	return true;
-}
-
-struct STUtest{
-  int m_i;
-
-  void upate(int i)
-  {
-    m_i = i;
-  }
-};
-
-void TestExpireCache()
-{
-  ExpireCache<int, STUtest> cache;
-  STUtest oStutest;
-  memset(&oStutest, 0, sizeof(STUtest));
-  cache.add(1, oStutest);
-  cache.add(2, oStutest);
-
-  cache.get(1)->upate(20);
-  SharedPtr<STUtest> spTest = cache.get(3);
-  cout << "isNull:" << spTest.isNull() << endl;
-
-  cout << "TestExpireCache 1:" << cache.get(1)->m_i << endl;
-  cout << "TestExpireCache 2:" << cache.get(2)->m_i << endl;
 }
 
 int main( int argc, char** argv )
@@ -113,7 +88,7 @@ int main( int argc, char** argv )
 	std::string ssConfigPath = "";
 	if(argc < 2)
 	{
-		std::cout << "Have not indicate the cfg path, will use the default path:" << G_CONFIG_PATH << std::endl;
+		std::cout << "The config path is not set, will use the default path:" << G_CONFIG_PATH << std::endl;
 		ssConfigPath = G_CONFIG_PATH;
 	}
 	else
