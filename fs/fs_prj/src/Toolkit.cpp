@@ -150,4 +150,16 @@ void CToolkit::Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID
   }
 }
 
+bool CToolkit::GetString(AutoPtr<IniFileConfiguration> apConfig, const std::string &ssProp, std::string &ssValue)
+{
+  if (!apConfig->hasProperty(ssProp))
+  {
+    LOG(ERROR_LOG_LEVEL, "Can not find property:%s in config file", ssProp);
+    return false;
+  }
+
+  ssValue = apConfig->getString(ssProp);
+  return true;
+}
+
 

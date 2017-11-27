@@ -131,6 +131,7 @@ int main( int argc, char** argv )
 		if(!apSigtCtx->Init())
 		{
 			LOG(FATAL_LOG_LEVEL, "Failed to Init CSgitApiManager");
+      return -1;
 		}
 
 		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）
@@ -160,7 +161,7 @@ int main( int argc, char** argv )
 	catch ( std::exception & e )
 	{
 		std::cout << e.what() << std::endl;
-		return 1;
+		return -1;
 	}
 }
 

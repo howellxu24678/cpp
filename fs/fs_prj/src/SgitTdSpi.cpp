@@ -230,7 +230,7 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
 
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport();
   executionReport.set(FIX::ClOrdID(stuOrder.m_ssClOrdID));
-  executionReport.set(FIX::OrderID(stuOrder.m_ssOrderID.empty() ? " " : stuOrder.m_ssOrderID));
+  executionReport.set(FIX::OrderID(stuOrder.m_ssOrderID.empty() ? CToolkit::GetUuid() : stuOrder.m_ssOrderID));
   executionReport.set(FIX::ExecID(ssUUid));
   executionReport.set(FIX::Symbol(stuOrder.m_ssSymbol));
   executionReport.set(FIX::Price(stuOrder.m_dPrice));
@@ -319,7 +319,7 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStat
   oOrderStatusRequest.getIfSet(account);
 
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport(
-    FIX::OrderID(orderID.getValue().empty() ? " " : orderID.getValue()),
+    FIX::OrderID(orderID.getValue().empty() ? CToolkit::GetUuid() : orderID.getValue()),
     FIX::ExecID(CToolkit::GetUuid()),
     FIX::ExecTransType(FIX::ExecTransType_STATUS),
     FIX::ExecType(FIX::ExecType_NEW),
@@ -348,7 +348,7 @@ void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, c
 {
 	FIX42::OrderCancelReject orderCancelReject = FIX42::OrderCancelReject(
 		FIX::OrderID(stuOrder.m_ssOrderID),
-		FIX::ClOrdID(" "),
+		FIX::ClOrdID(stuOrder.m_ssCancelClOrdID),
 		FIX::OrigClOrdID(stuOrder.m_ssClOrdID),
 		FIX::OrdStatus(stuOrder.m_cOrderStatus),
 		FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
@@ -369,7 +369,7 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
   oOrderCancel.get(origClOrdID);
 
   FIX42::OrderCancelReject orderCancelReject = FIX42::OrderCancelReject(
-    FIX::OrderID(orderID.getValue().empty() ? "" : orderID.getValue()),
+    FIX::OrderID(orderID.getValue().empty() ? CToolkit::GetUuid() : orderID.getValue()),
     FIX::ClOrdID(clOrderID),
     FIX::OrigClOrdID(origClOrdID),
     FIX::OrdStatus(FIX::OrdStatus_NEW),
@@ -520,6 +520,7 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   oOrderCancel.getIfSet(securityExchange);
   oOrderCancel.get(symbol);
 
+  //根据被撤单本地号找到报单引用
   std::string ssOrderRef = "";
   if(!GetOrderRef(origClOrdID.getValue(), ssOrderRef))
   {
@@ -528,10 +529,10 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
     return false;
   }
 
-	////将撤单请求ID赋值到原有委托结构体中
-	//STUOrder stuOrder;
-	//if(!GetStuOrder(ssOrderRef, stuOrder)) return false;
- // stuOrder.m_ssCancelClOrdID = origClOrdID.getValue();
+	//将撤单请求ID赋值到原有委托结构体中
+	STUOrder stuOrder;
+	if(!GetStuOrder(ssOrderRef, stuOrder)) return false;
+  stuOrder.m_ssCancelClOrdID = clOrdID.getValue();
 
   memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
   stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
@@ -742,18 +743,24 @@ bool CSgitTdSpi::LoadConfig()
 
 bool CSgitTdSpi::LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp)
 {
-  StringTokenizer stAccountAliasList(apSgitConf->getString(ssSessionProp + ".AccountAlias"), ";", 
+  std::string ssAccountAliasList = "";
+  if(!CToolkit::GetString(apSgitConf, ssSessionProp + ".AccountAlias", ssAccountAliasList)) return false;
+  StringTokenizer stAccountAliasList(ssAccountAliasList, ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-  std::string ssKey = "", ssRealAcct = "";
+  std::string ssSessionIDKey = "", ssRealAcctProp = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountAliasList.begin(); it != stAccountAliasList.end(); it++)
   {
-    ssKey = CToolkit::SessionProp2ID(ssSessionProp) + "|" + *it;
-    ssRealAcct = apSgitConf->getString(ssSessionProp + "." + *it);
+    ssSessionIDKey = CToolkit::SessionProp2ID(ssSessionProp) + "|" + *it;
+
+    ssRealAcctProp = ssSessionProp + "." + *it;
+    if(!CToolkit::GetString(apSgitConf, ssRealAcctProp, ssRealAcct)) return false;
+
+    LOG(INFO_LOG_LEVEL, "load %s:%s", ssRealAcctProp.c_str(), ssRealAcct.c_str());
     std::pair<std::map<std::string, std::string>::iterator, bool> ret;
-		ret = m_mapAlias2RealAcct.insert(std::pair<std::string, std::string>(ssKey, ssRealAcct));
+		ret = m_mapAlias2RealAcct.insert(std::pair<std::string, std::string>(ssSessionIDKey, ssRealAcct));
     if(!ret.second)
     {
-      LOG(ERROR_LOG_LEVEL, "Alias account key:%s is dulplicated", ssKey.c_str());
+      LOG(ERROR_LOG_LEVEL, "Alias account key:%s is dulplicated", ssSessionIDKey.c_str());
       return false;
     }
 
@@ -1021,7 +1028,10 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
 
   m_stuTdParam.m_pSgitCtx->AddUserInfo(CToolkit::SessionProp2ID(ssSessionProp), spUserInfo);
 
-  StringTokenizer stAccountList(apSgitConf->getString(ssAcctListProp), ";", 
+  std::string ssAccountList = "";
+  if(!CToolkit::GetString(apSgitConf, ssAcctListProp, ssAccountList)) return false;
+
+  StringTokenizer stAccountList(ssAccountList, ";", 
     StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   std::string ssKey = "", ssRealAcct = "";
   for (StringTokenizer::Iterator it = stAccountList.begin(); it != stAccountList.end(); it++)

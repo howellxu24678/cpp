@@ -71,9 +71,8 @@ public:
 		std::string               m_ssRealAccount;//真实资金账号
     std::string               m_ssOrderRef;//报单引用
     std::string               m_ssOrderID;//37合同编号
-		std::string		            m_ssClOrdID;//11委托请求编号
-    //(撤单回报时为41)
-    //std::string               m_ssCancelClOrdID;//要撤掉的原始委托请求编号 撤单回报时为11
+		std::string		            m_ssClOrdID;//11委托请求编号 撤单回报时为41
+    std::string               m_ssCancelClOrdID;//要撤掉的原始委托请求编号 撤单回报时为11
 		char					            m_cOrderStatus;//39
 		std::string		            m_ssSymbol;//55
 		char					            m_cSide;//54

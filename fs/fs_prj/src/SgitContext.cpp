@@ -65,7 +65,8 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdPar
   {
     spTdSpi = new CSgitTdSpiDirect(stuTdParam);
   }
-  spTdSpi->Init();
+
+  if(!spTdSpi->Init()) return NULL;
 
   pTdReqApi->IsReviveNtyCapital(false);
   pTdReqApi->RegisterSpi(spTdSpi);
@@ -152,18 +153,19 @@ bool CSgitContext::InitSgitApi()
   CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", m_ssFlowPath);
 	if (!m_ssFlowPath.empty()) FIX::file_mkdir(m_ssFlowPath.c_str());
 
-	m_ssDataPath = m_apSgitConf->getString("global.DataPath");
+  if(!CToolkit::GetString(m_apSgitConf, "global.DataPath", m_ssDataPath)) return false;
 	FIX::file_mkdir(m_ssDataPath.c_str());
 
-  m_ssTdServerAddr = m_apSgitConf->getString("global.TradeServerAddr");
-  std::string ssMdServerAddr = m_apSgitConf->getString("global.QuoteServerAddr");
-  std::string ssQuoteAccount = m_apSgitConf->getString("global.QuoteAccount");
+  if(!CToolkit::GetString(m_apSgitConf, "global.TradeServerAddr", m_ssTdServerAddr)) return false;
+  std::string ssMdServerAddr = "", ssQuoteAccount = "";
+  if(!CToolkit::GetString(m_apSgitConf, "global.QuoteServerAddr", ssMdServerAddr)) return false;
+  if(!CToolkit::GetString(m_apSgitConf, "global.QuoteAccount", ssQuoteAccount)) return false;
   LOG(INFO_LOG_LEVEL, "QuoteAccount:%s", ssQuoteAccount.c_str());
   StringTokenizer stQuoteUserIdPassword(ssQuoteAccount, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
   CreateMdSpi(m_ssFlowPath, ssMdServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
 
-  std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSessionProp = "", ssSessionID = "";
-
+  std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSession = "", ssSessionID = "";
+  //没有配置TradeAccountList，说明不需要预先登录。正常返回
   if (!m_apSgitConf->hasProperty(ssTradeAccountListKey)) return true;
 
   //读取配置文件中需要预先登录的UserID和密码进行登录
@@ -173,19 +175,11 @@ bool CSgitContext::InitSgitApi()
 	{
 		StringTokenizer stTdUserIdPassword(*it, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
 
-		ssFixSessionProp = "global." + stTdUserIdPassword[0];
-		if (!m_apSgitConf->hasProperty(ssFixSessionProp))
-		{
-			LOG(ERROR_LOG_LEVEL, "Can not find the fix session of %s, property:%s", stTdUserIdPassword[0].c_str(), ssFixSessionProp.c_str());
-			return false;
-		}
+    if(!CToolkit::GetString(m_apSgitConf, "global." + stTdUserIdPassword[0], ssFixSession)) return false;
 
-    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(m_apSgitConf->getString(ssFixSessionProp), CSgitTdSpi::HubTran);
-    if (!spTdSpi)
-    {
-      LOG(ERROR_LOG_LEVEL, "Failed to CreateTdSpi for SessionID:%s", m_apSgitConf->getString(ssFixSessionProp).c_str());
-      return false;
-    }
+    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(ssFixSession, CSgitTdSpi::HubTran);
+    if (!spTdSpi) return false;
+    
 
     std::string ssErrMsg = "";
     if(!spTdSpi->ReqUserLogin(stTdUserIdPassword[0], stTdUserIdPassword[1], ssErrMsg))

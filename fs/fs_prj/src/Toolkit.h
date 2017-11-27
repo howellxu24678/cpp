@@ -56,5 +56,7 @@ public:
   static void Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg);
 
   static void Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID, const std::string &ssOnBehalfOfCompID);
+
+  static bool GetString(AutoPtr<IniFileConfiguration> apConfig, const std::string &ssProp, std::string &ssValue);
 };
 #endif // __TOOLKIT_H__
