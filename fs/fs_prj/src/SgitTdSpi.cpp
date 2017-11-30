@@ -107,6 +107,9 @@ void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
     SendExecutionReport(stuOrder, iRet, "Failed to call api:ReqOrderInsert");
     return;
 	}
+
+  //验证没有问题回pending new
+  SendExecutionReport(oNewOrderSingle);
 }
 
 void CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
@@ -248,8 +251,8 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
   }
   else
   {
-    executionReport.set(FIX::LastPx(stuOrder.m_mapTradeRec.rend()->second.m_dMatchPrice));
-    executionReport.set(FIX::LastShares(stuOrder.m_mapTradeRec.rend()->second.m_iMatchVolume));
+    executionReport.set(FIX::LastPx(stuOrder.m_mapTradeRec.rbegin()->second.m_dMatchPrice));
+    executionReport.set(FIX::LastShares(stuOrder.m_mapTradeRec.rbegin()->second.m_iMatchVolume));
   }
 
 	//撤单应答
@@ -330,10 +333,42 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStat
     FIX::CumQty(0),
     FIX::AvgPx(0.0));
 
+  if (!account.getValue().empty()) executionReport.set(FIX::Account(account));
+  executionReport.set(FIX::ClOrdID(clOrdID));
   executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
   executionReport.set(FIX::Text(format("errID:%d,errMsg:%s", iErrCode, ssErrMsg)));
 
   CToolkit::Send(oOrderStatusRequest, executionReport);
+}
+
+void CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle)
+{
+  FIX::ClOrdID clOrdID;
+  FIX::Symbol symbol;
+  FIX::Side side;
+  FIX::Account account;
+
+  oNewOrderSingle.get(clOrdID);
+  oNewOrderSingle.get(symbol);
+  oNewOrderSingle.get(side);
+  oNewOrderSingle.getIfSet(account);
+
+  FIX42::ExecutionReport executionReport = FIX42::ExecutionReport(
+    FIX::OrderID(CToolkit::GetUuid()),
+    FIX::ExecID(CToolkit::GetUuid()),
+    FIX::ExecTransType(FIX::ExecTransType_STATUS),
+    FIX::ExecType(FIX::ExecType_PENDING_NEW),
+    FIX::OrdStatus(FIX::OrdStatus_PENDING_NEW),
+    FIX::Symbol(symbol),
+    FIX::Side(side),
+    FIX::LeavesQty(0),
+    FIX::CumQty(0),
+    FIX::AvgPx(0.0));
+  
+  if (!account.getValue().empty()) executionReport.set(FIX::Account(account));
+  executionReport.set(FIX::ClOrdID(clOrdID));
+
+  CToolkit::Send(oNewOrderSingle, executionReport);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
@@ -450,7 +485,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	stuOrder.m_ssRecvAccount = account.getValue();
 	stuOrder.m_ssRealAccount = GetRealAccont(oNewOrderSingle);
   stuOrder.m_ssClOrdID = clOrdID.getValue();
-  stuOrder.m_cOrderStatus = FIX::OrdStatus_PENDING_NEW;
+  //stuOrder.m_cOrderStatus = FIX::OrdStatus_NEW;
   stuOrder.m_ssSymbol = symbol.getValue();
   stuOrder.m_cSide = side.getValue();
   stuOrder.m_iOrderQty = (int)orderQty.getValue();
@@ -976,7 +1011,7 @@ CSgitTdSpi::STUOrder::STUOrder()
   , m_ssOrderID("")
 	, m_ssClOrdID("")
 	//, m_ssCancelClOrdID("")
-	, m_cOrderStatus(THOST_FTDC_OST_NoTradeQueueing)
+	, m_cOrderStatus(FIX::OrdStatus_NEW)
 	, m_ssSymbol("")
 	, m_cSide('*')
   , m_iOrderQty(0)

@@ -132,6 +132,8 @@ protected:
 
   void SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg);
 
+  void SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle);
+
 	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
 	void SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg);
