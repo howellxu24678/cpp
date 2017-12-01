@@ -90,21 +90,21 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
 void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 {
 	CThostFtdcInputOrderField stuInputOrder;
-	STUOrder stuOrder;
+  Poco::SharedPtr<STUOrder> spStuOrder(new STUOrder());
   std::string ssErrMsg = "";
-	if(!Cvt(oNewOrderSingle, stuInputOrder, stuOrder, ssErrMsg))
+	if(!Cvt(oNewOrderSingle, stuInputOrder, *spStuOrder, ssErrMsg))
   {
-    SendExecutionReport(stuOrder, -1, ssErrMsg);
+    SendExecutionReport(*spStuOrder, -1, ssErrMsg);
     return;
   }
 
-	m_mapOrderRef2Order[stuOrder.m_ssOrderRef] = stuOrder;
+	m_mapOrderRef2Order[spStuOrder->m_ssOrderRef] = spStuOrder;
 
 	int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
-    SendExecutionReport(stuOrder, iRet, "Failed to call api:ReqOrderInsert");
+    SendExecutionReport(*spStuOrder, iRet, "Failed to call api:ReqOrderInsert");
     return;
 	}
 
@@ -138,12 +138,12 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d, ErrorMsg:%s", 
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
   
-	STUOrder stuOrder;
-	if(!GetStuOrder(pInputOrder->OrderRef, stuOrder)) return;
+	Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pInputOrder->OrderRef);
+	if(!spOrder) return;
 
-  stuOrder.Update(*pInputOrder);
+  spOrder->Update(*pInputOrder);
 
-	SendExecutionReport(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	SendExecutionReport(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
 void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -153,16 +153,16 @@ void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAc
     pInputOrderAction->OrderRef, pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange, 
 		pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-	STUOrder stuOrder;
-	if(!GetStuOrder(pInputOrderAction->OrderRef, stuOrder)) return;
+	Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pInputOrderAction->OrderRef);
+	if(!spOrder) return;
 
 	if(pRspInfo->ErrorID != 0)
 	{
-		SendOrderCancelReject(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+		SendOrderCancelReject(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 	}
 	else
 	{
-		SendExecutionReport(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, true);
+		SendExecutionReport(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, true);
 	}
 }
 
@@ -199,11 +199,11 @@ void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
     pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
 
-	STUOrder stuOrder;
-	if(!GetStuOrder(pTrade->OrderRef, stuOrder)) return;
+  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pTrade->OrderRef);
+  if(!spOrder) return;
 
-  stuOrder.Update(*pTrade);
-  SendExecutionReport(stuOrder);
+  spOrder->Update(*pTrade);
+  SendExecutionReport(*spOrder);
 }
 
 void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
@@ -294,10 +294,10 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
 
 void CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
 {
-	STUOrder stuOrder;
-	if(!GetStuOrder(ssOrderRef, stuOrder)) return;
+  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
+  if(!spOrder) return;
 
-  return SendExecutionReport(stuOrder, iErrCode, ssErrMsg);
+  return SendExecutionReport(*spOrder, iErrCode, ssErrMsg);
 }
 
 void CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg)
@@ -367,16 +367,18 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingl
   
   if (!account.getValue().empty()) executionReport.set(FIX::Account(account));
   executionReport.set(FIX::ClOrdID(clOrdID));
+  executionReport.set(FIX::LastPx(0));
+  executionReport.set(FIX::LastShares(0));
 
   CToolkit::Send(oNewOrderSingle, executionReport);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
 {
-	STUOrder stuOrder;
-	if(!GetStuOrder(ssOrderRef, stuOrder)) return;
+  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
+  if(!spOrder) return;
 
-	return SendOrderCancelReject(stuOrder, iErrCode, ssErrMsg);
+	return SendOrderCancelReject(*spOrder, iErrCode, ssErrMsg);
 }
 
 void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg)
@@ -565,9 +567,9 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   }
 
 	//将撤单请求ID赋值到原有委托结构体中
-	STUOrder stuOrder;
-	if(!GetStuOrder(ssOrderRef, stuOrder)) return false;
-  stuOrder.m_ssCancelClOrdID = clOrdID.getValue();
+  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
+  if(!spOrder) return false;
+  spOrder->m_ssCancelClOrdID = clOrdID.getValue();
 
   memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
   stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
@@ -651,15 +653,15 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
       return SendExecutionReport(oOrderStatusRequest, -1, ssErrMsg);
     }
 
-    STUOrder stuOrder;
-    if(!GetStuOrder(ssOrderRef, stuOrder))
+    Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
+    if(!spOrder) 
     {
       ssErrMsg = "Can not GetStuOrder by clOrdID:" + clOrdID.getValue();
       LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
       return SendExecutionReport(oOrderStatusRequest, -1, ssErrMsg);
     }
 
-    ssOrderID = stuOrder.m_ssOrderID;
+    ssOrderID = spOrder->m_ssOrderID;
   }
   if (!ssOrderID.empty())
   {
@@ -694,10 +696,10 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
     pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-	STUOrder stuOrder;
-	if(!GetStuOrder(pOrder->OrderRef, stuOrder)) return;
+  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pOrder->OrderRef);
+  if(!spOrder) return;
 
-  stuOrder.Update(*pOrder, m_stuTdParam);
+  spOrder->Update(*pOrder, m_stuTdParam);
 
   int iErrCode = pRspInfo->ErrorID;
   std::string ssErrMsg = pRspInfo->ErrorMsg;
@@ -713,10 +715,10 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
   {
     //撤单的回报中应把订单剩余数量置0
-    stuOrder.m_iLeavesQty = 0;
+    spOrder->m_iLeavesQty = 0;
   }
 
-  SendExecutionReport(stuOrder, iErrCode, ssErrMsg);
+  SendExecutionReport(*spOrder, iErrCode, ssErrMsg);
 }
 
 void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -829,17 +831,15 @@ std::string CSgitTdSpi::GetRealAccont(const FIX::Message& oRecvMsg)
 	}
 }
 
-bool CSgitTdSpi::GetStuOrder(const std::string &ssOrderRef, STUOrder &stuOrder)
+Poco::SharedPtr<CSgitTdSpi::STUOrder> CSgitTdSpi::GetStuOrder(const std::string &ssOrderRef)
 {
-	std::map<std::string, STUOrder>::iterator it = m_mapOrderRef2Order.find(ssOrderRef);
+	std::map<std::string, Poco::SharedPtr<STUOrder>>::iterator it = m_mapOrderRef2Order.find(ssOrderRef);
 	if (it == m_mapOrderRef2Order.end())
 	{
 		LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_mapOrderRef2Order", ssOrderRef.c_str());
-		return false;
+		return NULL;
 	}
-	stuOrder = it->second;
-
-	return true;
+	return it->second;
 }
 
 std::string CSgitTdSpi::GetOrderRefDatFileName()
@@ -885,16 +885,16 @@ void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &
 
 void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder)
 {
-  std::map<std::string, STUOrder>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
+  std::map<std::string, Poco::SharedPtr<STUOrder>>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
   if (itFind != m_mapOrderRef2Order.end())
   {
-    itFind->second.Update(stuFtdcOrder, m_stuTdParam);
-		stuOrder = itFind->second;
+    itFind->second->Update(stuFtdcOrder, m_stuTdParam);
+		stuOrder = *(itFind->second);
   }
   else
   {
 		Cvt(stuFtdcOrder, stuOrder);
-    m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = stuOrder;
+    m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = new STUOrder(stuOrder);
   }
 }
 

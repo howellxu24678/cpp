@@ -146,7 +146,7 @@ protected:
 
 	void  Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder);
 
-	bool GetStuOrder(const std::string &ssOrderRef, STUOrder &stuOrder);
+	Poco::SharedPtr<CSgitTdSpi::STUOrder> GetStuOrder(const std::string &ssOrderRef);
 
 	std::string GetOrderRefDatFileName();
 
@@ -510,25 +510,25 @@ private:
   int                                     m_iLoginRespErrID;  //登录响应错误码
   std::string                             m_ssLoginRespErrMsg;//登录响应错误信息
 
-	AtomicCounter														m_acOrderRef;
+	AtomicCounter														          m_acOrderRef;
   //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
 	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
-	std::map<std::string, std::string>			m_mapOrderRef2ClOrdID;
+	std::map<std::string, std::string>			          m_mapOrderRef2ClOrdID;
 
 	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
-	std::map<std::string, std::string>			m_mapClOrdID2OrderRef;
+	std::map<std::string, std::string>			          m_mapClOrdID2OrderRef;
 
   //OrderRef -> STUOrder (报单引用->委托)
-  std::map<std::string, STUOrder>					m_mapOrderRef2Order;
+  std::map<std::string, Poco::SharedPtr<STUOrder>>  m_mapOrderRef2Order;
 
   //账户别名->真实账户
-  std::map<std::string, std::string>      m_mapAlias2RealAcct;
+  std::map<std::string, std::string>                m_mapAlias2RealAcct;
 
 	//真实账户->账户别名
-	std::map<std::string, std::string>			m_mapReal2AliasAcct;
+	std::map<std::string, std::string>			          m_mapReal2AliasAcct;
 
-	std::fstream														m_fOrderRef2ClOrdID;
-	Poco::FastMutex													m_fastMutexOrderRef2ClOrdID;
+	std::fstream														          m_fOrderRef2ClOrdID;
+	Poco::FastMutex													          m_fastMutexOrderRef2ClOrdID;
 };
 
 //处理经过hub转发
