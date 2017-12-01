@@ -277,6 +277,12 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
 		executionReport.set(FIX::ExecType(stuOrder.m_cOrderStatus));
   }
 
+  //pending cancel 和 canceled时 tag20为1
+  if (bIsPendingCancel || stuOrder.m_cOrderStatus == FIX::OrdStatus_CANCELED)
+  {
+    executionReport.set(FIX::ExecTransType(FIX::ExecTransType_CANCEL));
+  }
+
   //回执行回报时，优先送入收到的账户，如果没有收到，找到配置中配置的账户别名，如果也没有找到，只能使用真实账户
 	std::string ssAccount = stuOrder.m_ssRealAccount;
 	if (!stuOrder.m_ssRecvAccount.empty())
@@ -356,7 +362,7 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingl
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport(
     FIX::OrderID(CToolkit::GetUuid()),
     FIX::ExecID(CToolkit::GetUuid()),
-    FIX::ExecTransType(FIX::ExecTransType_STATUS),
+    FIX::ExecTransType(FIX::ExecTransType_NEW),
     FIX::ExecType(FIX::ExecType_PENDING_NEW),
     FIX::OrdStatus(FIX::OrdStatus_PENDING_NEW),
     FIX::Symbol(symbol),
