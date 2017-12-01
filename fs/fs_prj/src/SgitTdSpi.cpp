@@ -107,9 +107,6 @@ void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
     SendExecutionReport(*spStuOrder, iRet, "Failed to call api:ReqOrderInsert");
     return;
 	}
-
-  //验证没有问题回pending new
-  SendExecutionReport(oNewOrderSingle);
 }
 
 void CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
@@ -140,9 +137,14 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
   
 	Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pInputOrder->OrderRef);
 	if(!spOrder) return;
-
   spOrder->Update(*pInputOrder);
+  
+  //pending new
+  spOrder->m_cOrderStatus = FIX::OrdStatus_PENDING_NEW;
+  SendExecutionReport(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
+  //new
+  spOrder->m_cOrderStatus = FIX::OrdStatus_NEW;
 	SendExecutionReport(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
@@ -225,7 +227,7 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
-void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/)
+void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
 {
   std::string& ssUUid = CToolkit::GetUuid();
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s,OrderID:%s,uuid:%s", 
@@ -281,6 +283,10 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
   if (bIsPendingCancel || stuOrder.m_cOrderStatus == FIX::OrdStatus_CANCELED)
   {
     executionReport.set(FIX::ExecTransType(FIX::ExecTransType_CANCEL));
+  }
+  if (bIsQueryRsp)
+  {
+    executionReport.set(FIX::ExecTransType(FIX::ExecTransType_STATUS));
   }
 
   //回执行回报时，优先送入收到的账户，如果没有收到，找到配置中配置的账户别名，如果也没有找到，只能使用真实账户
@@ -702,29 +708,23 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
     pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pOrder->OrderRef);
-  if(!spOrder) return;
-
-  spOrder->Update(*pOrder, m_stuTdParam);
-
-  int iErrCode = pRspInfo->ErrorID;
-  std::string ssErrMsg = pRspInfo->ErrorMsg;
+  STUOrder stuOrder;
+  UpsertOrder(*pOrder, stuOrder);;
 
   //订单被拒绝
-  if (iErrCode == 0 && (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
-    || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected))
+  if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
+    || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected)
   {
-    iErrCode = -1;
-    ssErrMsg = "Reject by Exchange";
+    return SendExecutionReport(stuOrder, -1, "Reject by Exchange", false, true);
   }
   //撤单回报
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
   {
     //撤单的回报中应把订单剩余数量置0
-    spOrder->m_iLeavesQty = 0;
+    stuOrder.m_iLeavesQty = 0;
   }
 
-  SendExecutionReport(*spOrder, iErrCode, ssErrMsg);
+  SendExecutionReport(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, false, true);
 }
 
 void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)

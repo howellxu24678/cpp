@@ -126,7 +126,7 @@ protected:
 
 	bool Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue);
 
-	void SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false);
+	void SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
 	void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
