@@ -95,7 +95,7 @@ bool Convert::InitDict(AutoPtr<XMLConfiguration> apXmlConf)
 	std::string ssDicts = "dicts", ssDictKey = "", ssItemKey = "", ssField = "", ssFix = "", ssSgit = "";
 
 	apXmlConf->keys(ssDicts, kDict);
-	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssDicts.c_str(), kDict.size());
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssDicts.c_str(), (int)kDict.size());
 
 	for (AbstractConfiguration::Keys::iterator itDict = kDict.begin(); itDict != kDict.end(); itDict++)
 	{
@@ -132,7 +132,7 @@ bool Convert::InitSymbol(AutoPtr<XMLConfiguration> apXmlConf)
 	std::string ssSymbols = "symbols", ssSymbolKey = "", ssItemKey = "", ssName = "", ssIn = "", ssOut = "";
 
 	apXmlConf->keys(ssSymbols, kSymbol);
-	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssSymbols.c_str(), kSymbol.size());
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssSymbols.c_str(), (int)kSymbol.size());
 
 	for (AbstractConfiguration::Keys::iterator itSymbol = kSymbol.begin(); itSymbol != kSymbol.end(); itSymbol++)
 	{
@@ -265,7 +265,7 @@ bool Convert::InitMonthMap(AutoPtr<XMLConfiguration> apXmlConf)
 	std::string ssMonth = "month", ssItemKey = "", ssIn = "", ssOut = "";
 
 	apXmlConf->keys(ssMonth, kItem);
-	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssMonth.c_str(), kItem.size());
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssMonth.c_str(), (int)kItem.size());
 
 	for (AbstractConfiguration::Keys::iterator it = kItem.begin(); it != kItem.end(); it++)
 	{
@@ -318,7 +318,7 @@ bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)
 	std::string ssExchanges = "exchanges", ssSymbolKey = "", ssItemKey = "", ssName = "", ssValue = "";
 
 	apXmlConf->keys(ssExchanges, kExchange);
-	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssExchanges.c_str(), kExchange.size());
+	LOG(DEBUG_LOG_LEVEL, "%s size:%d", ssExchanges.c_str(), (int)kExchange.size());
 
 	for (AbstractConfiguration::Keys::iterator itExchange = kExchange.begin(); itExchange != kExchange.end(); itExchange++)
 	{

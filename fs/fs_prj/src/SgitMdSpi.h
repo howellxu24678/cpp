@@ -8,6 +8,7 @@
 #include <float.h>
 #include "Poco/RWLock.h"
 #include "Const.h"
+#include <math.h>
 
 using namespace fstech;
 using namespace  std;
@@ -22,7 +23,7 @@ class CSgitMdSpi : public CThostFtdcMdSpi
 {
 public:
   CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword);
-  ~CSgitMdSpi();
+  virtual ~CSgitMdSpi();
 
   void OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
 
@@ -106,16 +107,16 @@ protected:
   virtual void OnRtnDeferDeliveryQuot(CThostDeferDeliveryQuot* pQuot){};
 
 private:
+  CSgitContext														              *m_pSgitCtx;
   CThostFtdcMdApi													              *m_pMdReqApi;
-	CSgitContext														              *m_pSgitCtx;
 	AtomicCounter														              m_acRequestId;
   CThostFtdcReqUserLoginField                           m_stuLogin;
 
   //行情MDReqID (262)记录，用于判断是否有重复
-  std::map<std::string, std::set<std::string>>          m_mapMDReqId;
+  std::map<std::string, std::set<std::string> >          m_mapMDReqId;
 
   //订阅关系 代码->订阅session
-  std::map<std::string, std::set<std::string>>          m_mapCode2SubSession; 
+  std::map<std::string, std::set<std::string> >          m_mapCode2SubSession; 
   RWLock                                                m_rwLockCode2SubSession;
 
   //订阅全量代码的session

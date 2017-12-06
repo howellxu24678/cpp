@@ -82,7 +82,7 @@ void CSgitMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CTho
 
   //登录成功后订阅全市场行情
   char* ppInstruments[1];
-  ppInstruments[0] = "all";
+  ppInstruments[0] = (char *)"all";
   m_pMdReqApi->SubscribeMarketData(ppInstruments, 1);
 }
 
@@ -143,7 +143,8 @@ void CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRe
   {
     if (!GetMarketData(*citSymbol, stuMarketData)) continue;
 
-    CToolkit::Send(oMarketDataRequest, CreateSnapShot(stuMarketData, enSymbolType, mdReqID.getValue()));
+    FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = CreateSnapShot(stuMarketData, enSymbolType, mdReqID.getValue());
+    CToolkit::Send(oMarketDataRequest, oMdSnapShot);
   }
 }
 
@@ -203,7 +204,7 @@ bool CSgitMdSpi::CheckValid(
  // std::string ssErrMsg = "";
 
  // //
- // std::map<std::string, std::set<std::string>>::iterator it = m_mapMDReqId.find(ssSessionKey);
+ // std::map<std::string, std::set<std::string> >::iterator it = m_mapMDReqId.find(ssSessionKey);
  // if (it != m_mapMDReqId.end())
  // {
  //   if (it->second.count(ssMDReqID) > 0)

@@ -146,7 +146,7 @@ void CToolkit::Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID
   }
   catch ( FIX::SessionNotFound& e) 
   {
-    LOG(ERROR_LOG_LEVEL, "msg:%s, err:%s", oSendMsg.toString(), e.what());
+    LOG(ERROR_LOG_LEVEL, "msg:%s, err:%s", oSendMsg.toString().c_str(), e.what());
   }
 }
 
@@ -154,7 +154,7 @@ bool CToolkit::GetString(AutoPtr<IniFileConfiguration> apConfig, const std::stri
 {
   if (!apConfig->hasProperty(ssProp))
   {
-    LOG(ERROR_LOG_LEVEL, "Can not find property:%s in config file", ssProp);
+    LOG(ERROR_LOG_LEVEL, "Can not find property:%s in config file", ssProp.c_str());
     return false;
   }
 

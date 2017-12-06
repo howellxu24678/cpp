@@ -8,8 +8,6 @@
 #include "Convert.h"
 #include "Const.h"
 
-
-
 class CToolkit
 {
 public:

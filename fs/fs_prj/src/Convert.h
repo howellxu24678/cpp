@@ -26,10 +26,10 @@ public:
 		EnCvtType			                m_enSymbolType;
 		std::string				            m_ssFormat;
 		SharedPtr<RegularExpression>	m_spRe;
-		UINT8							            m_iYearPos;
-		UINT8							            m_iYearLen;
-		UINT8							            m_iMonthPos;
-		UINT8							            m_iMonthLen;
+		Poco::UInt8							      m_iYearPos;
+		Poco::UInt8							      m_iYearLen;
+		Poco::UInt8							      m_iMonthPos;
+		Poco::UInt8							      m_iMonthLen;
 	};
 
   struct STUExchange

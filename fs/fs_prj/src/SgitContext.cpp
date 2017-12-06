@@ -1,12 +1,21 @@
+#ifdef _MSC_VER
+#pragma warning( disable : 4503 4355 4786 )
+#else
+#include "config.h"
+#endif
+
 #include "SgitContext.h"
+#include "Log.h"
+#include "Toolkit.h"
+
 #include "Poco/StringTokenizer.h"
 #include "Poco/Util/IniFileConfiguration.h"
-
 #include "Poco/File.h"
-#include "Log.h"
-#include "quickfix/SessionID.h"
-#include "Toolkit.h"
+
+
 #include "quickfix/Session.h"
+#include "quickfix/SessionID.h"
+
 
 
 
@@ -113,8 +122,8 @@ bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr
 {
   ScopedWriteRWLock scopeLock(m_rwSessionID2TdSpi);
 
-	std::pair<std::map<std::string, SharedPtr<CSgitTdSpi>>::iterator, bool> ret = 
-		m_mapSessionID2TdSpi.insert(std::pair<std::string, SharedPtr<CSgitTdSpi>>(ssSessionID, spTdSpi));
+	std::pair<std::map<std::string, SharedPtr<CSgitTdSpi> >::iterator, bool> ret = 
+		m_mapSessionID2TdSpi.insert(std::pair<std::string, SharedPtr<CSgitTdSpi> >(ssSessionID, spTdSpi));
 
 	if (ret.second == false)
 	{
@@ -128,7 +137,7 @@ bool CSgitContext::LinkSessionID2TdSpi(const std::string &ssSessionID, SharedPtr
 SharedPtr<CSgitTdSpi> CSgitContext::GetTdSpi(const FIX::SessionID& oSessionID)
 {
   ScopedReadRWLock scopeLock(m_rwSessionID2TdSpi);
-	std::map<std::string, SharedPtr<CSgitTdSpi>>::const_iterator cit = m_mapSessionID2TdSpi.find(oSessionID.toString());
+	std::map<std::string, SharedPtr<CSgitTdSpi> >::const_iterator cit = m_mapSessionID2TdSpi.find(oSessionID.toString());
 	if (cit != m_mapSessionID2TdSpi.end())
 	{
 		return cit->second;
@@ -255,7 +264,7 @@ void CSgitContext::AddUserInfo(const std::string &ssSessionKey, SharedPtr<STUser
 Convert::EnCvtType CSgitContext::GetSymbolType(const std::string &ssSessionKey)
 {
   ScopedReadRWLock scopeLock(m_rwFixUser2Info);
-  std::map<std::string, SharedPtr<STUserInfo>>::const_iterator citFind = m_mapFixUser2Info.find(ssSessionKey);
+  std::map<std::string, SharedPtr<STUserInfo> >::const_iterator citFind = m_mapFixUser2Info.find(ssSessionKey);
   if (citFind != m_mapFixUser2Info.end()) return citFind->second->m_enCvtType;
 
   return Convert::Unknow;
@@ -264,7 +273,7 @@ Convert::EnCvtType CSgitContext::GetSymbolType(const std::string &ssSessionKey)
 void CSgitContext::UpdateSymbolType(const std::string &ssSessionKey, Convert::EnCvtType enSymbolType)
 {
   ScopedWriteRWLock scopeLock(m_rwFixUser2Info);
-  std::map<std::string, SharedPtr<STUserInfo>>::iterator itFind = m_mapFixUser2Info.find(ssSessionKey);
+  std::map<std::string, SharedPtr<STUserInfo> >::iterator itFind = m_mapFixUser2Info.find(ssSessionKey);
   if (itFind != m_mapFixUser2Info.end()) itFind->second->m_enCvtType = enSymbolType;
 }
 

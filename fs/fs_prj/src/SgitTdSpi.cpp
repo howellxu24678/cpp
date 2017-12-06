@@ -14,12 +14,12 @@
 CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   : m_stuTdParam(stuTdParam)
 	, m_acRequestId(0)
-	, m_acOrderRef(0)
+  , m_bNeedKeepLogin(false)
   , m_oEventConnected(false)
   , m_oEventLoginResp(true)
-  , m_bNeedKeepLogin(false)
   , m_bLastLoginOk(false)
   , m_ssLoginRespErrMsg("")
+  , m_acOrderRef(0)
 {
 }
 
@@ -220,7 +220,7 @@ void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (!pOrderAction || !pRspInfo) return;
-  LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
+  LOG(INFO_LOG_LEVEL, "OrderActionRef:%d,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
     pOrderAction->OrderActionRef, pOrderAction->OrderRef, pOrderAction->OrderSysID, pOrderAction->ActionFlag, 
     pOrderAction->VolumeChange, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
@@ -229,7 +229,7 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 
 void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
 {
-  std::string& ssUUid = CToolkit::GetUuid();
+  std::string ssUUid = CToolkit::GetUuid();
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s,OrderID:%s,uuid:%s", 
     stuOrder.m_ssOrderRef.c_str(), stuOrder.m_ssClOrdID.c_str(), stuOrder.m_ssOrderID.c_str(), ssUUid.c_str());
 
@@ -839,7 +839,7 @@ std::string CSgitTdSpi::GetRealAccont(const FIX::Message& oRecvMsg)
 
 Poco::SharedPtr<CSgitTdSpi::STUOrder> CSgitTdSpi::GetStuOrder(const std::string &ssOrderRef)
 {
-	std::map<std::string, Poco::SharedPtr<STUOrder>>::iterator it = m_mapOrderRef2Order.find(ssOrderRef);
+	std::map<std::string, Poco::SharedPtr<STUOrder> >::iterator it = m_mapOrderRef2Order.find(ssOrderRef);
 	if (it == m_mapOrderRef2Order.end())
 	{
 		LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_mapOrderRef2Order", ssOrderRef.c_str());
@@ -891,7 +891,7 @@ void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &
 
 void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder)
 {
-  std::map<std::string, Poco::SharedPtr<STUOrder>>::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
+  std::map<std::string, Poco::SharedPtr<STUOrder> >::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
   if (itFind != m_mapOrderRef2Order.end())
   {
     itFind->second->Update(stuFtdcOrder, m_stuTdParam);
@@ -1085,7 +1085,7 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
 
 Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcct)
 {
-  std::map<std::string, Poco::SharedPtr<STUserInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
+  std::map<std::string, Poco::SharedPtr<STUserInfo> >::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
   if (cit != m_mapRealAcct2UserInfo.end())
   {
     return cit->second->m_enCvtType;
@@ -1096,7 +1096,7 @@ Convert::EnCvtType CSgitTdSpiHubTran::GetSymbolType(const std::string &ssRealAcc
 
 Poco::SharedPtr<STUserInfo> CSgitTdSpiHubTran::GetUserInfo(const std::string &ssRealAcct)
 {
-  std::map<std::string, Poco::SharedPtr<STUserInfo>>::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
+  std::map<std::string, Poco::SharedPtr<STUserInfo> >::const_iterator cit = m_mapRealAcct2UserInfo.find(ssRealAcct);
   if (cit == m_mapRealAcct2UserInfo.end())
   {
     LOG(ERROR_LOG_LEVEL, "Can not find UserInfo by real account:%s", ssRealAcct.c_str());
