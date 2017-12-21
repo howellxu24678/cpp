@@ -20,7 +20,9 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
   , m_bLastLoginOk(false)
   , m_ssLoginRespErrMsg("")
   , m_acOrderRef(0)
+  , m_iCurReqID(0)
 {
+  m_vBuffer.clear();
 }
 
 CSgitTdSpi::~CSgitTdSpi()
@@ -749,6 +751,22 @@ void CSgitTdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSess
   {
     ReqQryOrder((const FIX42::OrderStatusRequest&) oMsg);
   }
+  else if(msgType == FIX::MsgType_AccountQuery)
+  {
+    ReqAccountQuery(oMsg);
+  }
+  else if(msgType == FIX::MsgType_CapitalQuery)
+  {
+    ReqCapitalQuery(oMsg);
+  }
+  else if(msgType == FIX::MsgType_PositionQuery)
+  {
+    ReqPositionQuery(oMsg);
+  }
+  else if(msgType == FIX::MsgType_ContractQuery)
+  {
+    ReqContractQuery(oMsg);
+  }
 }
 
 bool CSgitTdSpi::Init()
@@ -965,6 +983,194 @@ bool CSgitTdSpi::ReqUserLogin(const std::string &ssUserID, const std::string &ss
 
   if(!m_bLastLoginOk) Poco::format(ssErrMsg, "failed to login errcode:%d", m_iLoginRespErrID);
   return m_bLastLoginOk;
+}
+
+void CSgitTdSpi::ReqAccountQuery(const FIX42::Message& oMessage)
+{
+  FIX::Account account;
+  FIX::ReqID reqId;
+  oMessage.getField(account);
+  oMessage.getField(reqId);
+
+  int iCurRequsetId = m_acRequestId++;
+  m_expchReqId2Message.add(iCurRequsetId, oMessage);
+
+  CThostFtdcQryTradingCodeField stuTradeCode;
+  memset(&stuTradeCode, 0, sizeof(CThostFtdcQryTradingCodeField));
+  strncpy(stuTradeCode.InvestorID, account.getValue().c_str(), sizeof(stuTradeCode.InvestorID));
+  m_stuTdParam.m_pTdReqApi->ReqQryTradingCode(&stuTradeCode, iCurRequsetId);
+}
+
+void CSgitTdSpi::OnRspQryTradingCode(CThostFtdcTradingCodeField *pTradingCode, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+  if (pRspInfo) LOG(INFO_LOG_LEVEL, "errId:%d,errMsg:%s", pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+  if (pTradingCode)
+    LOG(INFO_LOG_LEVEL, "BrokerID:%s,InvestorID:%s,ClientID:%s,ClientIDType:%c,ExchangeID:%s,nRequestID:%d,bIsLast:%d", 
+    pTradingCode->BrokerID, pTradingCode->InvestorID, pTradingCode->ClientID, pTradingCode->ClientIDType, 
+    pTradingCode->ExchangeID, nRequestID, bIsLast);
+  
+  AppendQryData(FIX::MsgType(FIX::MsgType_AccountQueryResp), (char*)pTradingCode, sizeof(CThostFtdcTradingCodeField), pRspInfo, nRequestID, bIsLast);
+}
+
+void CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage)
+{
+  FIX::Account account;
+  FIX::ReqID reqId;
+  oMessage.getField(account);
+  oMessage.getField(reqId);
+
+  CThostFtdcQryTradingAccountField stuAccount;
+  memset(&stuAccount, 0, sizeof(CThostFtdcQryTradingAccountField));
+  strncpy(stuAccount.InvestorID, account.getValue().c_str(), sizeof(stuAccount.InvestorID));
+  m_stuTdParam.m_pTdReqApi->ReqQryTradingAccount(&stuAccount, m_acRequestId++);
+}
+
+void CSgitTdSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+  LOG(INFO_LOG_LEVEL, "bIsLast:%d", bIsLast);
+  if(pRspInfo) LOG(INFO_LOG_LEVEL, "errId:%d,errMsg:%s", pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+
+  if(pTradingAccount) 
+    LOG(INFO_LOG_LEVEL, "AccountID:%s,Available:%lf,PositionProfit:%lf,CloseProfit:%lf", pTradingAccount->AccountID, pTradingAccount->Available, pTradingAccount->PositionProfit, pTradingAccount->CloseProfit);
+}
+
+void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
+{
+  FIX::Account account;
+  FIX::Symbol symbol;
+  FIX::ReqID reqId;
+  oMessage.getField(account);
+  oMessage.getField(symbol);
+  oMessage.getField(reqId);
+
+  CThostFtdcQryInvestorPositionField stuPosition;
+  memset(&stuPosition, 0, sizeof(CThostFtdcQryInvestorPositionField));
+  strncpy(stuPosition.InvestorID, account.getValue().c_str(), sizeof(stuPosition.InvestorID));
+  strncpy(stuPosition.InstrumentID, symbol.getValue().c_str(), sizeof(stuPosition.InstrumentID));
+  m_stuTdParam.m_pTdReqApi->ReqQryInvestorPosition(&stuPosition, m_acRequestId++);
+}
+
+void CSgitTdSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+  LOG(INFO_LOG_LEVEL, "bIsLast:%d", bIsLast);
+  if(pRspInfo) LOG(INFO_LOG_LEVEL, "errId:%d,errMsg:%s", pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+
+  if(pInvestorPosition)
+    LOG(INFO_LOG_LEVEL, "InvestorID:%s,PosiDirection:%c,Position:%d,YdPosition:%d,OpenVolume:%d,CloseVolume:%d", 
+    pInvestorPosition->InvestorID, pInvestorPosition->PosiDirection, pInvestorPosition->Position, pInvestorPosition->YdPosition,
+    pInvestorPosition->OpenVolume, pInvestorPosition->CloseVolume);
+}
+
+void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
+{
+  FIX::Symbol symbol;
+  FIX::ReqID reqId;
+  oMessage.getField(symbol);
+  oMessage.getField(reqId);
+
+  CThostFtdcQryInstrumentField stuInstrument;
+  memset(&stuInstrument, 0, sizeof(CThostFtdcQryInstrumentField));
+  strncpy(stuInstrument.InstrumentID, symbol.getValue().c_str(), sizeof(stuInstrument.InstrumentID));
+
+  m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, m_acRequestId++);
+}
+
+void CSgitTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
+{
+  LOG(INFO_LOG_LEVEL, "bIsLast:%d", bIsLast);
+  if(pRspInfo) LOG(INFO_LOG_LEVEL, "errId:%d,errMsg:%s", pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+
+  if(pInstrument)
+    LOG(INFO_LOG_LEVEL, "InstrumentID:%s,ExchangeID:%s,ProductID:%s,ExpireDate:%s,PriceTick:%lf",
+    pInstrument->InstrumentID, pInstrument->ExchangeID, pInstrument->ProductID, pInstrument->ExpireDate, 
+    pInstrument->PriceTick);
+}
+
+void CSgitTdSpi::AppendQryData(const FIX::MsgType &oMsgType, char *pRspData, int iDataSize, CThostFtdcRspInfoField *pRspInfo, int iReqID, bool bIsLast)
+{
+  //出现错误
+  if (pRspInfo && pRspInfo->ErrorID)
+  {
+    FIX42::Message oMsg(oMsgType);
+    oMsg.setField(FIX::RejectReason(pRspInfo->ErrorID));
+    if (strlen(pRspInfo->ErrorMsg) > 0) oMsg.setField(FIX::Text(pRspInfo->ErrorMsg));
+
+    return Send(iReqID, oMsg);
+  }
+
+  if (iReqID != m_iCurReqID)
+  {
+    m_vBuffer.clear();
+    m_iCurReqID = iReqID;
+  }
+
+  //第一步，先将数据打到缓冲区中去
+  if (pRspData)
+  {
+    int iPreQryDataSize = m_vBuffer.size();
+    m_vBuffer.resize(iPreQryDataSize + iDataSize);
+    memcpy(&m_vBuffer[iPreQryDataSize], pRspData, iDataSize);
+  }
+
+  //最后一个，组包发送
+  if (!bIsLast) return;
+
+  FIX42::Message oMsg(oMsgType);
+  int iItemCount = m_vBuffer.size() / iDataSize;
+
+  if (oMsgType == FIX::MsgType_AccountQueryResp)
+  {
+    CThostFtdcTradingCodeField  stuTradingCode;
+    for (int i = 0; i < iItemCount; i++)
+    {
+      memset(&stuTradingCode, 0, sizeof(CThostFtdcTradingCodeField));
+      memcpy(&stuTradingCode, &m_vBuffer[iDataSize * i], iDataSize);
+
+      FIX::AccountQueryRespGroup accountQueryRespGroup;
+      accountQueryRespGroup.setField(FIX::Account(stuTradingCode.InvestorID));
+      accountQueryRespGroup.setField(FIX::ClientID(stuTradingCode.ClientID));
+      accountQueryRespGroup.setField(FIX::SecurityExchange(stuTradingCode.ExchangeID));
+      oMsg.addGroup(accountQueryRespGroup);
+    }
+  }
+  else if(oMsgType == FIX::MsgType_CapitalQueryResp)
+  {
+
+  }
+  else if(oMsgType == FIX::MsgType_PositionQueryResp)
+  {
+
+  }
+  else if(oMsgType == FIX::MsgType_ContractQueryResp)
+  {
+
+  }
+
+  if (iItemCount < 1)
+  {
+    oMsg.setField(FIX::RejectReason(FIX::RejectReason_Empty));
+  }
+  else
+  {
+    oMsg.setField(FIX::RejectReason(FIX::RejectReason_Success));
+  }
+
+  Send(iReqID, oMsg);
+}
+
+void CSgitTdSpi::Send(int iReqID, FIX::Message& oMsg)
+{
+  Poco::SharedPtr<FIX42::Message> spMsgRecv =  m_expchReqId2Message.get(iReqID);
+  if (!spMsgRecv)
+  {
+    LOG(ERROR_LOG_LEVEL, "Can not find MsgRecv by reqID:%d", iReqID);
+    return;
+  }
+
+  FIX::ReqID reqId;
+  oMsg.setField(spMsgRecv->getField(reqId));
+
+  CToolkit::Send(*spMsgRecv, oMsg);
 }
 
 

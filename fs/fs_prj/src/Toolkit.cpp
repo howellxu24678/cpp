@@ -73,7 +73,11 @@ bool CToolkit::IsTdRequest(const FIX::MsgType &msgType)
 {
   return msgType == FIX::MsgType_NewOrderSingle 
     || msgType == FIX::MsgType_OrderCancelRequest 
-    || msgType == FIX::MsgType_OrderStatusRequest ? true : false;
+    || msgType == FIX::MsgType_OrderStatusRequest
+    || msgType == FIX::MsgType_AccountQuery 
+    || msgType == FIX::MsgType_CapitalQuery
+    || msgType == FIX::MsgType_PositionQuery
+    || msgType == FIX::MsgType_ContractQuery ? true : false;
 }
 
 bool CToolkit::IsMdRequest(const FIX::MsgType &msgType)

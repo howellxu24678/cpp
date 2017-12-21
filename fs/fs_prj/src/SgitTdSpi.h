@@ -25,6 +25,22 @@ using namespace Poco::Util;
 
 const std::string ssOrderRefFormat = "%012d";
 
+namespace FIX
+{
+  USER_DEFINE_INT(ReqID, 13002);
+  USER_DEFINE_NUMINGROUP(ListCount, 13003);
+  //USER_DEFINE_EXCHANGE(MktID, 13004);
+  USER_DEFINE_CHAR(RejectReason, 13005);
+
+  class AccountQueryRespGroup: public FIX::Group
+  {
+  public:
+    AccountQueryRespGroup() : FIX::Group(13003,1,FIX::message_order(1,109,13004,0)) {}
+    FIELD_SET(*this, FIX::Account);
+    FIELD_SET(*this, FIX::ClientID);
+    FIELD_SET(*this, FIX::SecurityExchange);
+  };
+}
 
 /*
 执行回报推送的流程：1.报单引用-》委托单(包括成交信息)-》资金账号
@@ -111,6 +127,8 @@ protected:
 
 	void SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMsg);
 
+  void Send(int iReqID, FIX::Message& oMsg);
+
   virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
 	std::string GetRealAccont(const FIX::Message& oRecvMsg);
@@ -162,6 +180,16 @@ protected:
   void ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
 
   void ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest);
+
+  void ReqAccountQuery(const FIX42::Message& oMessage);
+
+  void ReqCapitalQuery(const FIX42::Message& oMessage);
+
+  void ReqPositionQuery(const FIX42::Message& oMessage);
+
+  void ReqContractQuery(const FIX42::Message& oMessage);
+
+  void AppendQryData(const FIX::MsgType &oMsgType, char *pRspData, int iDataSize, CThostFtdcRspInfoField *pRspInfo, int iReqID, bool bIsLast);
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
   virtual void OnFrontConnected();
@@ -246,16 +274,16 @@ protected:
   virtual void OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
   ///请求查询投资者持仓响应
-  virtual void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///请求查询资金账户响应
-  virtual void OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///请求查询投资者响应
   virtual void OnRspQryInvestor(CThostFtdcInvestorField *pInvestor, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
   ///请求查询交易编码响应
-  virtual void OnRspQryTradingCode(CThostFtdcTradingCodeField *pTradingCode, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspQryTradingCode(CThostFtdcTradingCodeField *pTradingCode, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///请求查询合约保证金率响应
   virtual void OnRspQryInstrumentMarginRate(CThostFtdcInstrumentMarginRateField *pInstrumentMarginRate, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
@@ -270,7 +298,7 @@ protected:
   virtual void OnRspQryProduct(CThostFtdcProductField *pProduct, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
 
   ///请求查询合约响应
-  virtual void OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
+  virtual void OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 
   ///请求查询行情响应
   virtual void OnRspQryDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast) {};
@@ -529,6 +557,12 @@ private:
 
 	std::fstream														          m_fOrderRef2ClOrdID;
 	Poco::FastMutex													          m_fastMutexOrderRef2ClOrdID;
+
+  //m_acRequestId -> FIX::ReqID(13002) 默认超时10分钟             
+  Poco::ExpireCache<int, FIX42::Message>            m_expchReqId2Message;
+
+  std::vector<char>                                 m_vBuffer;
+  int                                               m_iCurReqID;
 };
 
 //处理经过hub转发

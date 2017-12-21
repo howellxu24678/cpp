@@ -1595,6 +1595,75 @@
     <field name='EncodedText' required='N' />
    </group>
   </message>
+  <message name='AccountQuery' msgcat='app' msgtype='fs01'>
+	<field name='Account' required='N' />
+	<field name='ReqID' required='Y' />
+	<field name='TransactTime' required='N' />
+  </message>
+  <message name='AccountQueryResp' msgcat='app' msgtype='fs02'>
+	<field name='ReqID' required='Y' />
+	<field name='Text' required='N' />
+	<field name='RejectReason' required='Y' />
+	<group name='ListCount' required='Y'>
+		<field name='Account' required='Y' />
+		<field name='ClientID' required='Y' />
+		<field name='SecurityExchange' required='Y' />
+	</group>
+  </message>
+  <message name='CapitalQuery' msgcat='app' msgtype='fs11'>
+	<field name='Account' required='N' />
+	<field name='ReqID' required='Y' />
+	<field name='TransactTime' required='N' />
+  </message>
+  <message name='CapitalQueryResp' msgcat='app' msgtype='fs12'>
+	<field name='ReqID' required='Y' />
+	<field name='Text' required='N' />
+	<field name='RejectReason' required='Y' />
+	<group name='ListCount' required='Y'>
+		<field name='Account' required='Y' />
+		<field name='SecurityExchange' required='Y' />
+		<group name='FieldCount' required='Y'>
+			<field name='CapitalFieldType' required='N' />
+			<field name='CapitalFieldValue' required='N' />
+		</group>
+	</group>
+  </message>  
+  <message name='PositionQuery' msgcat='app' msgtype='fs21'>
+	<field name='Account' required='N' />
+	<field name='Symbol' required='N' />
+	<field name='ReqID' required='Y' />
+	<field name='TransactTime' required='N' />
+  </message>
+  <message name='PositionQueryResp' msgcat='app' msgtype='fs22'>
+	<field name='ReqID' required='Y' />
+	<field name='Text' required='N' />
+	<field name='RejectReason' required='Y' />
+	<group name='ListCount' required='Y'>
+		<field name='Account' required='Y' />
+		<field name='Symbol' required='Y' />
+		<field name='SecurityExchange' required='Y' />
+		<group name='FieldCount' required='Y'>
+			<field name='PositionFieldType' required='N' />
+			<field name='PositionFieldValue' required='N' />
+		</group>
+	</group>
+	<field name='LongPosiPrice' required='Y' />
+	<field name='SortPosiPrice' required='Y' />
+  </message>
+  <message name='ContractQuery' msgcat='app' msgtype='fs31'>
+	<field name='Symbol' required='N' />
+	<field name='ReqID' required='Y' />
+	<field name='TransactTime' required='N' />
+  </message>
+  <message name='ContractQueryResp' msgcat='app' msgtype='fs32'>
+	<field name='ReqID' required='Y' />
+	<field name='Text' required='N' />
+	<field name='RejectReason' required='Y' />
+	<group name='ListCount' required='Y'>
+		<field name='Symbol' required='Y' />
+		<field name='SecurityExchange' required='Y' />
+	</group>
+  </message>
  </messages>
  <trailer>
   <field name='SignatureLength' required='N' />
@@ -1763,6 +1832,14 @@
    <value enum='X' description='MARKET_DATA_INCREMENTAL_REFRESH' />
    <value enum='Y' description='MARKET_DATA_REQUEST_REJECT' />
    <value enum='Z' description='QUOTE_CANCEL' />
+   <value enum='fs01' description='AccountQuery' />
+   <value enum='fs02' description='AccountQueryResp' />
+   <value enum='fs11' description='CapitalQuery' />
+   <value enum='fs12' description='CapitalQueryResp' />
+   <value enum='fs21' description='PositionQuery' />
+   <value enum='fs22' description='PositionQueryResp' />
+   <value enum='fs31' description='ContractQuery' />
+   <value enum='fs32' description='ContractQueryResp' />
   </field>
   <field number='36' name='NewSeqNo' type='INT' />
   <field number='37' name='OrderID' type='STRING' />
@@ -2744,9 +2821,34 @@
   <field number='444' name='ListStatusText' type='STRING' />
   <field number='445' name='EncodedListStatusTextLen' type='LENGTH' />
   <field number='446' name='EncodedListStatusText' type='DATA' />
+  <field number='13001' name='ApplicationName' type='STRING' />
+  <field number='13002' name='ReqID' type='INT' />
+  <field number='13003' name='ListCount' type='INT' />
+  <field number='13005' name='RejectReason' type='CHAR' >
+   <value enum='0' description='Success'/>
+   <value enum='1' description='Empty'/>
+   <value enum='2' description='AccountIncorrect'/>
+   <value enum='3' description='Reject'/>
+  </field>
   <field number='13006' name='SpecOrHedge' type='CHAR'>
    <value enum='0' description='Spec' />
    <value enum='1' description='Hedge' />
   </field>
+  <field number='13007' name='OpenPrice' type='PRICE' />
+  <field number='13008' name='ClosePrice' type='PRICE' />
+  <field number='13009' name='UpperLimitPrice' type='PRICE' />
+  <field number='13010' name='LowerLimitPrice' type='PRICE' />
+  <field number='13011' name='PreSettlePrice' type='PRICE' />
+  <field number='13012' name='FieldCount' type='INT' />
+  <field number='13013' name='CapitalFieldType' type='CHAR'>
+   <value enum='0' description='Yesterday' />
+  </field>
+  <field number='13014' name='CapitalFieldValue' type='AMT' />
+  <field number='13015' name='PositionFieldType' type='CHAR'>
+   <value enum='0' description='Yesterday' />
+  </field>
+  <field number='13016' name='PositionFieldValue' type='INT' />
+  <field number='13017' name='LongPosiPrice' type='PRICE' />
+  <field number='13018' name='SortPosiPrice' type='PRICE' />
  </fields>
 </fix>

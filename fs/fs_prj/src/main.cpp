@@ -161,6 +161,7 @@ int main( int argc, char** argv )
 	catch ( std::exception & e )
 	{
 		std::cout << e.what() << std::endl;
+    LOG(FATAL_LOG_LEVEL, e.what());
 		return -1;
 	}
 }

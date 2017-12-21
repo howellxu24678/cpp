@@ -3277,5 +3277,21 @@ namespace FIX
   const int BookingType_REGULAR_BOOKING = 0;
   const int BookingType_CFD = 1;
   const int BookingType_TOTAL_RETURN_SWAP = 2;
+  const char MsgType_AccountQuery[] = "fs01";
+  const char MsgType_AccountQueryResp[] = "fs02";
+  const char MsgType_CapitalQuery[] = "fs11";
+  const char MsgType_CapitalQueryResp[] = "fs12";
+  const char MsgType_PositionQuery[] = "fs21";
+  const char MsgType_PositionQueryResp[] = "fs22";
+  const char MsgType_ContractQuery[] = "fs31";
+  const char MsgType_ContractQueryResp[] = "fs32";
+  const char RejectReason_Success = '0';
+  const char RejectReason_Empty = '1';
+  const char RejectReason_AccountIncorrect = '2';
+  const char RejectReason_Reject = '3';
+  const char SpecOrHedge_Spec = '0';
+  const char SpecOrHedge_Hedge = '1';
+  const char CapitalFieldType_Yesterday = '0';
+  const char PositionFieldType_Yesterday = '0';
   }
   #endif //FIX_VALUES_H
