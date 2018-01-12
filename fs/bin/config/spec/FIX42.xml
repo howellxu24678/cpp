@@ -1604,7 +1604,7 @@
 	<field name='ReqID' required='Y' />
 	<field name='Text' required='N' />
 	<field name='RejectReason' required='Y' />
-	<group name='ListCount' required='Y'>
+	<group name='ListCount' required='N'>
 		<field name='Account' required='Y' />
 		<field name='ClientID' required='Y' />
 		<field name='SecurityExchange' required='Y' />
@@ -1619,10 +1619,10 @@
 	<field name='ReqID' required='Y' />
 	<field name='Text' required='N' />
 	<field name='RejectReason' required='Y' />
-	<group name='ListCount' required='Y'>
+	<group name='ListCount' required='N'>
 		<field name='Account' required='Y' />
-		<field name='SecurityExchange' required='Y' />
-		<group name='FieldCount' required='Y'>
+		<field name='SecurityExchange' required='N' />
+		<group name='FieldCount' required='N'>
 			<field name='CapitalFieldType' required='N' />
 			<field name='CapitalFieldValue' required='N' />
 		</group>
@@ -1638,17 +1638,16 @@
 	<field name='ReqID' required='Y' />
 	<field name='Text' required='N' />
 	<field name='RejectReason' required='Y' />
-	<group name='ListCount' required='Y'>
+	<group name='ListCount' required='N'>
 		<field name='Account' required='Y' />
 		<field name='Symbol' required='Y' />
-		<field name='SecurityExchange' required='Y' />
-		<group name='FieldCount' required='Y'>
+		<group name='FieldCount' required='N'>
 			<field name='PositionFieldType' required='N' />
 			<field name='PositionFieldValue' required='N' />
 		</group>
 	</group>
-	<field name='LongPosiPrice' required='Y' />
-	<field name='SortPosiPrice' required='Y' />
+	<field name='LongPositionPrice' required='N' />
+	<field name='SortPositionPrice' required='N' />
   </message>
   <message name='ContractQuery' msgcat='app' msgtype='fs31'>
 	<field name='Symbol' required='N' />
@@ -1659,9 +1658,11 @@
 	<field name='ReqID' required='Y' />
 	<field name='Text' required='N' />
 	<field name='RejectReason' required='Y' />
-	<group name='ListCount' required='Y'>
+	<group name='ListCount' required='N'>
 		<field name='Symbol' required='Y' />
 		<field name='SecurityExchange' required='Y' />
+		<field name='MaturityDate' required='Y' />
+		<field name='MinPriceIncrement' required='Y' />
 	</group>
   </message>
  </messages>
@@ -2821,6 +2822,8 @@
   <field number='444' name='ListStatusText' type='STRING' />
   <field number='445' name='EncodedListStatusTextLen' type='LENGTH' />
   <field number='446' name='EncodedListStatusText' type='DATA' />
+  <field number='541' name='MaturityDate' type='LOCALMKTDATE' />
+  <field number='969' name='MinPriceIncrement' type='FLOAT' />
   <field number='13001' name='ApplicationName' type='STRING' />
   <field number='13002' name='ReqID' type='INT' />
   <field number='13003' name='ListCount' type='INT' />
@@ -2840,15 +2843,30 @@
   <field number='13010' name='LowerLimitPrice' type='PRICE' />
   <field number='13011' name='PreSettlePrice' type='PRICE' />
   <field number='13012' name='FieldCount' type='INT' />
-  <field number='13013' name='CapitalFieldType' type='CHAR'>
-   <value enum='0' description='Yesterday' />
+  <field number='13013' name='CapitalFieldType' type='INT'>
+   <value enum='0' description='PreBalance' />
+   <value enum='1' description='Available' />
+   <value enum='2' description='CurrMargin' />
+   <value enum='3' description='Commission' />
+   <value enum='4' description='PositionProfit' />
+   <value enum='5' description='CloseProfit' />
+   <value enum='6' description='Interest' />
   </field>
   <field number='13014' name='CapitalFieldValue' type='AMT' />
-  <field number='13015' name='PositionFieldType' type='CHAR'>
-   <value enum='0' description='Yesterday' />
+  <field number='13015' name='PositionFieldType' type='INT'>
+   <value enum='0' description='YesterdayLong' />
+   <value enum='1' description='TodayLong' />
+   <value enum='2' description='TodayOpenLong' />
+   <value enum='3' description='TodayCloseLong' />
+   <value enum='4' description='TodayCloasYesterdayLong' />
+   <value enum='10' description='YesterdayShort' />
+   <value enum='11' description='TodayShort' />
+   <value enum='12' description='TodayOpenShort' />
+   <value enum='13' description='TodayCloseShort' />
+   <value enum='24' description='TodayCloseYesterdayShort' />
   </field>
   <field number='13016' name='PositionFieldValue' type='INT' />
-  <field number='13017' name='LongPosiPrice' type='PRICE' />
-  <field number='13018' name='SortPosiPrice' type='PRICE' />
+  <field number='13017' name='LongPositionPrice' type='PRICE' />
+  <field number='13018' name='SortPositionPrice' type='PRICE' />
  </fields>
 </fix>

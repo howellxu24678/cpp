@@ -3291,7 +3291,22 @@ namespace FIX
   const char RejectReason_Reject = '3';
   const char SpecOrHedge_Spec = '0';
   const char SpecOrHedge_Hedge = '1';
-  const char CapitalFieldType_Yesterday = '0';
-  const char PositionFieldType_Yesterday = '0';
+  const int CapitalFieldType_PreBalance = 0;
+  const int CapitalFieldType_Available = 1;
+  const int CapitalFieldType_CurrMargin = 2;
+  const int CapitalFieldType_Commission = 3;
+  const int CapitalFieldType_PositionProfit = 4;
+  const int CapitalFieldType_CloseProfit = 5;
+  const int CapitalFieldType_Interest = 6;
+  const int PositionFieldType_YesterdayLong = 0;
+  const int PositionFieldType_TodayLong = 1;
+  const int PositionFieldType_TodayOpenLong = 2;
+  const int PositionFieldType_TodayCloseLong = 3;
+  const int PositionFieldType_TodayCloasYesterdayLong = 4;
+  const int PositionFieldType_YesterdayShort = 10;
+  const int PositionFieldType_TodayShort = 11;
+  const int PositionFieldType_TodayOpenShort = 12;
+  const int PositionFieldType_TodayCloseShort = 13;
+  const int PositionFieldType_TodayCloseYesterdayShort = 24;
   }
   #endif //FIX_VALUES_H

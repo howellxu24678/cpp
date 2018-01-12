@@ -1019,10 +1019,13 @@ void CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage)
   oMessage.getField(account);
   oMessage.getField(reqId);
 
+  int iCurRequsetId = m_acRequestId++;
+  m_expchReqId2Message.add(iCurRequsetId, oMessage);
+
   CThostFtdcQryTradingAccountField stuAccount;
   memset(&stuAccount, 0, sizeof(CThostFtdcQryTradingAccountField));
   strncpy(stuAccount.InvestorID, account.getValue().c_str(), sizeof(stuAccount.InvestorID));
-  m_stuTdParam.m_pTdReqApi->ReqQryTradingAccount(&stuAccount, m_acRequestId++);
+  m_stuTdParam.m_pTdReqApi->ReqQryTradingAccount(&stuAccount, iCurRequsetId);
 }
 
 void CSgitTdSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1032,6 +1035,8 @@ void CSgitTdSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingA
 
   if(pTradingAccount) 
     LOG(INFO_LOG_LEVEL, "AccountID:%s,Available:%lf,PositionProfit:%lf,CloseProfit:%lf", pTradingAccount->AccountID, pTradingAccount->Available, pTradingAccount->PositionProfit, pTradingAccount->CloseProfit);
+
+  AppendQryData(FIX::MsgType(FIX::MsgType_CapitalQueryResp), (char*)pTradingAccount, sizeof(CThostFtdcTradingAccountField), pRspInfo, nRequestID, bIsLast);
 }
 
 void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
@@ -1043,11 +1048,14 @@ void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
   oMessage.getField(symbol);
   oMessage.getField(reqId);
 
+  int iCurRequsetId = m_acRequestId++;
+  m_expchReqId2Message.add(iCurRequsetId, oMessage);
+
   CThostFtdcQryInvestorPositionField stuPosition;
   memset(&stuPosition, 0, sizeof(CThostFtdcQryInvestorPositionField));
   strncpy(stuPosition.InvestorID, account.getValue().c_str(), sizeof(stuPosition.InvestorID));
   strncpy(stuPosition.InstrumentID, symbol.getValue().c_str(), sizeof(stuPosition.InstrumentID));
-  m_stuTdParam.m_pTdReqApi->ReqQryInvestorPosition(&stuPosition, m_acRequestId++);
+  m_stuTdParam.m_pTdReqApi->ReqQryInvestorPosition(&stuPosition, iCurRequsetId);
 }
 
 void CSgitTdSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1059,6 +1067,8 @@ void CSgitTdSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInve
     LOG(INFO_LOG_LEVEL, "InvestorID:%s,PosiDirection:%c,Position:%d,YdPosition:%d,OpenVolume:%d,CloseVolume:%d", 
     pInvestorPosition->InvestorID, pInvestorPosition->PosiDirection, pInvestorPosition->Position, pInvestorPosition->YdPosition,
     pInvestorPosition->OpenVolume, pInvestorPosition->CloseVolume);
+
+  AppendQryData(FIX::MsgType(FIX::MsgType_PositionQueryResp), (char*)pInvestorPosition, sizeof(CThostFtdcInvestorPositionField), pRspInfo, nRequestID, bIsLast);
 }
 
 void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
@@ -1068,11 +1078,14 @@ void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
   oMessage.getField(symbol);
   oMessage.getField(reqId);
 
+  int iCurRequsetId = m_acRequestId++;
+  m_expchReqId2Message.add(iCurRequsetId, oMessage);
+
   CThostFtdcQryInstrumentField stuInstrument;
   memset(&stuInstrument, 0, sizeof(CThostFtdcQryInstrumentField));
   strncpy(stuInstrument.InstrumentID, symbol.getValue().c_str(), sizeof(stuInstrument.InstrumentID));
 
-  m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, m_acRequestId++);
+  m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, iCurRequsetId);
 }
 
 void CSgitTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1084,6 +1097,8 @@ void CSgitTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CTho
     LOG(INFO_LOG_LEVEL, "InstrumentID:%s,ExchangeID:%s,ProductID:%s,ExpireDate:%s,PriceTick:%lf",
     pInstrument->InstrumentID, pInstrument->ExchangeID, pInstrument->ProductID, pInstrument->ExpireDate, 
     pInstrument->PriceTick);
+
+   AppendQryData(FIX::MsgType(FIX::MsgType_ContractQueryResp), (char*)pInstrument, sizeof(CThostFtdcInstrumentField), pRspInfo, nRequestID, bIsLast);
 }
 
 void CSgitTdSpi::AppendQryData(const FIX::MsgType &oMsgType, char *pRspData, int iDataSize, CThostFtdcRspInfoField *pRspInfo, int iReqID, bool bIsLast)
@@ -1115,47 +1130,7 @@ void CSgitTdSpi::AppendQryData(const FIX::MsgType &oMsgType, char *pRspData, int
   //最后一个，组包发送
   if (!bIsLast) return;
 
-  FIX42::Message oMsg(oMsgType);
-  int iItemCount = m_vBuffer.size() / iDataSize;
-
-  if (oMsgType == FIX::MsgType_AccountQueryResp)
-  {
-    CThostFtdcTradingCodeField  stuTradingCode;
-    for (int i = 0; i < iItemCount; i++)
-    {
-      memset(&stuTradingCode, 0, sizeof(CThostFtdcTradingCodeField));
-      memcpy(&stuTradingCode, &m_vBuffer[iDataSize * i], iDataSize);
-
-      FIX::AccountQueryRespGroup accountQueryRespGroup;
-      accountQueryRespGroup.setField(FIX::Account(stuTradingCode.InvestorID));
-      accountQueryRespGroup.setField(FIX::ClientID(stuTradingCode.ClientID));
-      accountQueryRespGroup.setField(FIX::SecurityExchange(stuTradingCode.ExchangeID));
-      oMsg.addGroup(accountQueryRespGroup);
-    }
-  }
-  else if(oMsgType == FIX::MsgType_CapitalQueryResp)
-  {
-
-  }
-  else if(oMsgType == FIX::MsgType_PositionQueryResp)
-  {
-
-  }
-  else if(oMsgType == FIX::MsgType_ContractQueryResp)
-  {
-
-  }
-
-  if (iItemCount < 1)
-  {
-    oMsg.setField(FIX::RejectReason(FIX::RejectReason_Empty));
-  }
-  else
-  {
-    oMsg.setField(FIX::RejectReason(FIX::RejectReason_Success));
-  }
-
-  Send(iReqID, oMsg);
+  GenAndSend(oMsgType, iDataSize, iReqID);
 }
 
 void CSgitTdSpi::Send(int iReqID, FIX::Message& oMsg)
@@ -1171,6 +1146,149 @@ void CSgitTdSpi::Send(int iReqID, FIX::Message& oMsg)
   oMsg.setField(spMsgRecv->getField(reqId));
 
   CToolkit::Send(*spMsgRecv, oMsg);
+}
+
+void CSgitTdSpi::GenAndSend(const FIX::MsgType &oMsgType, int iDataSize, int iReqID)
+{
+  FIX42::Message oMsg(oMsgType);
+  int iItemCount = m_vBuffer.size() / iDataSize;
+
+  Poco::SharedPtr<FIX42::Message> spMsgRecv =  m_expchReqId2Message.get(iReqID);
+  if (!spMsgRecv)
+  {
+    LOG(ERROR_LOG_LEVEL, "Can not find MsgRecv by reqID:%d", iReqID);
+    return;
+  }
+
+  Convert::EnCvtType enSymbolType = m_stuTdParam.m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(*spMsgRecv));
+
+  if (oMsgType == FIX::MsgType_AccountQueryResp)
+  {
+    CThostFtdcTradingCodeField  stuTradingCode;
+    for (int i = 0; i < iItemCount; i++)
+    {
+      memset(&stuTradingCode, 0, sizeof(CThostFtdcTradingCodeField));
+      memcpy(&stuTradingCode, &m_vBuffer[iDataSize * i], iDataSize);
+
+      FIX::AccountGroup accountGroup;
+      accountGroup.setField(FIX::Account(stuTradingCode.InvestorID));
+      accountGroup.setField(FIX::ClientID(stuTradingCode.ClientID));
+      accountGroup.setField(FIX::SecurityExchange(stuTradingCode.ExchangeID));
+      oMsg.addGroup(accountGroup);
+    }
+  }
+  else if(oMsgType == FIX::MsgType_CapitalQueryResp)
+  {
+    CThostFtdcTradingAccountField stuTradingAcct;
+    for (int i = 0; i < iItemCount; i++)
+    {
+      memset(&stuTradingAcct, 0, sizeof(CThostFtdcTradingAccountField));
+      memcpy(&stuTradingAcct, &m_vBuffer[iDataSize * i], iDataSize);
+
+      FIX::AccountGroup accountGroup;
+      accountGroup.setField(FIX::Account(stuTradingAcct.AccountID));
+
+      FIX::CapitalFiledGroup capitalGroup;
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_PreBalance));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.PreBalance));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_Available));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.Available));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_CurrMargin));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.CurrMargin));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_Commission));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.Commission));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_PositionProfit));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.PositionProfit));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_CloseProfit));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.CloseProfit));
+      accountGroup.addGroup(capitalGroup);
+
+      //权益=上日结存+平仓盈亏+浮动盈亏+出入金-手续费 
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_Interest));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.PreBalance + stuTradingAcct.CloseProfit + 
+        stuTradingAcct.PositionProfit + stuTradingAcct.Deposit - stuTradingAcct.Withdraw - stuTradingAcct.Commission));
+      accountGroup.addGroup(capitalGroup);
+
+      oMsg.addGroup(accountGroup);
+    }
+  }
+  else if(oMsgType == FIX::MsgType_PositionQueryResp)
+  {
+    CThostFtdcInvestorPositionField stuPosition;
+    for (int i = 0; i < iItemCount; i++)
+    {
+      memset(&stuPosition, 0, sizeof(CThostFtdcInvestorPositionField));
+      memcpy(&stuPosition, &m_vBuffer[iDataSize * i], iDataSize);
+
+      FIX::AccountGroup accountGroup;
+      accountGroup.setField(FIX::Account(stuPosition.InvestorID));
+      accountGroup.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+        stuPosition.InstrumentID : m_stuTdParam.m_pSgitCtx->CvtSymbol(stuPosition.InstrumentID, enSymbolType)));
+
+      FIX::PositionFieldGroup positionGroup;
+      positionGroup.setField(FIX::PositionFieldType(stuPosition.PosiDirection == THOST_FTDC_PD_Long ? 
+        FIX::PositionFieldType_YesterdayLong : FIX::PositionFieldType_YesterdayShort));
+      positionGroup.setField(FIX::PositionFieldValue(stuPosition.YdPosition));
+      accountGroup.addGroup(positionGroup);
+
+      positionGroup.setField(FIX::PositionFieldType(stuPosition.PosiDirection == THOST_FTDC_PD_Long ? 
+        FIX::PositionFieldType_TodayLong : FIX::PositionFieldType_TodayShort));
+      positionGroup.setField(FIX::PositionFieldValue(stuPosition.TodayPosition));
+      accountGroup.addGroup(positionGroup);
+
+      positionGroup.setField(FIX::PositionFieldType(stuPosition.PosiDirection == THOST_FTDC_PD_Long ? 
+        FIX::PositionFieldType_TodayOpenLong : FIX::PositionFieldType_TodayOpenShort));
+      positionGroup.setField(FIX::PositionFieldValue(stuPosition.OpenVolume));
+      accountGroup.addGroup(positionGroup);
+
+      positionGroup.setField(FIX::PositionFieldType(stuPosition.PosiDirection == THOST_FTDC_PD_Long ? 
+        FIX::PositionFieldType_TodayCloseLong : FIX::PositionFieldType_TodayCloseShort));
+      positionGroup.setField(FIX::PositionFieldValue(stuPosition.CloseVolume));
+      accountGroup.addGroup(positionGroup);
+
+      oMsg.addGroup(accountGroup);
+    }
+  }
+  else if(oMsgType == FIX::MsgType_ContractQueryResp)
+  {
+    CThostFtdcInstrumentField stuInstrument;
+    for (int i = 0; i < iItemCount; i++)
+    {
+      memset(&stuInstrument, 0, sizeof(CThostFtdcInstrumentField));
+      memcpy(&stuInstrument, &m_vBuffer[iDataSize * i], iDataSize);
+
+      FIX::ContractGroup contractGroup;
+      contractGroup.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+        stuInstrument.InstrumentID : m_stuTdParam.m_pSgitCtx->CvtSymbol(stuInstrument.InstrumentID, enSymbolType)));
+      contractGroup.setField(FIX::SecurityExchange(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+        stuInstrument.ExchangeID : m_stuTdParam.m_pSgitCtx->CvtExchange(stuInstrument.ExchangeID, enSymbolType)));
+      contractGroup.setField(FIX::MaturityDate(stuInstrument.ExpireDate));
+      contractGroup.setField(FIX::MinPriceIncrement(stuInstrument.PriceTick));
+
+      oMsg.addGroup(contractGroup);
+    }
+  }
+
+  if (iItemCount < 1)
+  {
+    oMsg.setField(FIX::RejectReason(FIX::RejectReason_Empty));
+  }
+  else
+  {
+    oMsg.setField(FIX::RejectReason(FIX::RejectReason_Success));
+  }
+
+  Send(iReqID, oMsg);
 }
 
 

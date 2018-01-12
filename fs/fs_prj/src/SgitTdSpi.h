@@ -32,13 +32,43 @@ namespace FIX
   //USER_DEFINE_EXCHANGE(MktID, 13004);
   USER_DEFINE_CHAR(RejectReason, 13005);
 
-  class AccountQueryRespGroup: public FIX::Group
+  USER_DEFINE_NUMINGROUP(FieldCount, 13012);
+  USER_DEFINE_INT(CapitalFieldType, 13013);
+  USER_DEFINE_AMT(CapitalFieldValue, 13014);
+  USER_DEFINE_INT(PositionFieldType, 13015);
+  USER_DEFINE_AMT(PositionFieldValue, 13016);
+  USER_DEFINE_PRICE(LongPositionPrice, 13017);
+  USER_DEFINE_PRICE(SortPositionPrice, 13018);
+
+  class AccountGroup: public FIX::Group
   {
   public:
-    AccountQueryRespGroup() : FIX::Group(13003,1,FIX::message_order(1,109,13004,0)) {}
+    AccountGroup() : FIX::Group(13003, 1, FIX::message_order(1, 109, 207, 0)) {}
     FIELD_SET(*this, FIX::Account);
     FIELD_SET(*this, FIX::ClientID);
     FIELD_SET(*this, FIX::SecurityExchange);
+  };
+
+  class CapitalFiledGroup : public FIX::Group
+  {
+  public:
+    CapitalFiledGroup() : FIX::Group(13012, 13013, FIX::message_order(13013, 13014, 0)){}
+    FIELD_SET(*this, FIX::CapitalFieldType);
+    FIELD_SET(*this, FIX::CapitalFieldValue);
+  };
+
+  class PositionFieldGroup : public FIX::Group
+  {
+  public:
+    PositionFieldGroup() : FIX::Group(13012, 13015, FIX::message_order(13015, 13016, 0)){}
+    FIELD_SET(*this, FIX::PositionFieldType);
+    FIELD_SET(*this, FIX::PositionFieldValue);
+  };
+
+  class ContractGroup : public FIX::Group
+  {
+  public:
+    ContractGroup() : FIX::Group(13003, 55){}
   };
 }
 
@@ -190,6 +220,8 @@ protected:
   void ReqContractQuery(const FIX42::Message& oMessage);
 
   void AppendQryData(const FIX::MsgType &oMsgType, char *pRspData, int iDataSize, CThostFtdcRspInfoField *pRspInfo, int iReqID, bool bIsLast);
+
+  void GenAndSend(const FIX::MsgType &oMsgType, int iDataSize, int iReqID);
 
   ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
   virtual void OnFrontConnected();

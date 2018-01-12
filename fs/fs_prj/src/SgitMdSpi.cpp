@@ -339,6 +339,7 @@ void CSgitMdSpi::PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMar
 void CSgitMdSpi::Send(const std::string &ssSessionKey, FIX42::MarketDataSnapshotFullRefresh oMdSnapShot)
 {
   Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(ssSessionKey);
+  //根据对端代码类型修正一下代码和交易所
   if (!(enSymbolType == Convert::Original || enSymbolType == Convert::Unknow))
   {
     FIX::Symbol symbol;

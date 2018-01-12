@@ -162,6 +162,7 @@ int main( int argc, char** argv )
 	{
 		std::cout << e.what() << std::endl;
     LOG(FATAL_LOG_LEVEL, e.what());
+    getchar();
 		return -1;
 	}
 }
@@ -171,5 +172,17 @@ int main( int argc, char** argv )
 遗留问题：
 1. 上期所平今平昨
 2. 执行回报成交价格
-3. 
+3. 13004 ->207
+   权益：上日结存+平仓盈亏+浮动盈亏+出入金-手续费 ？
+4. 13015 今平昨多仓 今平昨空仓？
+   13017 13018 值如何取
+   资金、持仓 返回结构体无市场（13004）字段， 但文档中有要求
+
+5. 460 Fix44为int 文档为String
+   541 返回结构体无值
+   971 ？
+
+
+
+
 */
