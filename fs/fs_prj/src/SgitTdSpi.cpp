@@ -994,7 +994,7 @@ void CSgitTdSpi::ReqAccountQuery(const FIX42::Message& oMessage)
 {
   FIX::Account account;
   FIX::ReqID reqId;
-  oMessage.getField(account);
+  oMessage.getFieldIfSet(account);
   oMessage.getField(reqId);
 
   int iCurRequsetId = m_acRequestId++;
@@ -1002,7 +1002,10 @@ void CSgitTdSpi::ReqAccountQuery(const FIX42::Message& oMessage)
 
   CThostFtdcQryTradingCodeField stuTradeCode;
   memset(&stuTradeCode, 0, sizeof(CThostFtdcQryTradingCodeField));
-  strncpy(stuTradeCode.InvestorID, account.getValue().c_str(), sizeof(stuTradeCode.InvestorID));
+  if (!account.getValue().empty())
+  {
+    strncpy(stuTradeCode.InvestorID, account.getValue().c_str(), sizeof(stuTradeCode.InvestorID));
+  }
   m_stuTdParam.m_pTdReqApi->ReqQryTradingCode(&stuTradeCode, iCurRequsetId);
 }
 
@@ -1021,7 +1024,7 @@ void CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage)
 {
   FIX::Account account;
   FIX::ReqID reqId;
-  oMessage.getField(account);
+  oMessage.getFieldIfSet(account);
   oMessage.getField(reqId);
 
   int iCurRequsetId = m_acRequestId++;
@@ -1029,7 +1032,10 @@ void CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage)
 
   CThostFtdcQryTradingAccountField stuAccount;
   memset(&stuAccount, 0, sizeof(CThostFtdcQryTradingAccountField));
-  strncpy(stuAccount.InvestorID, account.getValue().c_str(), sizeof(stuAccount.InvestorID));
+  if (!account.getValue().empty())
+  {
+    strncpy(stuAccount.InvestorID, account.getValue().c_str(), sizeof(stuAccount.InvestorID));
+  }
   m_stuTdParam.m_pTdReqApi->ReqQryTradingAccount(&stuAccount, iCurRequsetId);
 }
 
@@ -1049,8 +1055,8 @@ void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
   FIX::Account account;
   FIX::Symbol symbol;
   FIX::ReqID reqId;
-  oMessage.getField(account);
-  oMessage.getField(symbol);
+  oMessage.getFieldIfSet(account);
+  oMessage.getFieldIfSet(symbol);
   oMessage.getField(reqId);
 
   int iCurRequsetId = m_acRequestId++;
@@ -1058,8 +1064,14 @@ void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
 
   CThostFtdcQryInvestorPositionField stuPosition;
   memset(&stuPosition, 0, sizeof(CThostFtdcQryInvestorPositionField));
-  strncpy(stuPosition.InvestorID, account.getValue().c_str(), sizeof(stuPosition.InvestorID));
-  strncpy(stuPosition.InstrumentID, symbol.getValue().c_str(), sizeof(stuPosition.InstrumentID));
+  if (!account.getValue().empty())
+  {
+    strncpy(stuPosition.InvestorID, account.getValue().c_str(), sizeof(stuPosition.InvestorID));
+  }
+  if (!symbol.getValue().empty())
+  {
+    strncpy(stuPosition.InstrumentID, symbol.getValue().c_str(), sizeof(stuPosition.InstrumentID));
+  }
   m_stuTdParam.m_pTdReqApi->ReqQryInvestorPosition(&stuPosition, iCurRequsetId);
 }
 
@@ -1080,7 +1092,7 @@ void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
 {
   FIX::Symbol symbol;
   FIX::ReqID reqId;
-  oMessage.getField(symbol);
+  oMessage.getFieldIfSet(symbol);
   oMessage.getField(reqId);
 
   int iCurRequsetId = m_acRequestId++;
@@ -1088,8 +1100,10 @@ void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
 
   CThostFtdcQryInstrumentField stuInstrument;
   memset(&stuInstrument, 0, sizeof(CThostFtdcQryInstrumentField));
-  strncpy(stuInstrument.InstrumentID, symbol.getValue().c_str(), sizeof(stuInstrument.InstrumentID));
-
+  if (!symbol.getValue().empty())
+  {
+    strncpy(stuInstrument.InstrumentID, symbol.getValue().c_str(), sizeof(stuInstrument.InstrumentID));
+  }
   m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, iCurRequsetId);
 }
 
