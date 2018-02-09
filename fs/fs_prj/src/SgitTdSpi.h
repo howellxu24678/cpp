@@ -149,6 +149,8 @@ public:
 protected:
   bool LoadConfig();
 
+  bool LoadUserInfo(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp, Poco::SharedPtr<STUserInfo> spUserInfo);
+
   virtual bool LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp) = 0;
 
 	virtual Convert::EnCvtType GetSymbolType(const std::string &ssRealAcct) = 0;

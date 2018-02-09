@@ -21,12 +21,15 @@ struct STUserInfo
   STUserInfo() 
 		: m_ssOnBehalfOfCompID("")
     , m_enCvtType(Convert::Unknow)
+    , m_iCloseTodayYesterdayTag(0)
   {}
 
   FIX::SessionID      m_oSessionID;
 	std::string					m_ssOnBehalfOfCompID;
   //代码类型
   Convert::EnCvtType  m_enCvtType;
+  //平今平昨的自定义tag
+  int                 m_iCloseTodayYesterdayTag;
 };
 
 #endif // __CONST_H__

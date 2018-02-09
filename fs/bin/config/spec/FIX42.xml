@@ -425,6 +425,7 @@
    <field name='DiscretionOffset' required='N' />
    <field name='ClearingFirm' required='N' />
    <field name='ClearingAccount' required='N' />
+   <field name='CloseTodayYesterday' required='N' />
   </message>
   <message name='NewOrderList' msgcat='app' msgtype='E'>
    <field name='ListID' required='Y' />
@@ -2868,5 +2869,6 @@
   <field number='13016' name='PositionFieldValue' type='INT' />
   <field number='13017' name='LongPositionPrice' type='PRICE' />
   <field number='13018' name='SortPositionPrice' type='PRICE' />
+  <field number='15001' name='CloseTodayYesterday' type='CHAR' />
  </fields>
 </fix>

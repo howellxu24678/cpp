@@ -539,8 +539,19 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
 	stuInputOrder.LimitPrice = price.getValue();
 	stuInputOrder.Direction = m_stuTdParam.m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
-	stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+  stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
 
+  //有自定义平今平昨tag
+  Poco::SharedPtr<STUserInfo> spUserInfo = GetUserInfo(stuOrder.m_ssRealAccount);
+  if (spUserInfo->m_iCloseTodayYesterdayTag > 0)
+  {
+    FIX::CharField chField = FIX::CharField(spUserInfo->m_iCloseTodayYesterdayTag);
+    if (oNewOrderSingle.getFieldIfSet(chField))
+    {
+      stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(chField.getField(), chField.getValue(), Convert::Sgit);
+    }
+  }
+	
 	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
 	stuInputOrder.MinVolume = 1;
 	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
@@ -802,6 +813,23 @@ bool CSgitTdSpi::LoadConfig()
 
       if(!LoadConfig(apSgitConf, *itProp)) return false;
     }
+  }
+
+  return true;
+}
+
+bool CSgitTdSpi::LoadUserInfo(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp, Poco::SharedPtr<STUserInfo> spUserInfo)
+{
+  //代码类型
+  if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
+  {
+    spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
+  }
+
+  //平今平昨自定义tag
+  if (apSgitConf->hasProperty(ssSessionProp + ".CloseTodayYesterdayTag"))
+  {
+    spUserInfo->m_iCloseTodayYesterdayTag = apSgitConf->getInt(ssSessionProp + ".CloseTodayYesterdayTag");
   }
 
   return true;
@@ -1403,12 +1431,10 @@ bool CSgitTdSpiHubTran::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, con
   }
 
 	Poco::SharedPtr<STUserInfo> spUserInfo(new STUserInfo());
+
 	CToolkit::SessionKey2SessionIDBehalfCompID(CToolkit::SessionProp2ID(ssSessionProp), spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
 
-	if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
-	{
-    spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
-	}
+  LoadUserInfo(apSgitConf, ssSessionProp, spUserInfo);
 
   m_stuTdParam.m_pSgitCtx->AddUserInfo(CToolkit::SessionProp2ID(ssSessionProp), spUserInfo);
 
@@ -1467,12 +1493,7 @@ bool CSgitTdSpiDirect::LoadConfig(AutoPtr<IniFileConfiguration> apSgitConf, cons
 {
   LOG(INFO_LOG_LEVEL, "ssProp:%s", ssSessionProp.c_str());
 
-  if (apSgitConf->hasProperty(ssSessionProp + ".SymbolType"))
-  {
-    //m_stuTdParam.m_pSgitCtx->UpdateSymbolType(CToolkit::SessionProp2ID(ssSessionProp), (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType"));
-    //智能指针的同步修改
-    m_spUserInfo->m_enCvtType = (Convert::EnCvtType)apSgitConf->getInt(ssSessionProp + ".SymbolType");
-  }
+  LoadUserInfo(apSgitConf, ssSessionProp, m_spUserInfo);
 
   return true;
 }

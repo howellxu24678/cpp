@@ -122,9 +122,6 @@ private:
   //订阅全量代码的session
   std::set<std::string>                                 m_setSubAllCodeSession;
 
-  std::map<std::string, STUserInfo>                     m_mapSessionKey2FixInfo;
-  RWLock                                                m_rwLockSessionKey2FixInfo;
-
   //保存全市场行情快照
   std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
   //全市场行情快照读写锁

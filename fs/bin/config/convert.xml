@@ -8,8 +8,12 @@
 		<dict number='77' name='OpenClose'>
 			<item fix="O" sgit="0" description='OPEN'/>
 			<item fix="C" sgit="1" description='CLOSE'/>
-			<!-- 还有平今平昨？-->
-		</dict>		
+		</dict>
+		<!-- 平今平昨的自定义tag, 如果有送这个值，默认不取上面tag77的值-->
+		<dict number='15001' name='CloseTodayYesterday'>
+			<item fix="T" sgit="3" description='CLOSETODAY'/>
+			<item fix="Y" sgit="4" description='CLOSEYESTERDAY'/>
+		</dict>			
 		<dict number='39' name='OrdStatus'>
 			<item fix='0' sgit="3" description='NEW' />
 			<item fix='1' sgit="1" description='PARTIALLY_FILLED' />
