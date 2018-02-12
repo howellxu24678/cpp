@@ -119,7 +119,7 @@ int main( int argc, char** argv )
 		initialize ();
 		ConfigureAndWatchThread configureThread(ssLogCfgPath, 5 * 1000);
 
-		LOG(INFO_LOG_LEVEL, "Fsfix is preparing initialization, Version[%s], Build[%s:%s]", G_VERSION.c_str(), __DATE__, __TIME__);
+		LOG(INFO_LOG_LEVEL, "Fsfix is preparing initialization, Version[%s], Build[%s,%s]", G_VERSION.c_str(), __DATE__, __TIME__);
 		LOG(INFO_LOG_LEVEL, "path current:%s", Path::current().c_str());
 
 		/*
