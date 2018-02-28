@@ -543,6 +543,8 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 
   //有自定义平今平昨tag
   Poco::SharedPtr<STUserInfo> spUserInfo = GetUserInfo(stuOrder.m_ssRealAccount);
+  if (!spUserInfo)  return false;
+
   if (spUserInfo->m_iCloseTodayYesterdayTag > 0)
   {
     FIX::CharField chField = FIX::CharField(spUserInfo->m_iCloseTodayYesterdayTag);
