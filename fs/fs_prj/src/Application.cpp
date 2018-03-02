@@ -25,14 +25,6 @@
 
 #include "Application.h"
 #include "quickfix/Session.h"
-
-#include "quickfix/fix40/ExecutionReport.h"
-#include "quickfix/fix41/ExecutionReport.h"
-#include "quickfix/fix42/ExecutionReport.h"
-#include "quickfix/fix43/ExecutionReport.h"
-#include "quickfix/fix44/ExecutionReport.h"
-#include "quickfix/fix50/ExecutionReport.h"
-
 #include "quickfix/fix42/BusinessMessageReject.h"
 
 #include "Log.h"
@@ -139,42 +131,6 @@ void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID& oSes
   //其他情况返回登录失败
   throw FIX::RejectLogon(ssErrMsg);
 }
-
-//void Application::onMessage(const FIX42::NewOrderSingle& oMsg, const FIX::SessionID&)
-//{
-//	SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
-//	if (spTdSpi)
-//	{
-//		spTdSpi->ReqOrderInsert(oMsg);
-//	}
-//}
-//
-//void Application::onMessage(const FIX42::OrderCancelRequest& oMsg, const FIX::SessionID&)
-//{
-//  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
-//  if (spTdSpi)
-//  {
-//    spTdSpi->ReqOrderAction(oMsg);
-//  }
-//}
-//
-//void Application::onMessage(const FIX42::OrderStatusRequest& oMsg, const FIX::SessionID&)
-//{
-//  SharedPtr<CSgitTdSpi> spTdSpi = m_pSigtCtx->GetTdSpi(oMsg);
-//  if (spTdSpi)
-//  {
-//    spTdSpi->ReqQryOrder(oMsg);
-//  }
-//}
-//
-//void Application::onMessage(const FIX42::MarketDataRequest& oMsg, const FIX::SessionID&)
-//{
-//  SharedPtr<CSgitMdSpi> spMdSpi = m_pSigtCtx->GetMdSpi(oMsg);
-//  if (spMdSpi)
-//  {
-//    spMdSpi->MarketDataRequest(oMsg);
-//  }
-//}
 
 Application::Application(CSgitContext* pSgitCtx)
    : m_pSigtCtx(pSgitCtx)
