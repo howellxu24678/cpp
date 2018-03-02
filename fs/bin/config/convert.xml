@@ -10,7 +10,7 @@
 			<item fix="C" sgit="1" description='CLOSE'/>
 		</dict>
 		<!-- 平今平昨的自定义tag, 如果有送这个值，默认不取上面tag77的值-->
-		<dict number='15001' name='CloseTodayYesterday'>
+		<dict number='9001' name='CloseTodayYesterday'>
 			<item fix="T" sgit="3" description='CLOSETODAY'/>
 			<item fix="Y" sgit="4" description='CLOSEYESTERDAY'/>
 		</dict>			

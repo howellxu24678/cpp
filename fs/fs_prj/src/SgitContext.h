@@ -19,7 +19,7 @@ public:
 
   bool Init();
 
-  void Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
+  bool Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErr);
 
   SharedPtr<CSgitTdSpi> GetOrCreateTdSpi(const FIX::SessionID& oSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 
@@ -43,10 +43,20 @@ public:
 
   bool GetLoginStatus(const std::string ssSessionID);
 
+  bool IsQuoteSupported();
+
+  bool IsTradeSupported();
+
 protected:
   bool InitConvert();
 
-  bool InitSgitApi();
+  bool InitSgit();
+
+  bool InitSgitQuote();
+
+  bool InitSgitTrade();
+
+  bool NeedRun(const std::string ssSectionName);
 
   SharedPtr<CSgitTdSpi> CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 
@@ -79,5 +89,8 @@ private:
   //SessionID->TdSpiÊµÀý
   std::map<std::string, SharedPtr<CSgitTdSpi> >        m_mapSessionID2TdSpi;
   RWLock                                              m_rwSessionID2TdSpi;
+
+  bool                                                m_bQuoteSupported;
+  bool                                                m_bTradeSupported;
 };
 #endif // __SGITAPIMANAGER_H__

@@ -23,6 +23,8 @@ CSgitContext::CSgitContext(const std::string &ssSgitCfgPath, const std::string &
   : m_ssSgitCfgPath(ssSgitCfgPath)
   , m_oConvert(ssCvtCfgPath)
   , m_ssCvtCfgPath(ssCvtCfgPath)
+  , m_bQuoteSupported(false)
+  , m_bTradeSupported(false)
 {
 
 }
@@ -46,7 +48,7 @@ bool CSgitContext::Init()
 		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("au1801", Convert::Bloomberg).c_str());
 		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol(m_oConvert.CvtSymbol("au1801", Convert::Bloomberg), Convert::Original).c_str());
 
-    if(!InitSgitApi()) return false;
+    if(!InitSgit()) return false;
   }
   catch ( std::exception & e)
   {
@@ -152,7 +154,7 @@ SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::SessionID& oSessionID)
   return m_spMdSpi;
 }
 
-bool CSgitContext::InitSgitApi()
+bool CSgitContext::InitSgit()
 {
   LOG(INFO_LOG_LEVEL, "TdApi version:%s, MdApi version:%s", 
     CThostFtdcTraderApi::GetApiVersion(), CThostFtdcMdApi::GetApiVersion());
@@ -165,41 +167,8 @@ bool CSgitContext::InitSgitApi()
   if(!CToolkit::GetString(m_apSgitConf, "global.DataPath", m_ssDataPath)) return false;
 	FIX::file_mkdir(m_ssDataPath.c_str());
 
-  if(!CToolkit::GetString(m_apSgitConf, "global.TradeServerAddr", m_ssTdServerAddr)) return false;
-  std::string ssMdServerAddr = "", ssQuoteAccount = "";
-  if(!CToolkit::GetString(m_apSgitConf, "global.QuoteServerAddr", ssMdServerAddr)) return false;
-  if(!CToolkit::GetString(m_apSgitConf, "global.QuoteAccount", ssQuoteAccount)) return false;
-  LOG(INFO_LOG_LEVEL, "QuoteAccount:%s", ssQuoteAccount.c_str());
-  StringTokenizer stQuoteUserIdPassword(ssQuoteAccount, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-  CreateMdSpi(m_ssFlowPath, ssMdServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
-
-  std::string ssTradeAccountListKey = "global.TradeAccountList", ssFixSession = "", ssSessionID = "";
-  //没有配置TradeAccountList，说明不需要预先登录。正常返回
-  if (!m_apSgitConf->hasProperty(ssTradeAccountListKey)) return true;
-
-  //读取配置文件中需要预先登录的UserID和密码进行登录
-	StringTokenizer stTradeAccountList(m_apSgitConf->getString(ssTradeAccountListKey), ";", 
-		StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-	for (StringTokenizer::Iterator it = stTradeAccountList.begin(); it != stTradeAccountList.end(); it++)
-	{
-		StringTokenizer stTdUserIdPassword(*it, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-
-    if(!CToolkit::GetString(m_apSgitConf, "global." + stTdUserIdPassword[0], ssFixSession)) return false;
-
-    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(ssFixSession, CSgitTdSpi::HubTran);
-    if (!spTdSpi) return false;
-    
-
-    std::string ssErrMsg = "";
-    if(!spTdSpi->ReqUserLogin(stTdUserIdPassword[0], stTdUserIdPassword[1], ssErrMsg))
-    {
-      LOG(ERROR_LOG_LEVEL, "Failed to ReqUserLogin for UserID:%s,errMsg:%s", stTdUserIdPassword[0].c_str(), ssErrMsg.c_str());
-      return false;
-    }
-    
-    LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
-      stTdUserIdPassword[0].c_str(), m_ssTdServerAddr.c_str());
-	}
+  if (!InitSgitQuote()) return false;
+  if (!InitSgitTrade()) return false;
 
   return true;
 }
@@ -224,35 +193,55 @@ std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Conve
   return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
 
-void CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
+bool CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErr)
 {
   const FIX::BeginString& beginString = 
     FIELD_GET_REF( oMsg.getHeader(), BeginString);
-  if ( beginString != FIX::BeginString_FIX42 ) return;
+  if ( beginString != FIX::BeginString_FIX42 )
+  {
+    ssErr = "only support fix42";
+    return false;
+  }
 
   FIX::MsgType msgType;
   oMsg.getHeader().getField(msgType);
 
   if(CToolkit::IsTdRequest(msgType))
   {
+    if(!IsTradeSupported())
+    {
+      ssErr = "Trade request is not supported on this fix gateway";
+      return false;
+    }
+
 		SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oSessionID);
 		if (!spTdSpi)
 		{
-			LOG(ERROR_LOG_LEVEL, "Can not find Tdspi for SessionID:%s", oSessionID.toString().c_str());
-			return;
+      ssErr = "Can not find Tdspi for SessionID:" + oSessionID.toString();
+			LOG(ERROR_LOG_LEVEL, ssErr.c_str());
+			return false;
 		}
 		spTdSpi->OnMessage(oMsg, oSessionID);
   }
   else if(CToolkit::IsMdRequest(msgType))
   {
+    if(!IsQuoteSupported())
+    {
+      ssErr = "Quote request is not supported on this fix gateway";
+      return false;
+    }
+
     SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oSessionID);
 		if(!spMdSpi)
 		{
-			LOG(ERROR_LOG_LEVEL, "Can not find Mdspi for SessionID:%s", oSessionID.toString().c_str());
-			return;
+      ssErr = "Can not find Mdspi for SessionID:" + oSessionID.toString();
+			LOG(ERROR_LOG_LEVEL, ssErr.c_str());
+			return false;
 		}
 		spMdSpi->OnMessage(oMsg, oSessionID);
   }
+
+  return true;
 }
 
 void CSgitContext::AddUserInfo(const std::string &ssSessionKey, SharedPtr<STUserInfo> spStuFixInfo)
@@ -299,5 +288,86 @@ bool CSgitContext::GetLoginStatus(const std::string ssSessionID)
   if (itFind != m_mapFisSessionID2LoginStatus.end()) return itFind->second;
 
   return false;
+}
+
+bool CSgitContext::InitSgitQuote()
+{
+  if(!NeedRun("quote")) return true;
+
+  m_bQuoteSupported = true;
+  std::string ssServerAddr = "", ssAccount = "";
+  if(!CToolkit::GetString(m_apSgitConf, "quote.ServerAddr", ssServerAddr)) return false;
+  if(!CToolkit::GetString(m_apSgitConf, "quote.Account", ssAccount)) return false;
+  LOG(INFO_LOG_LEVEL, "QuoteAccount:%s", ssAccount.c_str());
+  StringTokenizer stQuoteUserIdPassword(ssAccount, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+  CreateMdSpi(m_ssFlowPath, ssServerAddr, stQuoteUserIdPassword[0], stQuoteUserIdPassword[1]);
+
+  return true;
+}
+
+bool CSgitContext::InitSgitTrade()
+{
+  if(!NeedRun("trade")) return true;
+
+  m_bTradeSupported = true;
+  if(!CToolkit::GetString(m_apSgitConf, "trade.ServerAddr", m_ssTdServerAddr)) return false;
+
+  std::string ssTradeAccountListKey = "trade.AccountList", ssFixSession = "", ssSessionID = "";
+  //没有配置TradeAccountList，说明不需要预先登录。正常返回
+  if (!m_apSgitConf->hasProperty(ssTradeAccountListKey)) return true;
+
+  //读取配置文件中需要预先登录的UserID和密码进行登录
+  StringTokenizer stTradeAccountList(m_apSgitConf->getString(ssTradeAccountListKey), ";", 
+    StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+  for (StringTokenizer::Iterator it = stTradeAccountList.begin(); it != stTradeAccountList.end(); it++)
+  {
+    StringTokenizer stTdUserIdPassword(*it, ":", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+
+    if(!CToolkit::GetString(m_apSgitConf, "trade." + stTdUserIdPassword[0], ssFixSession)) return false;
+
+    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(ssFixSession, CSgitTdSpi::HubTran);
+    if (!spTdSpi) return false;
+
+
+    std::string ssErrMsg = "";
+    if(!spTdSpi->ReqUserLogin(stTdUserIdPassword[0], stTdUserIdPassword[1], ssErrMsg))
+    {
+      LOG(ERROR_LOG_LEVEL, "Failed to ReqUserLogin for UserID:%s,errMsg:%s", stTdUserIdPassword[0].c_str(), ssErrMsg.c_str());
+      return false;
+    }
+
+    LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
+      stTdUserIdPassword[0].c_str(), m_ssTdServerAddr.c_str());
+  }
+  return true;
+}
+
+bool CSgitContext::NeedRun(const std::string ssSectionName)
+{
+  std::string ssEnableProp = ssSectionName + ".enable";
+
+  if(!m_apSgitConf->hasProperty(ssEnableProp))
+  {
+    LOG(INFO_LOG_LEVEL, "Can not find property:[%s] in config file, so [%s] will not run", ssEnableProp.c_str(), ssSectionName.c_str());
+    return false;
+  }
+
+  if(!m_apSgitConf->getBool(ssEnableProp))
+  {
+    LOG(INFO_LOG_LEVEL, "The property:[%s] in config file is not enabled, so [%s] will not run", ssEnableProp.c_str(), ssSectionName.c_str());
+    return false;
+  }
+
+  return true;
+}
+
+bool CSgitContext::IsQuoteSupported()
+{
+  return m_bQuoteSupported;
+}
+
+bool CSgitContext::IsTradeSupported()
+{
+  return m_bTradeSupported;
 }
 

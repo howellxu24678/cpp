@@ -491,14 +491,12 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	FIX::Price price;
 	FIX::Side side;
 	FIX::OpenClose openClose;
-	
 
 	oNewOrderSingle.get(account);
 	oNewOrderSingle.get(clOrdID);
 	oNewOrderSingle.get(symbol);
 	oNewOrderSingle.get(orderQty);
 	oNewOrderSingle.get(ordType);
-	oNewOrderSingle.get(price);
 	oNewOrderSingle.get(side);
 	oNewOrderSingle.get(openClose);
 
@@ -510,9 +508,11 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   stuOrder.m_ssSymbol = symbol.getValue();
   stuOrder.m_cSide = side.getValue();
   stuOrder.m_iOrderQty = (int)orderQty.getValue();
-  stuOrder.m_dPrice = price.getValue();
   stuOrder.m_iLeavesQty = (int)orderQty.getValue();
   stuOrder.m_iCumQty = 0;
+
+  //价格(tag44)非必须字段
+  if(oNewOrderSingle.getIfSet(price)) stuOrder.m_dPrice = price.getValue();
 	
 	//由于不能确保送入的ClOrdID(11)严格递增，在这里递增生成一个报单引用并做关联
 	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);

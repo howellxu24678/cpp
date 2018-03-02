@@ -33,6 +33,8 @@
 #include "quickfix/fix44/ExecutionReport.h"
 #include "quickfix/fix50/ExecutionReport.h"
 
+#include "quickfix/fix42/BusinessMessageReject.h"
+
 #include "Log.h"
 #include "Toolkit.h"
 
@@ -72,20 +74,6 @@ void Application::fromAdmin( const FIX::Message& message,
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::RejectLogon ) 
 {
   crack( message, sessionID ); 
-  //const std::string& msgTypeValue 
-  //  = message.getHeader().getField( FIX::FIELD::MsgType );
-
-  //if( msgTypeValue == FIX::MsgType_Logon )
-  //{
-  //  FIX::RawData rawData;
-  //  message.getFieldIfSet(rawData);
-
-  //  if (rawData.getValue().empty()) return;
-
-  //  LOG(INFO_LOG_LEVEL, "rawData:%s", rawData.getValue().c_str());
-
-  //  //throw FIX::DoNotSend();
-  //}
 }
 
 void Application::fromApp( const FIX::Message& message,
@@ -94,10 +82,26 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 {
 	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
 
-  if (m_pSigtCtx) m_pSigtCtx->Deal(message, sessionID);
+  std::string ssErr = "";
+  bool isNeedSendBusinessReject = false;
+  if (!m_pSigtCtx)
+  {
+    ssErr = "m_pSigtCtx is invalid";
+    LOG(ERROR_LOG_LEVEL, ssErr.c_str());
+    isNeedSendBusinessReject = true;
+  }
+  else if(!m_pSigtCtx->Deal(message, sessionID, ssErr))
+  {
+    isNeedSendBusinessReject = true;
+  }
+  
 
- // m_pSigtCtx->AddFixInfo(message);
-	//crack( message, sessionID ); 
+  if (isNeedSendBusinessReject)
+  {
+    FIX42::BusinessMessageReject oBusinessReject = FIX42::BusinessMessageReject(message.getHeader().getField(FIX::FIELD::MsgType), FIX::BusinessRejectReason_APPLICATION_NOT_AVAILABLE);
+    oBusinessReject.set(FIX::Text(ssErr));
+    FIX::Session::sendToTarget(oBusinessReject, sessionID);
+  }
 }
 
 void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID& oSessionID)
@@ -108,9 +112,14 @@ void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID& oSes
   oMsg.getHeader().getIfSet(senderSubID);  
   oMsg.getIfSet(rawData);
 
+  //没在指定tag带上值属于不需要进行登录验证的情况
   if (senderSubID.getValue().empty() || rawData.getValue().empty()) return;
   LOG(INFO_LOG_LEVEL, "senderSubID:%s,rawData:%s", senderSubID.getValue().c_str(), rawData.getValue().c_str());
 
+  if (!m_pSigtCtx->IsTradeSupported())
+  {
+    throw FIX::RejectLogon("Trade request is not support on this fix gatew");
+  }
   //如果没有找到对应的api实例，创建实例，并登录。如果找到，直接登录
   SharedPtr<CSgitTdSpi> spTdSpi = NULL;
   std::string ssErrMsg = "";
@@ -120,7 +129,7 @@ void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID& oSes
   }
   else
   {
-    ssErrMsg = "CSgitContext is unvalid";
+    ssErrMsg = "CSgitContext is invalid";
     throw FIX::RejectLogon(ssErrMsg);
   }
 
