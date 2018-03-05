@@ -24,7 +24,7 @@ CSgitMdSpi::~CSgitMdSpi()
 
 }
 
-void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest)
+bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest, std::string& ssErrMsg)
 {
   FIX::MDReqID mdReqID;
   FIX::SubscriptionRequestType subscriptionRequestType;
@@ -53,18 +53,26 @@ void CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   switch(subscriptionRequestType.getValue())
   {
   case FIX::SubscriptionRequestType_SNAPSHOT:
-    SendMarketDataSet(oMarketDataRequest, symbolSet);
+    return SendMarketDataSet(oMarketDataRequest, symbolSet);
     break;
   case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
-    SendMarketDataSet(oMarketDataRequest, symbolSet);
+    if(!SendMarketDataSet(oMarketDataRequest, symbolSet))
+    {
+      ssErrMsg = "Failed to SendMarketDataSet";
+      return false;
+    }
+
     AddSub(symbolSet, CToolkit::GetSessionKey(oMarketDataRequest));
     break;
   case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
     DelSub(symbolSet, CToolkit::GetSessionKey(oMarketDataRequest));
     break;
   default:
-    break;
+    Poco::format(ssErrMsg, "unsupported subscriptionRequestType:%c", subscriptionRequestType.getValue());
+    return false;
   }
+
+  return true;
 }
 
 void CSgitMdSpi::OnFrontConnected()
@@ -132,7 +140,7 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
   PubMarketData(*pDepthMarketData);
 }
 
-void CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
+bool CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
 {
   FIX::MDReqID mdReqID;
   oMarketDataRequest.get(mdReqID);
@@ -141,11 +149,20 @@ void CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRe
   CThostFtdcDepthMarketDataField stuMarketData;
   for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    if (!GetMarketData(*citSymbol, stuMarketData)) continue;
+    if (!GetMarketData(*citSymbol, stuMarketData))
+    {
+      LOG(WARN_LOG_LEVEL, "Can not find symbol:%s in cache", citSymbol->c_str());
+      continue;
+    }
 
     FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = CreateSnapShot(stuMarketData, enSymbolType, mdReqID.getValue());
-    CToolkit::Send(oMarketDataRequest, oMdSnapShot);
+    if(!CToolkit::Send(oMarketDataRequest, oMdSnapShot))
+    {
+      return false;
+    }
   }
+
+  return true;
 }
 
 void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, char chEntryType, double dPrice, int iVolume /*= 0*/, int iPos /*= 0*/)
@@ -228,7 +245,7 @@ bool CSgitMdSpi::CheckValid(
   return true;
 }
 
-void CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
+bool CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg)
 {
   AddFixInfo(oMsg);
 
@@ -237,8 +254,11 @@ void CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSess
 
   if (msgType == FIX::MsgType_MarketDataRequest)
   {
-    MarketDataRequest((const FIX42::MarketDataRequest&) oMsg);
+    return MarketDataRequest((const FIX42::MarketDataRequest&) oMsg, ssErrMsg);
   }
+
+  ssErrMsg = "unsupported message type";
+  return false;
 }
 
 void CSgitMdSpi::AddFixInfo(const FIX::Message& oMsg)

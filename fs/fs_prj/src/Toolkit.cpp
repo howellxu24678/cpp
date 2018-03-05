@@ -120,7 +120,7 @@ void CToolkit::SetUserInfo(const STUserInfo &stuUserInfo, FIX::Message &oMsg)
 	}
 }
 
-void CToolkit::Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg)
+bool CToolkit::Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg)
 {
   FIX::BeginString beginString;
   FIX::SenderCompID senderCompID;
@@ -131,13 +131,13 @@ void CToolkit::Send(const FIX::Message &oRecvMsg, FIX::Message &oSendMsg)
   oRecvMsg.getHeader().getField(targetCompID);
   oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
 
-  Send(oSendMsg, 
+  return Send(oSendMsg, 
     FIX::SessionID(beginString.getValue(), targetCompID.getValue(), senderCompID.getValue()), 
     onBehalfOfCompId.getValue());
 
 }
 
-void CToolkit::Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID, const std::string &ssOnBehalfOfCompID)
+bool CToolkit::Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID, const std::string &ssOnBehalfOfCompID)
 {
   if(!ssOnBehalfOfCompID.empty())
   {
@@ -146,11 +146,12 @@ void CToolkit::Send(FIX::Message &oSendMsg, const FIX::SessionID &oSendSessionID
 
   try
   {
-    FIX::Session::sendToTarget(oSendMsg, oSendSessionID);
+    return FIX::Session::sendToTarget(oSendMsg, oSendSessionID);
   }
   catch ( FIX::SessionNotFound& e) 
   {
     LOG(ERROR_LOG_LEVEL, "msg:%s, err:%s", oSendMsg.toString().c_str(), e.what());
+    return false;
   }
 }
 

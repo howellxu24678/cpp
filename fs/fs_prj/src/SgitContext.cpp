@@ -193,13 +193,13 @@ std::string CSgitContext::CvtExchange(const std::string &ssExchange, const Conve
   return m_oConvert.CvtExchange(ssExchange, enDstType);
 }
 
-bool CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErr)
+bool CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg)
 {
   const FIX::BeginString& beginString = 
     FIELD_GET_REF( oMsg.getHeader(), BeginString);
   if ( beginString != FIX::BeginString_FIX42 )
   {
-    ssErr = "only support fix42";
+    ssErrMsg = "only support fix42";
     return false;
   }
 
@@ -210,38 +210,39 @@ bool CSgitContext::Deal(const FIX::Message& oMsg, const FIX::SessionID& oSession
   {
     if(!IsTradeSupported())
     {
-      ssErr = "Trade request is not supported on this fix gateway";
+      ssErrMsg = "Trade request is not supported on this fix gateway";
       return false;
     }
 
 		SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oSessionID);
 		if (!spTdSpi)
 		{
-      ssErr = "Can not find Tdspi for SessionID:" + oSessionID.toString();
-			LOG(ERROR_LOG_LEVEL, ssErr.c_str());
+      ssErrMsg = "Can not find Tdspi for SessionID:" + oSessionID.toString();
+			LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
 			return false;
 		}
-		spTdSpi->OnMessage(oMsg, oSessionID);
+		return spTdSpi->OnMessage(oMsg, oSessionID, ssErrMsg);
   }
   else if(CToolkit::IsMdRequest(msgType))
   {
     if(!IsQuoteSupported())
     {
-      ssErr = "Quote request is not supported on this fix gateway";
+      ssErrMsg = "Quote request is not supported on this fix gateway";
       return false;
     }
 
     SharedPtr<CSgitMdSpi> spMdSpi = GetMdSpi(oSessionID);
 		if(!spMdSpi)
 		{
-      ssErr = "Can not find Mdspi for SessionID:" + oSessionID.toString();
-			LOG(ERROR_LOG_LEVEL, ssErr.c_str());
+      ssErrMsg = "Can not find Mdspi for SessionID:" + oSessionID.toString();
+			LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
 			return false;
 		}
-		spMdSpi->OnMessage(oMsg, oSessionID);
+		return spMdSpi->OnMessage(oMsg, oSessionID, ssErrMsg);
   }
 
-  return true;
+  ssErrMsg = "unsupported message type";
+  return false;
 }
 
 void CSgitContext::AddUserInfo(const std::string &ssSessionKey, SharedPtr<STUserInfo> spStuFixInfo)

@@ -19,7 +19,7 @@ public:
 
   bool Init();
 
-  bool Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErr);
+  bool Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg);
 
   SharedPtr<CSgitTdSpi> GetOrCreateTdSpi(const FIX::SessionID& oSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
 

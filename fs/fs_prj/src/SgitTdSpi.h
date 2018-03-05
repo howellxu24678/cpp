@@ -141,7 +141,8 @@ public:
 
   virtual bool Init();
 
-  void OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
+  //返回true,请求已成功处理(有异常情况也成功发送对应回复到对端);false,请求没有最终成功处理，需要上层回复j消息
+  bool OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg);
 
   virtual bool ReqUserLogin(const std::string &ssUserID, const std::string &ssPassword, std::string &ssErrMsg);
 
@@ -157,13 +158,13 @@ protected:
 
   virtual Poco::SharedPtr<STUserInfo> GetUserInfo(const std::string &ssRealAcct) = 0;
 
-	void SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMsg);
+	bool SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMsg);
 
   void Send(int iReqID, FIX::Message& oMsg);
 
   virtual bool LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const std::string &ssSessionProp);
 
-	std::string GetRealAccont(const FIX::Message& oRecvMsg);
+	bool GetRealAccount(const FIX::Message& oRecvMsg, std::string &ssRealAccount, std::string &ssErrMsg);
 
 	bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
 
@@ -176,19 +177,19 @@ protected:
 
 	bool Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue);
 
-	void SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
+	bool SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
-	void SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
+	bool SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
-  void SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg);
+  bool SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg);
 
-  void SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle);
+  bool SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle, int iErrCode = 0, const std::string& ssErrMsg = "");
 
-	void SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
+	bool SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
-	void SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg);
+	bool SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg);
 
-	void SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
+	bool SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
 
 	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
 
@@ -207,19 +208,19 @@ protected:
   void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder);
 
 	///报单录入请求
-	void ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle);
+	bool ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle, std::string& ssErrMsg);
 
-  void ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel);
+  bool ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel, std::string& ssErrMsg);
 
-  void ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest);
+  bool ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest, std::string& ssErrMsg);
 
-  void ReqAccountQuery(const FIX42::Message& oMessage);
+  bool ReqAccountQuery(const FIX42::Message& oMessage, std::string& ssErrMsg);
 
-  void ReqCapitalQuery(const FIX42::Message& oMessage);
+  bool ReqCapitalQuery(const FIX42::Message& oMessage, std::string& ssErrMsg);
 
-  void ReqPositionQuery(const FIX42::Message& oMessage);
+  bool ReqPositionQuery(const FIX42::Message& oMessage, std::string& ssErrMsg);
 
-  void ReqContractQuery(const FIX42::Message& oMessage);
+  bool ReqContractQuery(const FIX42::Message& oMessage, std::string& ssErrMsg);
 
   void AppendQryData(const FIX::MsgType &oMsgType, char *pRspData, int iDataSize, CThostFtdcRspInfoField *pRspInfo, int iReqID, bool bIsLast);
 

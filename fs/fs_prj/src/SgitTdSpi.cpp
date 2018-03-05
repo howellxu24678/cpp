@@ -89,15 +89,13 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
   m_oEventLoginResp.set();
 }
 
-void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
+bool CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle, std::string& ssErrMsg)
 {
 	CThostFtdcInputOrderField stuInputOrder;
   Poco::SharedPtr<STUOrder> spStuOrder(new STUOrder());
-  std::string ssErrMsg = "";
 	if(!Cvt(oNewOrderSingle, stuInputOrder, *spStuOrder, ssErrMsg))
   {
-    SendExecutionReport(*spStuOrder, -1, ssErrMsg);
-    return;
+    return SendExecutionReport(oNewOrderSingle, -1, ssErrMsg);
   }
 
 	m_mapOrderRef2Order[spStuOrder->m_ssOrderRef] = spStuOrder;
@@ -105,29 +103,34 @@ void CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle)
 	int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
 	{
-		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
-    SendExecutionReport(*spStuOrder, iRet, "Failed to call api:ReqOrderInsert");
-    return;
+    Poco::format(ssErrMsg, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
+		LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return SendExecutionReport(*spStuOrder, iRet, ssErrMsg);
 	}
+
+  LOG(INFO_LOG_LEVEL, "Success call api:ReqOrderInsert,InvestorID:%s,InstrumentID:%s,OrderRef:%s", 
+    stuInputOrder.InvestorID, stuInputOrder.InstrumentID, stuInputOrder.OrderRef);
+
+  return true;
 }
 
-void CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel)
+bool CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel, std::string& ssErrMsg)
 {
   CThostFtdcInputOrderActionField stuInputOrderAction;
-  std::string ssErrMsg = "";
 	if(!Cvt(oOrderCancel, stuInputOrderAction, ssErrMsg))
   {
-    SendOrderCancelReject(oOrderCancel, ssErrMsg);
-    return;
+    return SendOrderCancelReject(oOrderCancel, ssErrMsg);
   }
 
   int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderAction(&stuInputOrderAction, stuInputOrderAction.RequestID);
 	if (iRet != 0)
 	{
-		LOG(ERROR_LOG_LEVEL, "Failed to call api:ReqOrderAction,iRet:%d", iRet);
-		SendOrderCancelReject(oOrderCancel, "Failed to call api:ReqOrderAction");
-    return;
+    Poco::format(ssErrMsg, "Failed to call api:ReqOrderAction,iRet:%d", iRet);
+		LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+		return SendOrderCancelReject(oOrderCancel, ssErrMsg);
 	}
+
+  return true;
 }
 
 
@@ -234,7 +237,7 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
-void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
+bool CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
 {
   std::string ssUUid = CToolkit::GetUuid();
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s,OrderID:%s,uuid:%s", 
@@ -277,7 +280,7 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
 		executionReport.set(FIX::OrdStatus(FIX::OrdStatus_REJECTED));
 
 		executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
-		executionReport.set(FIX::Text(format("errID:%d,errMsg:%s", iErrCode, ssErrMsg)));
+		executionReport.set(FIX::Text(ssErrMsg));
   }
 	//正常情况
   else
@@ -308,18 +311,18 @@ void CSgitTdSpi::SendExecutionReport(const STUOrder& stuOrder, int iErrCode /*= 
 	}
 	executionReport.set(FIX::Account(ssAccount));
 
-	SendByRealAcct(stuOrder.m_ssRealAccount, executionReport);
+	return SendByRealAcct(stuOrder.m_ssRealAccount, executionReport);
 }
 
-void CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
+bool CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
 {
   Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
-  if(!spOrder) return;
+  if(!spOrder) return false;
 
   return SendExecutionReport(*spOrder, iErrCode, ssErrMsg);
 }
 
-void CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg)
+bool CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg)
 {
   FIX::ClOrdID clOrdID;
   FIX::OrderID orderID;
@@ -354,13 +357,16 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStat
 
   if (!account.getValue().empty()) executionReport.set(FIX::Account(account));
   executionReport.set(FIX::ClOrdID(clOrdID));
-  executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
-  executionReport.set(FIX::Text(format("errID:%d,errMsg:%s", iErrCode, ssErrMsg)));
+  if (iErrCode != 0)
+  {
+    executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
+    executionReport.set(FIX::Text(ssErrMsg));
+  }
 
-  CToolkit::Send(oOrderStatusRequest, executionReport);
+  return CToolkit::Send(oOrderStatusRequest, executionReport);
 }
 
-void CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle)
+bool CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
 {
   FIX::ClOrdID clOrdID;
   FIX::Symbol symbol;
@@ -389,18 +395,24 @@ void CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingl
   executionReport.set(FIX::LastPx(0));
   executionReport.set(FIX::LastShares(0));
 
-  CToolkit::Send(oNewOrderSingle, executionReport);
+  if (iErrCode != 0)
+  {
+    executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
+    executionReport.set(FIX::Text(ssErrMsg));
+  }
+
+  return CToolkit::Send(oNewOrderSingle, executionReport);
 }
 
-void CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
+bool CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
 {
   Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
-  if(!spOrder) return;
+  if(!spOrder) return false;
 
 	return SendOrderCancelReject(*spOrder, iErrCode, ssErrMsg);
 }
 
-void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg)
+bool CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg)
 {
 	FIX42::OrderCancelReject orderCancelReject = FIX42::OrderCancelReject(
 		FIX::OrderID(stuOrder.m_ssOrderID),
@@ -411,10 +423,10 @@ void CSgitTdSpi::SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, c
 
 	orderCancelReject.set(FIX::Text(ssErrMsg));
 
-	SendByRealAcct(stuOrder.m_ssRealAccount, orderCancelReject);
+	return SendByRealAcct(stuOrder.m_ssRealAccount, orderCancelReject);
 }
 
-void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg)
+bool CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg)
 {
   FIX::OrderID orderID;
   FIX::ClOrdID clOrderID;
@@ -433,7 +445,7 @@ void CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
 
   orderCancelReject.set(FIX::Text(ssErrMsg));
 
-  CToolkit::Send(oOrderCancel, orderCancelReject);
+  return CToolkit::Send(oOrderCancel, orderCancelReject);
 }
 
 bool CSgitTdSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
@@ -501,8 +513,11 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	oNewOrderSingle.get(openClose);
 
   //STUOrder
-	stuOrder.m_ssRecvAccount = account.getValue();
-	stuOrder.m_ssRealAccount = GetRealAccont(oNewOrderSingle);
+  stuOrder.m_ssRecvAccount = account.getValue();
+  if (!GetRealAccount(oNewOrderSingle, stuOrder.m_ssRealAccount, ssErrMsg))
+  {
+    return false;
+  }
   stuOrder.m_ssClOrdID = clOrdID.getValue();
   //stuOrder.m_cOrderStatus = FIX::OrdStatus_NEW;
   stuOrder.m_ssSymbol = symbol.getValue();
@@ -511,11 +526,12 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   stuOrder.m_iLeavesQty = (int)orderQty.getValue();
   stuOrder.m_iCumQty = 0;
 
+
   //价格(tag44)非必须字段
   if(oNewOrderSingle.getIfSet(price)) stuOrder.m_dPrice = price.getValue();
 	
 	//由于不能确保送入的ClOrdID(11)严格递增，在这里递增生成一个报单引用并做关联
-	std::string ssOrderRef = format(ssOrderRefFormat, ++m_acOrderRef);
+	std::string ssOrderRef = Poco::format(ssOrderRefFormat, ++m_acOrderRef);
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s", ssOrderRef.c_str(), clOrdID.getValue().c_str());
 	if(!AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue(), ssErrMsg)) return false;
 	WriteDatFile(ssOrderRef, clOrdID.getValue());
@@ -535,15 +551,20 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 		symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
 		sizeof(stuInputOrder.InstrumentID));
 
-	stuInputOrder.VolumeTotalOriginal = (int)orderQty.getValue();
+	stuInputOrder.VolumeTotalOriginal = stuOrder.m_iOrderQty;
 	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
-	stuInputOrder.LimitPrice = price.getValue();
+	stuInputOrder.LimitPrice = stuOrder.m_dPrice;
 	stuInputOrder.Direction = m_stuTdParam.m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
   stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
 
   //有自定义平今平昨tag
   Poco::SharedPtr<STUserInfo> spUserInfo = GetUserInfo(stuOrder.m_ssRealAccount);
-  if (!spUserInfo)  return false;
+  if (!spUserInfo)
+  {
+    ssErrMsg = "Can not find UserInfo by real account:" + stuOrder.m_ssRealAccount;
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
 
   if (spUserInfo->m_iCloseTodayYesterdayTag > 0)
   {
@@ -600,12 +621,17 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
 
 	//将撤单请求ID赋值到原有委托结构体中
   Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(ssOrderRef);
-  if(!spOrder) return false;
+  if(!spOrder)
+  {
+    ssErrMsg = "Can not GetStuOrder by orderRef:" + ssOrderRef;
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
   spOrder->m_ssCancelClOrdID = clOrdID.getValue();
 
   memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
   stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
-  std::string ssOrderActionRef = format(ssOrderRefFormat, stuInputOrderAction.OrderActionRef);
+  std::string ssOrderActionRef = Poco::format(ssOrderRefFormat, stuInputOrderAction.OrderActionRef);
   LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,ClOrdID:%s", ssOrderActionRef.c_str(), clOrdID.getValue().c_str());
   if(!AddOrderRefClOrdID(ssOrderActionRef, clOrdID.getValue(), ssErrMsg)) return false;
 
@@ -655,7 +681,7 @@ void CSgitTdSpi::Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrde
 	stuOrder.m_dPrice = stuFtdcOrder.LimitPrice;
 }
 
-void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest)
+bool CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest, std::string& ssErrMsg)
 {
   FIX::ClOrdID clOrdID;
   FIX::Symbol symbol;
@@ -664,14 +690,12 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
   
   oOrderStatusRequest.get(clOrdID);
   oOrderStatusRequest.get(symbol);
-  oOrderStatusRequest.getIfSet(orderID);
-  oOrderStatusRequest.getIfSet(account);
 
   CThostFtdcQryOrderField stuQryOrder;
   memset(&stuQryOrder, 0, sizeof(CThostFtdcQryOrderField));
  
-  std::string ssOrderID = "", ssErrMsg = "";
-  if (!orderID.getValue().empty())
+  std::string ssOrderID = "";
+  if (oOrderStatusRequest.getIfSet(orderID))
   {
     ssOrderID = orderID.getValue();
   }
@@ -708,9 +732,14 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
     symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
     sizeof(stuQryOrder.InstrumentID));
 
-  if (!account.getValue().empty())
+  if (oOrderStatusRequest.getIfSet(account))
   {
-    strncpy(stuQryOrder.InvestorID, GetRealAccont(oOrderStatusRequest).c_str(), sizeof(stuQryOrder.InvestorID));
+    std::string ssRealAccount = "";
+    if (!GetRealAccount(oOrderStatusRequest, ssRealAccount, ssErrMsg))
+    {
+      return SendExecutionReport(oOrderStatusRequest, -1, ssErrMsg);
+    }
+    strncpy(stuQryOrder.InvestorID, ssRealAccount.c_str(), sizeof(stuQryOrder.InvestorID));
   }
 
   int iRet = m_stuTdParam.m_pTdReqApi->ReqQryOrder(&stuQryOrder, m_acRequestId++);
@@ -720,6 +749,8 @@ void CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
 		LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
     return SendExecutionReport(oOrderStatusRequest, -1, ssErrMsg);
 	}
+
+  return true;
 }
 
 void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -735,7 +766,7 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
     || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected)
   {
-    return SendExecutionReport(stuOrder, -1, "Reject by Exchange", false, true);
+    SendExecutionReport(stuOrder, -1, "Reject by Exchange", false, true);
   }
   //撤单回报
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
@@ -752,39 +783,42 @@ void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bo
   LOG(ERROR_LOG_LEVEL, "ErrorID:%d,ErrorMsg:%s,RequestID:%d", pRspInfo->ErrorID, pRspInfo->ErrorMsg, nRequestID);
 }
 
-void CSgitTdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID)
+bool CSgitTdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg)
 {
   FIX::MsgType msgType;
   oMsg.getHeader().getField(msgType);
 
   if (msgType == FIX::MsgType_NewOrderSingle)
   {
-    ReqOrderInsert((const FIX42::NewOrderSingle&) oMsg);
+    return ReqOrderInsert((const FIX42::NewOrderSingle&) oMsg, ssErrMsg);
   }
   else if(msgType == FIX::MsgType_OrderCancelRequest)
   {
-    ReqOrderAction((const FIX42::NewOrderSingle&) oMsg);
+    return ReqOrderAction((const FIX42::NewOrderSingle&) oMsg, ssErrMsg);
   }
   else if(msgType == FIX::MsgType_OrderStatusRequest)
   {
-    ReqQryOrder((const FIX42::OrderStatusRequest&) oMsg);
+    return ReqQryOrder((const FIX42::OrderStatusRequest&) oMsg, ssErrMsg);
   }
   else if(msgType == FIX::MsgType_AccountQuery)
   {
-    ReqAccountQuery(oMsg);
+    return ReqAccountQuery(oMsg, ssErrMsg);
   }
   else if(msgType == FIX::MsgType_CapitalQuery)
   {
-    ReqCapitalQuery(oMsg);
+    return ReqCapitalQuery(oMsg, ssErrMsg);
   }
   else if(msgType == FIX::MsgType_PositionQuery)
   {
-    ReqPositionQuery(oMsg);
+    return ReqPositionQuery(oMsg, ssErrMsg);
   }
   else if(msgType == FIX::MsgType_ContractQuery)
   {
-    ReqContractQuery(oMsg);
+    return ReqContractQuery(oMsg, ssErrMsg);
   }
+
+  ssErrMsg = "unsupported message type";
+  return false;
 }
 
 bool CSgitTdSpi::Init()
@@ -871,23 +905,29 @@ bool CSgitTdSpi::LoadAcctAlias(AutoPtr<IniFileConfiguration> apSgitConf, const s
   return true;
 }
 
-std::string CSgitTdSpi::GetRealAccont(const FIX::Message& oRecvMsg)
+bool CSgitTdSpi::GetRealAccount(const FIX::Message& oRecvMsg, std::string &ssRealAccount, std::string &ssErrMsg)
 {
 	FIX::Account account;
 	oRecvMsg.getField(account);
 
-	if (!CToolkit::IsAliasAcct(account.getValue())) return account.getValue();
+	if (!CToolkit::IsAliasAcct(account.getValue()))
+  {
+    ssRealAccount = account.getValue();
+    return true;
+  }
 
 	std::string ssKey = CToolkit::GetSessionKey(oRecvMsg) + "|" + account.getValue();
 	std::map<std::string, std::string>::const_iterator cit = 
 		m_mapAlias2RealAcct.find(ssKey);
-	if(cit != m_mapAlias2RealAcct.end()) 
-		return cit->second;
-	else
-	{
-		LOG(ERROR_LOG_LEVEL, "Can not find real account by key:%s", ssKey.c_str());
-		return "unknow";
-	}
+	if(cit != m_mapAlias2RealAcct.end())
+  {
+    ssRealAccount = cit->second;
+    return true;
+  }
+
+  ssErrMsg = "Can not find real account by key:" + ssKey;
+  LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+  return false;
 }
 
 Poco::SharedPtr<CSgitTdSpi::STUOrder> CSgitTdSpi::GetStuOrder(const std::string &ssOrderRef)
@@ -978,16 +1018,16 @@ bool CSgitTdSpi::CheckIdSource(const FIX::Message& oRecvMsg, Convert::EnCvtType 
 	return true;
 }
 
-void CSgitTdSpi::SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMsg)
+bool CSgitTdSpi::SendByRealAcct(const std::string &ssRealAcct, FIX::Message& oMsg)
 {
   Poco::SharedPtr<STUserInfo> spUserInfo = GetUserInfo(ssRealAcct);
   if (!spUserInfo)
   {
     LOG(ERROR_LOG_LEVEL, "Failed to GetUserInfo by real account:%s", ssRealAcct.c_str());
-    return;
+    return false;
   }
 
-  CToolkit::Send(oMsg, spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
+  return CToolkit::Send(oMsg, spUserInfo->m_oSessionID, spUserInfo->m_ssOnBehalfOfCompID);
 }
 
 bool CSgitTdSpi::ReqUserLogin(const std::string &ssUserID, const std::string &ssPassword, std::string &ssErrMsg)
@@ -1020,7 +1060,7 @@ bool CSgitTdSpi::ReqUserLogin(const std::string &ssUserID, const std::string &ss
   return m_bLastLoginOk;
 }
 
-void CSgitTdSpi::ReqAccountQuery(const FIX42::Message& oMessage)
+bool CSgitTdSpi::ReqAccountQuery(const FIX42::Message& oMessage, std::string& ssErrMsg)
 {
   FIX::Account account;
   FIX::ReqID reqId;
@@ -1036,7 +1076,16 @@ void CSgitTdSpi::ReqAccountQuery(const FIX42::Message& oMessage)
   {
     strncpy(stuTradeCode.InvestorID, account.getValue().c_str(), sizeof(stuTradeCode.InvestorID));
   }
-  m_stuTdParam.m_pTdReqApi->ReqQryTradingCode(&stuTradeCode, iCurRequsetId);
+
+  int iRet = m_stuTdParam.m_pTdReqApi->ReqQryTradingCode(&stuTradeCode, iCurRequsetId);
+  if (iRet != 0)
+  {
+    Poco::format(ssErrMsg, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
+
+  return true;
 }
 
 void CSgitTdSpi::OnRspQryTradingCode(CThostFtdcTradingCodeField *pTradingCode, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1050,7 +1099,7 @@ void CSgitTdSpi::OnRspQryTradingCode(CThostFtdcTradingCodeField *pTradingCode, C
   AppendQryData(FIX::MsgType(FIX::MsgType_AccountQueryResp), (char*)pTradingCode, sizeof(CThostFtdcTradingCodeField), pRspInfo, nRequestID, bIsLast);
 }
 
-void CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage)
+bool CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage, std::string& ssErrMsg)
 {
   FIX::Account account;
   FIX::ReqID reqId;
@@ -1066,7 +1115,15 @@ void CSgitTdSpi::ReqCapitalQuery(const FIX42::Message& oMessage)
   {
     strncpy(stuAccount.InvestorID, account.getValue().c_str(), sizeof(stuAccount.InvestorID));
   }
-  m_stuTdParam.m_pTdReqApi->ReqQryTradingAccount(&stuAccount, iCurRequsetId);
+  int iRet = m_stuTdParam.m_pTdReqApi->ReqQryTradingAccount(&stuAccount, iCurRequsetId);
+  if (iRet != 0)
+  {
+    Poco::format(ssErrMsg, "Failed to call api:ReqQryTradingAccount,iRet:%d", iRet);
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
+
+  return true;
 }
 
 void CSgitTdSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingAccount, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1080,7 +1137,7 @@ void CSgitTdSpi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingA
   AppendQryData(FIX::MsgType(FIX::MsgType_CapitalQueryResp), (char*)pTradingAccount, sizeof(CThostFtdcTradingAccountField), pRspInfo, nRequestID, bIsLast);
 }
 
-void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
+bool CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage, std::string& ssErrMsg)
 {
   FIX::Account account;
   FIX::Symbol symbol;
@@ -1102,7 +1159,16 @@ void CSgitTdSpi::ReqPositionQuery(const FIX42::Message& oMessage)
   {
     strncpy(stuPosition.InstrumentID, symbol.getValue().c_str(), sizeof(stuPosition.InstrumentID));
   }
-  m_stuTdParam.m_pTdReqApi->ReqQryInvestorPosition(&stuPosition, iCurRequsetId);
+
+  int iRet = m_stuTdParam.m_pTdReqApi->ReqQryInvestorPosition(&stuPosition, iCurRequsetId);
+  if (iRet != 0)
+  {
+    Poco::format(ssErrMsg, "Failed to call api:ReqQryInvestorPosition,iRet:%d", iRet);
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
+
+  return true;
 }
 
 void CSgitTdSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInvestorPosition, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1118,7 +1184,7 @@ void CSgitTdSpi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInve
   AppendQryData(FIX::MsgType(FIX::MsgType_PositionQueryResp), (char*)pInvestorPosition, sizeof(CThostFtdcInvestorPositionField), pRspInfo, nRequestID, bIsLast);
 }
 
-void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
+bool CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage, std::string& ssErrMsg)
 {
   FIX::Symbol symbol;
   FIX::ReqID reqId;
@@ -1134,7 +1200,15 @@ void CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage)
   {
     strncpy(stuInstrument.InstrumentID, symbol.getValue().c_str(), sizeof(stuInstrument.InstrumentID));
   }
-  m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, iCurRequsetId);
+  int iRet = m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, iCurRequsetId);
+  if (iRet != 0)
+  {
+    Poco::format(ssErrMsg, "Failed to call api:ReqQryInstrument,iRet:%d", iRet);
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
+
+  return true;
 }
 
 void CSgitTdSpi::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)

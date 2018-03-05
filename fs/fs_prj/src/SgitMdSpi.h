@@ -25,9 +25,9 @@ public:
   CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const std::string &ssTradeId, const std::string &ssPassword);
   virtual ~CSgitMdSpi();
 
-  void OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID);
+  bool OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg);
 
-  void MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest);
+  bool MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRequest, std::string& ssErrMsg);
 
 protected:
 
@@ -40,7 +40,7 @@ protected:
     const std::string &ssSessionKey);
 
   //发送快照
-  void SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+  bool SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
 
   //发布行情
   void PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMarketData);

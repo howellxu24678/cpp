@@ -51,7 +51,7 @@ bool Convert::Init()
 
 char Convert::CvtDict(const int iField, const char cValue, const EnDictType enDstDictType)
 {
-	std::string ssKey = GetDictKey(format("%d", iField), format("%c", cValue), enDstDictType);
+	std::string ssKey = GetDictKey(Poco::format("%d", iField), Poco::format("%c", cValue), enDstDictType);
 	std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
 	if (citFind != m_mapDict.end())
 	{
@@ -230,7 +230,7 @@ std::string Convert::CvtYear(const std::string &ssSrcSymbol, const STUSymbol &st
 	//长度相同时用原始代码的年份替代目的代码的年份
 	if (stuSrcSymbol.m_iYearLen == stuDstSymbol.m_iYearLen) return ssSrcYear;
 
-	if (stuSrcSymbol.m_iYearLen > stuDstSymbol.m_iYearLen && stuSrcSymbol.m_iYearLen == 2) return format("%c", ssSrcYear[1]);
+	if (stuSrcSymbol.m_iYearLen > stuDstSymbol.m_iYearLen && stuSrcSymbol.m_iYearLen == 2) return Poco::format("%c", ssSrcYear[1]);
 
 	if (stuSrcSymbol.m_iYearLen < stuDstSymbol.m_iYearLen && stuSrcSymbol.m_iYearLen == 1) return CvtYearDigitFrom1To2(ssSrcYear);
 
@@ -308,7 +308,7 @@ std::string Convert::CvtYearDigitFrom1To2(const std::string &ssSrcYear)
 	while(iYear % 10 != iSrcYear) 
 		iYear++;
 
-	return format("%d", iYear);
+	return Poco::format("%d", iYear);
 }
 
 bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)

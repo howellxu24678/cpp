@@ -29,6 +29,7 @@
 
 #include "Log.h"
 #include "Toolkit.h"
+#include "Toolkit.h"
 
 void Application::onCreate( const FIX::SessionID& sessionID ) 
 {
@@ -74,15 +75,15 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
 {
 	LOG(INFO_LOG_LEVEL, "%s", message.toString().c_str());
 
-  std::string ssErr = "";
+  std::string ssErrMsg = "";
   bool isNeedSendBusinessReject = false;
   if (!m_pSigtCtx)
   {
-    ssErr = "m_pSigtCtx is invalid";
-    LOG(ERROR_LOG_LEVEL, ssErr.c_str());
+    ssErrMsg = "m_pSigtCtx is invalid";
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
     isNeedSendBusinessReject = true;
   }
-  else if(!m_pSigtCtx->Deal(message, sessionID, ssErr))
+  else if(!m_pSigtCtx->Deal(message, sessionID, ssErrMsg))
   {
     isNeedSendBusinessReject = true;
   }
@@ -91,8 +92,9 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
   if (isNeedSendBusinessReject)
   {
     FIX42::BusinessMessageReject oBusinessReject = FIX42::BusinessMessageReject(message.getHeader().getField(FIX::FIELD::MsgType), FIX::BusinessRejectReason_APPLICATION_NOT_AVAILABLE);
-    oBusinessReject.set(FIX::Text(ssErr));
-    FIX::Session::sendToTarget(oBusinessReject, sessionID);
+    oBusinessReject.set(FIX::Text(ssErrMsg));
+    
+    CToolkit::Send(message, oBusinessReject);
   }
 }
 
