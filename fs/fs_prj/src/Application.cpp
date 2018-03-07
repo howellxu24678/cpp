@@ -54,6 +54,7 @@ void Application::onLogout( const FIX::SessionID& sessionID )
 void Application::toAdmin( FIX::Message& message,
                            const FIX::SessionID& sessionID ) 
 {
+  logAdminMessage(message);
 }
 void Application::toApp( FIX::Message& message,
                          const FIX::SessionID& sessionID )
@@ -66,6 +67,7 @@ void Application::fromAdmin( const FIX::Message& message,
                              const FIX::SessionID& sessionID )
 throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX::RejectLogon ) 
 {
+  logAdminMessage(message);
   crack( message, sessionID ); 
 }
 
@@ -88,7 +90,6 @@ throw( FIX::FieldNotFound, FIX::IncorrectDataFormat, FIX::IncorrectTagValue, FIX
     isNeedSendBusinessReject = true;
   }
   
-
   if (isNeedSendBusinessReject)
   {
     FIX42::BusinessMessageReject oBusinessReject = FIX42::BusinessMessageReject(message.getHeader().getField(FIX::FIELD::MsgType), FIX::BusinessRejectReason_APPLICATION_NOT_AVAILABLE);
@@ -138,4 +139,14 @@ Application::Application(CSgitContext* pSgitCtx)
    : m_pSigtCtx(pSgitCtx)
 {
 
+}
+
+void Application::logAdminMessage(const FIX::Message &oMsg)
+{
+  FIX::MsgType msgType;
+  oMsg.getHeader().getField(msgType);
+  if(msgType == FIX::MsgType_Reject)
+  {
+    LOG(WARN_LOG_LEVEL, "%s", oMsg.toString().c_str());
+  }
 }

@@ -1,6 +1,8 @@
 #ifndef __CONST_H__
 #define __CONST_H__
 
+#include "sgit/SgitFtdcUserApiDataType.h"
+
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -22,6 +24,8 @@ struct STUserInfo
 		: m_ssOnBehalfOfCompID("")
     , m_enCvtType(Convert::Unknow)
     , m_iCloseTodayYesterdayTag(0)
+    , m_iSpecHedgeTag(0)
+    , m_cDefaultSpecHedge(THOST_FTDC_ECIDT_Speculation)
   {}
 
   FIX::SessionID      m_oSessionID;
@@ -30,6 +34,10 @@ struct STUserInfo
   Convert::EnCvtType  m_enCvtType;
   //平今平昨的自定义tag
   int                 m_iCloseTodayYesterdayTag;
+  //投机套保的自定义tag
+  int                 m_iSpecHedgeTag;
+  //默认投机套保值（不在投机套保tag中显式指明时取的默认值，不做字典转换），没有配置默认投机
+  char                m_cDefaultSpecHedge;
 };
 
 #endif // __CONST_H__

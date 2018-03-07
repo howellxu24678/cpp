@@ -42,6 +42,7 @@ class Application
 public:
   Application(CSgitContext* pSgitCtx);
 
+protected:
   // Application overloads
   void onCreate( const FIX::SessionID& );
   void onLogon( const FIX::SessionID& sessionID );
@@ -56,6 +57,9 @@ public:
 
   // MessageCracker overloads
   void onMessage(const FIX42::Logon&, const FIX::SessionID&);
+
+  //过滤并打印关注的应用层消息（拒绝消息（msgtype=3）需要打印到日志中）
+  void logAdminMessage(const FIX::Message &oMsg);
 
 private:
   CSgitContext*       m_pSigtCtx;

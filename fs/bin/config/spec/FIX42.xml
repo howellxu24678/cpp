@@ -426,6 +426,7 @@
    <field name='ClearingFirm' required='N' />
    <field name='ClearingAccount' required='N' />
    <field name='CloseTodayYesterday' required='N' />
+   <field name='SpecOrHedge' required='N' />
   </message>
   <message name='NewOrderList' msgcat='app' msgtype='E'>
    <field name='ListID' required='Y' />
@@ -2825,6 +2826,15 @@
   <field number='446' name='EncodedListStatusText' type='DATA' />
   <field number='541' name='MaturityDate' type='LOCALMKTDATE' />
   <field number='969' name='MinPriceIncrement' type='FLOAT' />
+  <field number='9001' name='CloseTodayYesterday' type='CHAR' >
+	<value enum='T' description='CLOSETODAY' />
+	<value enum='Y' description='CLOSEYESTERDAY' />
+  </field>
+  <field number='9002' name='SpecOrHedge' type='CHAR'>
+   <value enum='0' description='Spec' />
+   <value enum='1' description='Hedge' />
+   <value enum='2' description='Arbitrage' />
+  </field>
   <field number='13001' name='ApplicationName' type='STRING' />
   <field number='13002' name='ReqID' type='INT' />
   <field number='13003' name='ListCount' type='INT' />
@@ -2833,10 +2843,6 @@
    <value enum='1' description='Empty'/>
    <value enum='2' description='AccountIncorrect'/>
    <value enum='3' description='Reject'/>
-  </field>
-  <field number='13006' name='SpecOrHedge' type='CHAR'>
-   <value enum='0' description='Spec' />
-   <value enum='1' description='Hedge' />
   </field>
   <field number='13007' name='OpenPrice' type='PRICE' />
   <field number='13008' name='ClosePrice' type='PRICE' />
@@ -2869,6 +2875,5 @@
   <field number='13016' name='PositionFieldValue' type='INT' />
   <field number='13017' name='LongPositionPrice' type='PRICE' />
   <field number='13018' name='SortPositionPrice' type='PRICE' />
-  <field number='9001' name='CloseTodayYesterday' type='CHAR' />
  </fields>
 </fix>

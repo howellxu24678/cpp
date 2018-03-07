@@ -503,6 +503,9 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	FIX::Price price;
 	FIX::Side side;
 	FIX::OpenClose openClose;
+  FIX::TimeInForce timeInForce;
+  FIX::ExpireDate expireDate;
+  FIX::ExpireTime expireTime;
 
 	oNewOrderSingle.get(account);
 	oNewOrderSingle.get(clOrdID);
@@ -525,7 +528,6 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   stuOrder.m_iOrderQty = (int)orderQty.getValue();
   stuOrder.m_iLeavesQty = (int)orderQty.getValue();
   stuOrder.m_iCumQty = 0;
-
 
   //价格(tag44)非必须字段
   if(oNewOrderSingle.getIfSet(price)) stuOrder.m_dPrice = price.getValue();
@@ -555,9 +557,19 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
 	stuInputOrder.LimitPrice = stuOrder.m_dPrice;
 	stuInputOrder.Direction = m_stuTdParam.m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
-  stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+  stuInputOrder.TimeCondition = oNewOrderSingle.getIfSet(timeInForce) ? 
+    m_stuTdParam.m_pSgitCtx->CvtDict(timeInForce.getField(), timeInForce.getValue(), Convert::Sgit) : THOST_FTDC_TC_GFD;
+  if (stuInputOrder.TimeCondition == THOST_FTDC_TC_GTD)
+  {
+    if(oNewOrderSingle.getIfSet(expireDate)) 
+      strncpy(stuInputOrder.GTDDate, expireDate.getValue().c_str(), sizeof(stuInputOrder.GTDDate));
+    else if(oNewOrderSingle.getIfSet(expireTime))
+    {
+      //虽然是utc时间，但是只取日期部分，暂不做本地时间转换
+      sprintf(stuInputOrder.GTDDate, "%d", expireTime.getValue().getDate());
+    }
+  }
 
-  //有自定义平今平昨tag
   Poco::SharedPtr<STUserInfo> spUserInfo = GetUserInfo(stuOrder.m_ssRealAccount);
   if (!spUserInfo)
   {
@@ -566,16 +578,32 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
     return false;
   }
 
+  //平今平昨处理
+  stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
+  //有自定义平今平昨tag，更改原先的赋值
   if (spUserInfo->m_iCloseTodayYesterdayTag > 0)
   {
-    FIX::CharField chField = FIX::CharField(spUserInfo->m_iCloseTodayYesterdayTag);
-    if (oNewOrderSingle.getFieldIfSet(chField))
+    FIX::CharField chCloseTodayYesterdayField = FIX::CharField(spUserInfo->m_iCloseTodayYesterdayTag);
+    if (oNewOrderSingle.getFieldIfSet(chCloseTodayYesterdayField))
     {
-      stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(chField.getField(), chField.getValue(), Convert::Sgit);
+      stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(
+        chCloseTodayYesterdayField.getField(), chCloseTodayYesterdayField.getValue(), Convert::Sgit);
+    }
+  }
+
+  //投机套保处理
+  stuInputOrder.CombHedgeFlag[0] = spUserInfo->m_cDefaultSpecHedge; 
+  //有自定义投机套保tag，更改原先的赋值
+  if (spUserInfo->m_iSpecHedgeTag > 0)
+  {
+    FIX::CharField chSpecHedgeField = FIX::CharField(spUserInfo->m_iSpecHedgeTag);
+    if (oNewOrderSingle.getFieldIfSet(chSpecHedgeField))
+    {
+      stuInputOrder.CombHedgeFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(
+        chSpecHedgeField.getField(), chSpecHedgeField.getValue(), Convert::Sgit);
     }
   }
 	
-	stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
 	stuInputOrder.MinVolume = 1;
 	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
 	stuInputOrder.ContingentCondition = THOST_FTDC_CC_Immediately;
@@ -584,7 +612,6 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	stuInputOrder.IsAutoSuspend = false;
 	stuInputOrder.UserForceClose = false;
 	stuInputOrder.IsSwapOrder = false;
-	stuInputOrder.CombHedgeFlag[0] = '0'; 
 
 	stuInputOrder.RequestID = m_acRequestId++;
 
@@ -866,6 +893,18 @@ bool CSgitTdSpi::LoadUserInfo(AutoPtr<IniFileConfiguration> apSgitConf, const st
   if (apSgitConf->hasProperty(ssSessionProp + ".CloseTodayYesterdayTag"))
   {
     spUserInfo->m_iCloseTodayYesterdayTag = apSgitConf->getInt(ssSessionProp + ".CloseTodayYesterdayTag");
+  }
+
+  //投机套保的自定义tag
+  if (apSgitConf->hasProperty(ssSessionProp + ".SpecHedgeTag"))
+  {
+    spUserInfo->m_iSpecHedgeTag = apSgitConf->getInt(ssSessionProp + ".SpecHedgeTag");
+  }
+
+  //默认投机套保值（不在投机套保tag中显式指明时取的默认值，不做字典转换）
+  if (apSgitConf->hasProperty(ssSessionProp + ".DefaultSpecHedge"))
+  {
+    spUserInfo->m_cDefaultSpecHedge = apSgitConf->getString(ssSessionProp + ".DefaultSpecHedge")[0];
   }
 
   return true;

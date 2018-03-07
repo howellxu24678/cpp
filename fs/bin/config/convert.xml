@@ -13,7 +13,13 @@
 		<dict number='9001' name='CloseTodayYesterday'>
 			<item fix="T" sgit="3" description='CLOSETODAY'/>
 			<item fix="Y" sgit="4" description='CLOSEYESTERDAY'/>
-		</dict>			
+		</dict>
+		<!-- 投机套保的自定义tag，如果没送这个值，默认取配置中 DefaultSpecHedge的值，否则默认为投机-->
+		<dict number='9002' name='SpecHedge'>
+			<item fix="0" sgit="3"  description='Spec'/>
+			<item fix="1" sgit="1" description='Hedge'/>
+			<item fix="2" sgit="2" description='Arbitrage'/>
+		</dict>		
 		<dict number='39' name='OrdStatus'>
 			<item fix='0' sgit="3" description='NEW' />
 			<item fix='1' sgit="1" description='PARTIALLY_FILLED' />
@@ -38,6 +44,14 @@
 		<dict number='54' name='Side'>
 			<item fix="1" sgit="0"  description='BUY'/>
 			<item fix="2" sgit="1" description='SELL'/>
+		</dict>
+		<dict number='59' name='TimeInForce'>
+			<item fix="0" sgit="3"  description='DAY'/>
+			<item fix="1" sgit="5" description='GOOD_TILL_CANCEL'/>
+			<item fix="2" sgit="6" description='AT_THE_OPENING'/>
+			<item fix="3" sgit="1" description='IMMEDIATE_OR_CANCEL'/>
+			<item fix="5" sgit="2" description='GOOD_TILL_CROSSING'/>
+			<item fix="6" sgit="4" description='GOOD_TILL_DATE'/>
 		</dict>
 	</dicts>
 	
