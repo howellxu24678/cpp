@@ -48,11 +48,13 @@
 		</dict>
 		<dict number='59' name='TimeInForce'>
 			<item fix="0" sgit="3"  description='DAY'/>
-			<item fix="1" sgit="5" description='GOOD_TILL_CANCEL'/>
-			<item fix="2" sgit="6" description='AT_THE_OPENING'/>
+			<!--<item fix="1" sgit="5" description='GOOD_TILL_CANCEL'/>
+			<item fix="2" sgit="6" description='AT_THE_OPENING'/>-->
 			<item fix="3" sgit="1" description='IMMEDIATE_OR_CANCEL'/>
+			<!-- 代码中会对FOK类型做特殊处理 -->
+			<!--<item fix="4" sgit="1" description='FILL_OR_KILL'/>
 			<item fix="5" sgit="2" description='GOOD_TILL_CROSSING'/>
-			<item fix="6" sgit="4" description='GOOD_TILL_DATE'/>
+			<item fix="6" sgit="4" description='GOOD_TILL_DATE'/>-->
 		</dict>
 	</dicts>
 	

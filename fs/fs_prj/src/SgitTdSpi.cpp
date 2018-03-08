@@ -506,6 +506,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   FIX::TimeInForce timeInForce;
   FIX::ExpireDate expireDate;
   FIX::ExpireTime expireTime;
+  FIX::MinQty minQty;
 
 	oNewOrderSingle.get(account);
 	oNewOrderSingle.get(clOrdID);
@@ -557,8 +558,24 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 	stuInputOrder.OrderPriceType = m_stuTdParam.m_pSgitCtx->CvtDict(ordType.getField(), ordType.getValue(), Convert::Sgit);
 	stuInputOrder.LimitPrice = stuOrder.m_dPrice;
 	stuInputOrder.Direction = m_stuTdParam.m_pSgitCtx->CvtDict(side.getField(), side.getValue(), Convert::Sgit);
-  stuInputOrder.TimeCondition = oNewOrderSingle.getIfSet(timeInForce) ? 
-    m_stuTdParam.m_pSgitCtx->CvtDict(timeInForce.getField(), timeInForce.getValue(), Convert::Sgit) : THOST_FTDC_TC_GFD;
+
+  stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
+  stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
+  stuInputOrder.MinVolume = oNewOrderSingle.getIfSet(minQty) ? minQty.getValue() : 1;
+  if(oNewOrderSingle.getIfSet(timeInForce))
+  {
+    stuInputOrder.TimeCondition = m_stuTdParam.m_pSgitCtx->CvtDict(
+      timeInForce.getField(), timeInForce.getValue(), Convert::Sgit);
+
+    //FOK Ãÿ ‚¥¶¿Ì
+    if (timeInForce == FIX::TimeInForce_FILL_OR_KILL)
+    {
+      stuInputOrder.TimeCondition = THOST_FTDC_TC_IOC;
+      stuInputOrder.VolumeCondition = THOST_FTDC_VC_CV;
+      stuInputOrder.MinVolume = stuOrder.m_iOrderQty;
+    }
+  }
+
   if (stuInputOrder.TimeCondition == THOST_FTDC_TC_GTD)
   {
     if(oNewOrderSingle.getIfSet(expireDate)) 
@@ -604,8 +621,6 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
     }
   }
 	
-	stuInputOrder.MinVolume = 1;
-	stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
 	stuInputOrder.ContingentCondition = THOST_FTDC_CC_Immediately;
 	stuInputOrder.StopPrice = 0.0;
 	stuInputOrder.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
