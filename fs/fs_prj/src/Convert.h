@@ -44,7 +44,9 @@ public:
 
 	bool Init();
 
-  char CvtDict(const int iField, const char cValue, const EnDictType enDstDictType);
+  char CvtDict(const int iField, const char cFrom, const EnDictType enDstDictType);
+
+  std::string CvtDict(const int iField, const std::string  &ssFrom, const EnDictType enDstDictType);
 
 	std::string CvtSymbol(const std::string &ssSymbol, const EnCvtType enDstType);
 

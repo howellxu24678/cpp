@@ -583,11 +583,11 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   //有自定义平今平昨tag，更改原先的赋值
   if (spUserInfo->m_iCloseTodayYesterdayTag > 0)
   {
-    FIX::CharField chCloseTodayYesterdayField = FIX::CharField(spUserInfo->m_iCloseTodayYesterdayTag);
-    if (oNewOrderSingle.getFieldIfSet(chCloseTodayYesterdayField))
+    FIX::FieldBase fCloseTodayYesterday = FIX::FieldBase(spUserInfo->m_iCloseTodayYesterdayTag, "");
+    if(oNewOrderSingle.getFieldIfSet(fCloseTodayYesterday))
     {
       stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(
-        chCloseTodayYesterdayField.getField(), chCloseTodayYesterdayField.getValue(), Convert::Sgit);
+        fCloseTodayYesterday.getField(), fCloseTodayYesterday.getString(), Convert::Sgit)[0];
     }
   }
 
@@ -596,11 +596,11 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   //有自定义投机套保tag，更改原先的赋值
   if (spUserInfo->m_iSpecHedgeTag > 0)
   {
-    FIX::CharField chSpecHedgeField = FIX::CharField(spUserInfo->m_iSpecHedgeTag);
-    if (oNewOrderSingle.getFieldIfSet(chSpecHedgeField))
+    FIX::FieldBase fSpecHedge = FIX::FieldBase(spUserInfo->m_iSpecHedgeTag, "");
+    if(oNewOrderSingle.getFieldIfSet(fSpecHedge))
     {
       stuInputOrder.CombHedgeFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(
-        chSpecHedgeField.getField(), chSpecHedgeField.getValue(), Convert::Sgit);
+        fSpecHedge.getField(), fSpecHedge.getString(), Convert::Sgit)[0];
     }
   }
 	

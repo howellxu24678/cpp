@@ -11,14 +11,15 @@
 		</dict>
 		<!-- 平今平昨的自定义tag, 如果有送这个值，默认不取上面tag77的值-->
 		<dict number='9001' name='CloseTodayYesterday'>
-			<item fix="T" sgit="3" description='CLOSETODAY'/>
-			<item fix="Y" sgit="4" description='CLOSEYESTERDAY'/>
+			<item fix="None" sgit="1" description='CLOSE'/>
+			<item fix="Day" sgit="3" description='CLOSETODAY'/>
+			<item fix="Yesterday" sgit="4" description='CLOSEYESTERDAY'/>
 		</dict>
 		<!-- 投机套保的自定义tag，如果没送这个值，默认取配置中 DefaultSpecHedge的值，否则默认为投机-->
 		<dict number='9002' name='SpecHedge'>
-			<item fix="0" sgit="3"  description='Spec'/>
-			<item fix="1" sgit="1" description='Hedge'/>
-			<item fix="2" sgit="2" description='Arbitrage'/>
+			<item fix="Speculate" sgit="3"  description='Spec'/>
+			<item fix="Hedge" sgit="1" description='Hedge'/>
+			<item fix="Arbitrage" sgit="2" description='Arbitrage'/>
 		</dict>		
 		<dict number='39' name='OrdStatus'>
 			<item fix='0' sgit="3" description='NEW' />

@@ -27,7 +27,9 @@ public:
 
   SharedPtr<CSgitMdSpi> GetMdSpi(const FIX::SessionID& oSessionID);
 
-  char CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType);
+  char CvtDict(const int iField, const char cFrom, const Convert::EnDictType enDstDictType);
+
+  std::string CvtDict(const int iField, const std::string  &ssFrom, const Convert::EnDictType enDstDictType);
 
   std::string CvtSymbol(const std::string &ssSymbol, const Convert::EnCvtType enDstType);
 

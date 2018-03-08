@@ -178,9 +178,14 @@ bool CSgitContext::InitConvert()
   return m_oConvert.Init();
 }
 
-char CSgitContext::CvtDict(const int iField, const char cValue, const Convert::EnDictType enDstDictType)
+char CSgitContext::CvtDict(const int iField, const char cFrom, const Convert::EnDictType enDstDictType)
 {
-  return m_oConvert.CvtDict(iField, cValue, enDstDictType);
+  return m_oConvert.CvtDict(iField, cFrom, enDstDictType);
+}
+
+std::string CSgitContext::CvtDict(const int iField, const std::string &ssFrom, const Convert::EnDictType enDstDictType)
+{
+  return m_oConvert.CvtDict(iField, ssFrom, enDstDictType);
 }
 
 std::string CSgitContext::CvtSymbol(const std::string &ssSymbol, const Convert::EnCvtType enDstType)

@@ -49,19 +49,24 @@ bool Convert::Init()
 	return true;
 }
 
-char Convert::CvtDict(const int iField, const char cValue, const EnDictType enDstDictType)
+char Convert::CvtDict(const int iField, const char cFrom, const EnDictType enDstDictType)
 {
-	std::string ssKey = GetDictKey(Poco::format("%d", iField), Poco::format("%c", cValue), enDstDictType);
-	std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
-	if (citFind != m_mapDict.end())
-	{
-		return citFind->second[0];
-	}
-	else
-	{
-		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in dict", ssKey.c_str());
-		return '*';
-	}
+  return CvtDict(iField, Poco::format("%c", cFrom), enDstDictType)[0];
+}
+
+std::string Convert::CvtDict(const int iField, const std::string &ssFrom, const EnDictType enDstDictType)
+{
+  std::string ssKey = GetDictKey(Poco::format("%d", iField), ssFrom, enDstDictType);
+  std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
+  if (citFind != m_mapDict.end())
+  {
+    return citFind->second;
+  }
+  else
+  {
+    LOG(ERROR_LOG_LEVEL, "Can not find key:%s in dict", ssKey.c_str());
+    return "*";
+  }
 }
 
 bool Convert::AddDict(const std::string &ssField, const std::string &ssFix, const std::string &ssSgit, EnDictType enDstDictType)
