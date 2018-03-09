@@ -561,7 +561,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
 
   stuInputOrder.TimeCondition = THOST_FTDC_TC_GFD;
   stuInputOrder.VolumeCondition = THOST_FTDC_VC_AV;
-  stuInputOrder.MinVolume = oNewOrderSingle.getIfSet(minQty) ? minQty.getValue() : 1;
+  stuInputOrder.MinVolume = oNewOrderSingle.getIfSet(minQty) ? (int)minQty.getValue() : 1;
   if(oNewOrderSingle.getIfSet(timeInForce))
   {
     stuInputOrder.TimeCondition = m_stuTdParam.m_pSgitCtx->CvtDict(

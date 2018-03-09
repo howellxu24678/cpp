@@ -25,7 +25,7 @@ struct STUserInfo
     , m_enCvtType(Convert::Unknow)
     , m_iCloseTodayYesterdayTag(0)
     , m_iSpecHedgeTag(0)
-    , m_cDefaultSpecHedge(THOST_FTDC_ECIDT_Speculation)
+    , m_cDefaultSpecHedge(THOST_FTDC_HF_Speculation)
   {}
 
   FIX::SessionID      m_oSessionID;

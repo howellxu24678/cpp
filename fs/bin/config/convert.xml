@@ -17,8 +17,8 @@
 		</dict>
 		<!-- 投机套保的自定义tag，如果没送这个值，默认取配置中 DefaultSpecHedge的值，否则默认为投机-->
 		<dict number='9002' name='SpecHedge'>
-			<item fix="Speculate" sgit="3"  description='Spec'/>
-			<item fix="Hedge" sgit="1" description='Hedge'/>
+			<item fix="Speculate" sgit="1"  description='Spec'/>
+			<item fix="Hedge" sgit="3" description='Hedge'/>
 			<item fix="Arbitrage" sgit="2" description='Arbitrage'/>
 		</dict>		
 		<dict number='39' name='OrdStatus'>
