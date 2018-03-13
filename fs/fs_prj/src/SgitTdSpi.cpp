@@ -31,7 +31,7 @@ CSgitTdSpi::~CSgitTdSpi()
   //释放Api内存
   if( m_stuTdParam.m_pTdReqApi )
   {
-    m_stuTdParam.m_pTdReqApi->RegisterSpi(nullptr);
+    m_stuTdParam.m_pTdReqApi->RegisterSpi(NULL);
     m_stuTdParam.m_pTdReqApi->Release();
     m_stuTdParam.m_pTdReqApi = NULL;
   }
@@ -147,6 +147,9 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
   //pending new
   spOrder->m_cOrderStatus = FIX::OrdStatus_PENDING_NEW;
   SendExecutionReport(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+
+  //当有错误发生时，上一行代码已经回复了错误信息
+  if(pRspInfo->ErrorID != 0) return;
 
   //new
   spOrder->m_cOrderStatus = FIX::OrdStatus_NEW;
@@ -397,6 +400,9 @@ bool CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingl
 
   if (iErrCode != 0)
   {
+    executionReport.set(FIX::ExecType(FIX::ExecType_REJECTED));
+    executionReport.set(FIX::OrdStatus(FIX::OrdStatus_REJECTED));
+
     executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
     executionReport.set(FIX::Text(ssErrMsg));
   }
