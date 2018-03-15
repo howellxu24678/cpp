@@ -40,4 +40,39 @@ struct STUserInfo
   char                m_cDefaultSpecHedge;
 };
 
+//行情处理中，标的的订阅参数
+struct STUScrbParm
+{
+  STUScrbParm()
+    : m_ssSessionKey("")
+    , m_iDepth(0)
+  {
+    m_setEntryTypes.clear();
+  }
+
+  std::string         m_ssSessionKey;
+  int                 m_iDepth;
+  std::set<char>      m_setEntryTypes;
+
+  bool operator==(const STUScrbParm &stuScrbParm) const
+  {
+    //return this->m_ssSessionKey == stuScrbParm.m_ssSessionKey && 
+    //  this->m_iDepth == stuScrbParm.m_iDepth && 
+    //  this->m_setEntryTypes == stuScrbParm.m_setEntryTypes;
+    return this->m_ssSessionKey == stuScrbParm.m_ssSessionKey;
+  }
+
+  bool operator<(const STUScrbParm &stuScrbParm) const
+  {
+    if (this->m_ssSessionKey < stuScrbParm.m_ssSessionKey)
+      return true;
+    if (this->m_iDepth < stuScrbParm.m_iDepth)
+      return true;
+    if (this->m_setEntryTypes < stuScrbParm.m_setEntryTypes)
+      return true;
+
+    return false;
+  }
+};
+
 #endif // __CONST_H__

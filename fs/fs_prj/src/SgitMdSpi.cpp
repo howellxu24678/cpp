@@ -14,8 +14,8 @@ CSgitMdSpi::CSgitMdSpi(CSgitContext *pSgitCtx, CThostFtdcMdApi *pMdReqApi, const
   strncpy(m_stuLogin.UserID, ssTradeId.c_str(), sizeof(m_stuLogin.UserID));
   strncpy(m_stuLogin.Password, ssPassword.c_str(), sizeof(m_stuLogin.Password));
 
-  m_mapCode2SubSession.clear();
-  m_setSubAllCodeSession.clear();
+  m_mapCode2ScrbParmSet.clear();
+  //m_setSubAllCodeSession.clear();
   m_mapSnapshot.clear();
 }
 
@@ -28,6 +28,14 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
 {
   FIX::MDReqID mdReqID;
   FIX::SubscriptionRequestType subscriptionRequestType;
+  FIX::MarketDepth marketDepth;
+
+  //价格类型个数
+  FIX::NoMDEntryTypes noMdEntryTypes;
+  //价格类型组
+  FIX42::MarketDataRequest::NoMDEntryTypes entryGroup;
+  FIX::MDEntryType mdEntryType;
+
   //代码个数
   FIX::NoRelatedSym noRelatedSym;
   //代码组
@@ -35,9 +43,28 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   FIX::Symbol symbol;
 
   oMarketDataRequest.get(mdReqID);
+
+
   oMarketDataRequest.get(subscriptionRequestType);
+  oMarketDataRequest.get(marketDepth);
+  oMarketDataRequest.get(noMdEntryTypes);
   oMarketDataRequest.get(noRelatedSym);
 
+  STUScrbParm stuScrbParm;
+  stuScrbParm.m_ssSessionKey = CToolkit::GetSessionKey(oMarketDataRequest);
+  stuScrbParm.m_iDepth = marketDepth.getValue();
+
+  //价格类型
+  int iEntryTypeCount = noMdEntryTypes.getValue();
+  for (int i = 0; i < iEntryTypeCount; i++)
+  {
+    oMarketDataRequest.getGroup(i + 1, entryGroup);
+    entryGroup.get(mdEntryType);
+    LOG(DEBUG_LOG_LEVEL, "entryType:%c", mdEntryType.getValue());
+    stuScrbParm.m_setEntryTypes.insert(mdEntryType.getValue());
+  }
+
+  //代码
   int iSymCount = noRelatedSym.getValue();
   std::set<std::string> symbolSet;
   for (int i = 0; i < iSymCount; i++)
@@ -48,24 +75,25 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
     symbolSet.insert(symbol.getValue());
   }
 
-  CheckValid(symbolSet, mdReqID.getValue(), oMarketDataRequest.getSessionID().toString(), CToolkit::GetSessionKey(oMarketDataRequest));
+  char chRejReason;
+  if(!CheckValid(symbolSet, mdReqID.getValue(), stuScrbParm, chRejReason, ssErrMsg))
+  {
+
+  }
+
 	
   switch(subscriptionRequestType.getValue())
   {
   case FIX::SubscriptionRequestType_SNAPSHOT:
-    return SendMarketDataSet(oMarketDataRequest, symbolSet);
+    return SendMarketDataSet(oMarketDataRequest, symbolSet, stuScrbParm, ssErrMsg);
     break;
   case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
-    if(!SendMarketDataSet(oMarketDataRequest, symbolSet))
-    {
-      ssErrMsg = "Failed to SendMarketDataSet";
-      return false;
-    }
+    if(!SendMarketDataSet(oMarketDataRequest, symbolSet, stuScrbParm, ssErrMsg)) return false;
 
-    AddSub(symbolSet, CToolkit::GetSessionKey(oMarketDataRequest));
+    AddSub(symbolSet, stuScrbParm);
     break;
   case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
-    DelSub(symbolSet, CToolkit::GetSessionKey(oMarketDataRequest));
+    DelSub(symbolSet, stuScrbParm);
     break;
   default:
     Poco::format(ssErrMsg, "unsupported subscriptionRequestType:%c", subscriptionRequestType.getValue());
@@ -140,24 +168,25 @@ void CSgitMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMark
   PubMarketData(*pDepthMarketData);
 }
 
-bool CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet)
+bool CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm, std::string &ssErrMsg)
 {
   FIX::MDReqID mdReqID;
   oMarketDataRequest.get(mdReqID);
 
-  Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(oMarketDataRequest));
   CThostFtdcDepthMarketDataField stuMarketData;
   for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
     if (!GetMarketData(*citSymbol, stuMarketData))
     {
-      LOG(WARN_LOG_LEVEL, "Can not find symbol:%s in cache", citSymbol->c_str());
-      continue;
+      Poco::format(ssErrMsg, "Can not find symbol:%s in current market data cache", *citSymbol);
+      LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
+      return false;
     }
 
-    FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = CreateSnapShot(stuMarketData, enSymbolType, mdReqID.getValue());
+    FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = CreateSnapShot(stuMarketData, stuScrbParm, mdReqID.getValue());
     if(!CToolkit::Send(oMarketDataRequest, oMdSnapShot))
     {
+      ssErrMsg = "Failed to send message to target";
       return false;
     }
   }
@@ -167,6 +196,8 @@ bool CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRe
 
 void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, char chEntryType, double dPrice, int iVolume /*= 0*/, int iPos /*= 0*/)
 {
+  if (feq(dPrice, DBL_MAX)) return;
+
   FIX42::MarketDataSnapshotFullRefresh::NoMDEntries noMdEntriesGroup = FIX42::MarketDataSnapshotFullRefresh::NoMDEntries();
   noMdEntriesGroup.setField(FIX::MDEntryType(chEntryType));
   noMdEntriesGroup.setField(FIX::MDEntryPx(dPrice));
@@ -175,72 +206,103 @@ void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, cha
   oMdSnapShot.addGroup(noMdEntriesGroup);
 }
 
-void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
+void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm)
 {
-  ScopedWriteRWLock scopeLock(m_rwLockCode2SubSession);
+  ScopedWriteRWLock scopeLock(m_rwLockCode2ScrbParmSet);
   std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
     ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
-    if (m_mapCode2SubSession.count(ssOriginalSymbol) < 1)
+    if (m_mapCode2ScrbParmSet.count(ssOriginalSymbol) < 1)
     {
-      std::set<std::string> sessionSet;
-      sessionSet.insert(ssSessionID);
-      m_mapCode2SubSession[ssOriginalSymbol] = sessionSet;
+      std::set<STUScrbParm> stuScrbParmSet;
+      stuScrbParmSet.insert(stuScrbParm);
+      m_mapCode2ScrbParmSet[ssOriginalSymbol] = stuScrbParmSet;
     }
     else
     {
-      m_mapCode2SubSession[ssOriginalSymbol].insert(ssSessionID);
+      m_mapCode2ScrbParmSet[ssOriginalSymbol].insert(stuScrbParm);
     }
   }
 }
 
-void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID)
+void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm)
 {
-  ScopedWriteRWLock scopeLock(m_rwLockCode2SubSession);
+  ScopedWriteRWLock scopeLock(m_rwLockCode2ScrbParmSet);
   std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
     ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
-    if (m_mapCode2SubSession.count(ssOriginalSymbol) < 1) continue;
+    if (m_mapCode2ScrbParmSet.count(ssOriginalSymbol) < 1) continue;
 
-    std::set<std::string>::iterator itSession = m_mapCode2SubSession[ssOriginalSymbol].find(ssSessionID);
-    if (itSession == m_mapCode2SubSession[ssOriginalSymbol].end()) continue;
+    std::set<STUScrbParm>::iterator itStuScrbParm = m_mapCode2ScrbParmSet[ssOriginalSymbol].find(stuScrbParm);
+    if (itStuScrbParm == m_mapCode2ScrbParmSet[ssOriginalSymbol].end()) continue;
 
-    m_mapCode2SubSession[ssOriginalSymbol].erase(itSession);
+    m_mapCode2ScrbParmSet[ssOriginalSymbol].erase(itStuScrbParm);
   }
 }
 
 bool CSgitMdSpi::CheckValid(
   const std::set<std::string> &symbolSet, 
-  const std::string &ssMDReqID, 
-  const std::string &ssSessionID, 
-  const std::string &ssSessionKey)
+  const std::string &ssMDReqID, const STUScrbParm &stuScrbParm, char &chRejReason, const std::string &ssErrMsg)
 {
- // bool bIsOk = true;
- // std::string ssErrMsg = "";
+  /* do
+  {
+  Poco::FastMutex::ScopedLock oScopedLock(m_fastmutexLockMDReqID);
 
- // //
- // std::map<std::string, std::set<std::string> >::iterator it = m_mapMDReqId.find(ssSessionKey);
- // if (it != m_mapMDReqId.end())
- // {
- //   if (it->second.count(ssMDReqID) > 0)
- //   {
- //     bIsOk = false;
- //     ssErrMsg = ""
- //   }
- // }
-	////主要检查是否带多个symbol，其中有一个为ALL_SYMBOL(既然为ALL_SYMBOL，那么就应该只有一个，否则逻辑上说不通)
-	//if (symbolSet.size() == 1) return true;
+  std::map<std::string, std::set<std::string> >::iterator it = m_mapMDReqID.find(stuScrbParm.m_ssSessionKey);
+  if(it == m_mapMDReqID.end())
+  {
+  std::set<std::string> setMdReqID;
+  setMdReqID.insert(ssMDReqID);
+  m_mapMDReqID[stuScrbParm.m_ssSessionKey] = setMdReqID;
+  }
+  else
+  {
+  if(it->second.count(ssMDReqID) > 0)
+  {
+  chRejReason = FIX::MDReqRejReason_DUPLICATE_MDREQID;
+  Poco::format(ssErrMsg, "MDReqID:%s is duplicate", ssMDReqID);
+  return false;
+  }
 
-	//for (std::set<std::string>::const_iterator cit = symbolSet.begin(); cit != symbolSet.end(); cit++)
-	//{
-	//	if (*cit == ALL_SYMBOL)
-	//	{
-	//		FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(ssMDReqID));
-	//		//marketDataRequestReject.set(FIX::MDReqRejReason())
-	//	}
-	//}
+  it->second.insert(ssMDReqID);
+  }
+  }while(0);*/
+
+  //if (stuScrbParm.m_iDepth > 5)
+  //{
+  //  chRejReason = FIX::MDReqRejReason_UNSUPPORTED_MARKETDEPTH;
+  //  Poco::format(ssErrMsg, "market depth no more than 5, receive:%d", stuScrbParm.m_iDepth);
+  //  return false;
+  //}
+
+ /* for(std::set<char>::const_iterator citEntryType = stuScrbParm.m_setEntryTypes.begin(); 
+    citEntryType != stuScrbParm.m_setEntryTypes.end(); 
+    citEntryType++)
+  {
+    if (!(*citEntryType == FIX::MDEntryType_BID || *citEntryType == FIX::MDEntryType_OFFER || *citEntryType == FIX::MDEntryType_TRADE || 
+      *citEntryType == FIX::MDEntryType_OPENING_PRICE || *citEntryType == FIX::MDEntryType_CLOSING_PRICE || 
+      *citEntryType == FIX::MDEntryType_SETTLEMENT_PRICE || *citEntryType == FIX::MDEntryType_SESSION_HIGH_BID ||
+      *citEntryType == FIX::MDEntryType_SESSION_LOW_OFFER))
+    {
+      chRejReason = FIX::MDReqRejReason_UNSUPPORTED_MDENTRYTYPE;
+      Poco::format(ssErrMsg, "MDEntryType:%c is unsupported", *citEntryType);
+      return false;
+    }
+  }
+
+  for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
+  {
+    ScopedReadRWLock scopeLock(m_rwLockSnapShot);
+
+    if (m_mapSnapshot.count(*citSymbol) < 1)
+    {
+      chRejReason = FIX::MDReqRejReason_UNKNOWN_SYMBOL;
+      Poco::format(ssErrMsg, "Can not find symbol:%s in current market data cache", *citSymbol);
+      return false;
+    }
+  }*/
 
   return true;
 }
@@ -254,7 +316,17 @@ bool CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSess
 
   if (msgType == FIX::MsgType_MarketDataRequest)
   {
-    return MarketDataRequest((const FIX42::MarketDataRequest&) oMsg, ssErrMsg);
+    const FIX42::MarketDataRequest& oMarketDataRequest = (const FIX42::MarketDataRequest&) oMsg;
+    if(!MarketDataRequest(oMarketDataRequest, ssErrMsg))
+    {
+      FIX::MDReqID mdReqID;
+      oMarketDataRequest.get(mdReqID);
+
+      FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(mdReqID));
+      marketDataRequestReject.set(FIX::MDReqRejReason());
+
+      return true;
+    }
   }
 
   ssErrMsg = "unsupported message type";
@@ -275,64 +347,73 @@ bool CSgitMdSpi::GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarket
   return true;
 }
 
-FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType /*= Convert::Original*/, const std::string &ssMDReqID /*= ""*/)
+FIX42::MarketDataSnapshotFullRefresh CSgitMdSpi::CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, const STUScrbParm &stuScrbParm, const std::string &ssMDReqID /*= ""*/)
 {
   FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = FIX42::MarketDataSnapshotFullRefresh();
   if(!ssMDReqID.empty()) oMdSnapShot.setField(FIX::MDReqID(ssMDReqID));
+  
+  Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(stuScrbParm.m_ssSessionKey);
 
   oMdSnapShot.setField(FIX::Symbol(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
     stuMarketData.InstrumentID : m_pSgitCtx->CvtSymbol(stuMarketData.InstrumentID, enSymbolType)));
 
   std::string ssExchange = enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
     stuMarketData.ExchangeID : m_pSgitCtx->CvtExchange(stuMarketData.ExchangeID, enSymbolType);
-  //oMdSnapShot.setField(FIX::SecurityType(ssExchange));
   oMdSnapShot.setField(FIX::SecurityExchange(ssExchange));
 
-  AddPrice(oMdSnapShot, FIX::MDEntryType_TRADE, stuMarketData.LastPrice, stuMarketData.Volume);
-  AddPrice(oMdSnapShot, FIX::MDEntryType_OPENING_PRICE, stuMarketData.OpenPrice);
-  AddPrice(oMdSnapShot, FIX::MDEntryType_CLOSING_PRICE, stuMarketData.PreClosePrice);
-  AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_HIGH_PRICE, stuMarketData.HighestPrice);
-  AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_LOW_PRICE, stuMarketData.LowestPrice);
+  for(std::set<char>::const_iterator cit = stuScrbParm.m_setEntryTypes.begin(); cit != stuScrbParm.m_setEntryTypes.end(); cit++)
+  {
+    if (*cit == FIX::MDEntryType_BID || *cit == FIX::MDEntryType_OFFER)
+    {
+      if(stuScrbParm.m_iDepth == 0 || stuScrbParm.m_iDepth >= 1)
+        AddPrice(oMdSnapShot, *cit, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidPrice1 : stuMarketData.AskPrice1, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidVolume1 : stuMarketData.AskVolume1, 1);
+      
+      if(stuScrbParm.m_iDepth == 0 || stuScrbParm.m_iDepth >= 2)
+        AddPrice(oMdSnapShot, *cit, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidPrice2 : stuMarketData.AskPrice2, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidVolume2 : stuMarketData.AskVolume2, 2);
 
-  if (stuMarketData.BidVolume1 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice1, stuMarketData.BidVolume1, 1);
-  }
-  if (stuMarketData.AskVolume1 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice1, stuMarketData.AskVolume1, 1);
-  }
-  if (stuMarketData.BidVolume2 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice2, stuMarketData.BidVolume2, 2);
-  }
-  if (stuMarketData.AskVolume2 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice2, stuMarketData.AskVolume2, 2);
-  }
-  if (stuMarketData.BidVolume3 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice3, stuMarketData.BidVolume3, 3);
-  }
-  if (stuMarketData.AskVolume3 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice3, stuMarketData.AskVolume3, 3);
-  }
-  if (stuMarketData.BidVolume4 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice4, stuMarketData.BidVolume4, 4);
-  }
-  if (stuMarketData.AskVolume4 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice4, stuMarketData.AskVolume4, 4);
-  }
-  if (stuMarketData.BidVolume5 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_BID, stuMarketData.BidPrice5, stuMarketData.BidVolume5, 5);
-  }
-  if (stuMarketData.AskVolume5 > 0)
-  {
-    AddPrice(oMdSnapShot, FIX::MDEntryType_OFFER, stuMarketData.AskPrice5, stuMarketData.AskVolume5, 5);
+      if(stuScrbParm.m_iDepth == 0 || stuScrbParm.m_iDepth >= 3)
+        AddPrice(oMdSnapShot, *cit, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidPrice3 : stuMarketData.AskPrice3, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidVolume3 : stuMarketData.AskVolume3, 3);
+
+      if(stuScrbParm.m_iDepth == 0 || stuScrbParm.m_iDepth >= 4)
+        AddPrice(oMdSnapShot, *cit, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidPrice4 : stuMarketData.AskPrice4, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidVolume4 : stuMarketData.AskVolume4, 4);
+
+      if(stuScrbParm.m_iDepth == 0 || stuScrbParm.m_iDepth >= 5)
+        AddPrice(oMdSnapShot, *cit, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidPrice5 : stuMarketData.AskPrice5, 
+          *cit == FIX::MDEntryType_BID ? stuMarketData.BidVolume5 : stuMarketData.AskVolume5, 5);
+    }
+    else if(*cit == FIX::MDEntryType_TRADE)
+    {
+      AddPrice(oMdSnapShot, FIX::MDEntryType_TRADE, stuMarketData.LastPrice, stuMarketData.Volume);
+    }
+    else if(*cit == FIX::MDEntryType_OPENING_PRICE)
+    {
+      AddPrice(oMdSnapShot, FIX::MDEntryType_OPENING_PRICE, stuMarketData.OpenPrice);
+    }
+    else if(*cit == FIX::MDEntryType_CLOSING_PRICE)
+    {
+      AddPrice(oMdSnapShot, FIX::MDEntryType_CLOSING_PRICE, stuMarketData.PreClosePrice);
+    }
+    else if(*cit == FIX::MDEntryType_SETTLEMENT_PRICE)
+    {
+      AddPrice(oMdSnapShot, FIX::MDEntryType_SETTLEMENT_PRICE, stuMarketData.SettlementPrice);
+    }
+    else if(*cit == FIX::MDEntryType_TRADING_SESSION_HIGH_PRICE)
+    {
+      AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_HIGH_PRICE, stuMarketData.HighestPrice);
+    }
+    else if(*cit == FIX::MDEntryType_TRADING_SESSION_LOW_PRICE)
+    {
+      AddPrice(oMdSnapShot, FIX::MDEntryType_TRADING_SESSION_LOW_PRICE, stuMarketData.LowestPrice);
+    }
   }
 
   return oMdSnapShot;
@@ -342,15 +423,15 @@ void CSgitMdSpi::PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMar
 {
   do 
   {
-    ScopedReadRWLock scopeLock(m_rwLockCode2SubSession);
-    if (m_mapCode2SubSession.count(stuDepthMarketData.InstrumentID) < 1) return;
+    ScopedReadRWLock scopeLock(m_rwLockCode2ScrbParmSet);
+    if (m_mapCode2ScrbParmSet.count(stuDepthMarketData.InstrumentID) < 1) return;
 
-    FIX42::MarketDataSnapshotFullRefresh oMktDataSnapshot = CreateSnapShot(stuDepthMarketData);
-    for (std::set<std::string>::const_iterator citSessionKey = m_mapCode2SubSession[stuDepthMarketData.InstrumentID].begin();
-      citSessionKey != m_mapCode2SubSession[stuDepthMarketData.InstrumentID].end();
-      citSessionKey++)
+    for (std::set<STUScrbParm>::const_iterator citStuScrbParm = m_mapCode2ScrbParmSet[stuDepthMarketData.InstrumentID].begin();
+      citStuScrbParm != m_mapCode2ScrbParmSet[stuDepthMarketData.InstrumentID].end();
+      citStuScrbParm++)
     {
-      Send(*citSessionKey, oMktDataSnapshot);
+      FIX42::MarketDataSnapshotFullRefresh oMktDataSnapshot = CreateSnapShot(stuDepthMarketData, *citStuScrbParm);
+      Send(citStuScrbParm->m_ssSessionKey, oMktDataSnapshot);
     }
 
   } while (0);
@@ -358,19 +439,6 @@ void CSgitMdSpi::PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMar
 
 void CSgitMdSpi::Send(const std::string &ssSessionKey, FIX42::MarketDataSnapshotFullRefresh oMdSnapShot)
 {
-  Convert::EnCvtType enSymbolType = m_pSgitCtx->GetSymbolType(ssSessionKey);
-  //根据对端代码类型修正一下代码和交易所
-  if (!(enSymbolType == Convert::Original || enSymbolType == Convert::Unknow))
-  {
-    FIX::Symbol symbol;
-    FIX::SecurityExchange securityExchange;
-    oMdSnapShot.getField(symbol);
-    oMdSnapShot.getField(securityExchange);
-
-    oMdSnapShot.setField(FIX::Symbol(m_pSgitCtx->CvtSymbol(symbol.getValue(), enSymbolType)));
-    oMdSnapShot.setField(FIX::SecurityExchange(m_pSgitCtx->CvtExchange(securityExchange.getValue(), enSymbolType)));
-  }
-
   FIX::SessionID oSessionID;
   std::string ssOnBehalfCompID;
   CToolkit::SessionKey2SessionIDBehalfCompID(ssSessionKey, oSessionID, ssOnBehalfCompID);

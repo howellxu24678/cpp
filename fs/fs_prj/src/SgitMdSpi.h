@@ -35,25 +35,26 @@ protected:
 
   bool CheckValid(
     const std::set<std::string> &symbolSet,
-    const std::string &ssMDReqID, 
-    const std::string &ssSessionID, 
-    const std::string &ssSessionKey);
+    const std::string &ssMDReqID, const STUScrbParm &stuScrbParm, char &chRejReason, const std::string &ssErrMsg);
 
   //发送快照
-  bool SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet);
+  bool SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm, std::string &ssErrMsg);
 
   //发布行情
   void PubMarketData(const CThostFtdcDepthMarketDataField &stuDepthMarketData);
 
-  FIX42::MarketDataSnapshotFullRefresh CreateSnapShot(const CThostFtdcDepthMarketDataField &stuMarketData, Convert::EnCvtType enSymbolType = Convert::Original, const std::string &ssMDReqID = "");
+  FIX42::MarketDataSnapshotFullRefresh CreateSnapShot(
+    const CThostFtdcDepthMarketDataField &stuMarketData, 
+    const STUScrbParm &stuScrbParm, 
+    const std::string &ssMDReqID = "");
 
   void AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, char chEntryType, double dPrice, int iVolume = 0, int iPos = 0);
 
   //建立订阅关系
-  void AddSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
+  void AddSub(const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm);
 
   //取消订阅关系
-  void DelSub(const std::set<std::string> &symbolSet, const std::string &ssSessionID);
+  void DelSub(const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm);
 
   void Send(const std::string &ssSessionKey, FIX42::MarketDataSnapshotFullRefresh oMdSnapShot);
 
@@ -113,14 +114,15 @@ private:
   CThostFtdcReqUserLoginField                           m_stuLogin;
 
   //行情MDReqID (262)记录，用于判断是否有重复
-  std::map<std::string, std::set<std::string> >          m_mapMDReqId;
+  std::map<std::string, std::set<std::string> >         m_mapMDReqID;
+  FastMutex													                    m_fastmutexLockMDReqID;
 
   //订阅关系 代码->订阅session
-  std::map<std::string, std::set<std::string> >          m_mapCode2SubSession; 
-  RWLock                                                m_rwLockCode2SubSession;
+  std::map<std::string, std::set<STUScrbParm> >         m_mapCode2ScrbParmSet; 
+  RWLock                                                m_rwLockCode2ScrbParmSet;
 
-  //订阅全量代码的session
-  std::set<std::string>                                 m_setSubAllCodeSession;
+  ////订阅全量代码的session
+  //std::set<std::string>                                 m_setSubAllCodeSession;
 
   //保存全市场行情快照
   std::map<std::string, CThostFtdcDepthMarketDataField> m_mapSnapshot;
