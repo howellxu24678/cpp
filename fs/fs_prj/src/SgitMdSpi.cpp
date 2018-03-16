@@ -43,8 +43,6 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   FIX::Symbol symbol;
 
   oMarketDataRequest.get(mdReqID);
-
-
   oMarketDataRequest.get(subscriptionRequestType);
   oMarketDataRequest.get(marketDepth);
   oMarketDataRequest.get(noMdEntryTypes);
@@ -76,11 +74,14 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   }
 
   char chRejReason;
-  if(!CheckValid(symbolSet, mdReqID.getValue(), stuScrbParm, chRejReason, ssErrMsg))
+  if(!CheckValid(symbolSet, mdReqID.getValue(), subscriptionRequestType.getValue(), stuScrbParm, chRejReason, ssErrMsg))
   {
+    FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(mdReqID));
+    marketDataRequestReject.set(FIX::MDReqRejReason(chRejReason));
+    marketDataRequestReject.set(FIX::Text(ssErrMsg));
 
+    return CToolkit::Send(oMarketDataRequest, marketDataRequestReject);
   }
-
 	
   switch(subscriptionRequestType.getValue())
   {
@@ -180,7 +181,8 @@ bool CSgitMdSpi::SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRe
     {
       Poco::format(ssErrMsg, "Can not find symbol:%s in current market data cache", *citSymbol);
       LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
-      return false;
+      /*return false;*/
+      continue;
     }
 
     FIX42::MarketDataSnapshotFullRefresh oMdSnapShot = CreateSnapShot(stuMarketData, stuScrbParm, mdReqID.getValue());
@@ -244,40 +246,43 @@ void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const STUScrbPar
 
 bool CSgitMdSpi::CheckValid(
   const std::set<std::string> &symbolSet, 
-  const std::string &ssMDReqID, const STUScrbParm &stuScrbParm, char &chRejReason, const std::string &ssErrMsg)
+  const std::string &ssMDReqID, char chScrbReqType, const STUScrbParm &stuScrbParm, char &chRejReason, std::string &ssErrMsg)
 {
-  /* do
+  //请求ID重复的判断
+  do
   {
-  Poco::FastMutex::ScopedLock oScopedLock(m_fastmutexLockMDReqID);
+    Poco::FastMutex::ScopedLock oScopedLock(m_fastmutexLockMDReqID);
 
-  std::map<std::string, std::set<std::string> >::iterator it = m_mapMDReqID.find(stuScrbParm.m_ssSessionKey);
-  if(it == m_mapMDReqID.end())
+    std::map<std::string, std::set<std::string> >::iterator it = m_mapMDReqID.find(stuScrbParm.m_ssSessionKey);
+    if(it == m_mapMDReqID.end())
+    {
+      std::set<std::string> setMdReqID;
+      setMdReqID.insert(ssMDReqID);
+      m_mapMDReqID[stuScrbParm.m_ssSessionKey] = setMdReqID;
+    }
+    else
+    {
+      if(it->second.count(ssMDReqID) > 0)
+      {
+        chRejReason = FIX::MDReqRejReason_DUPLICATE_MDREQID;
+        Poco::format(ssErrMsg, "MDReqID:%s is duplicate", ssMDReqID);
+        return false;
+      }
+
+      it->second.insert(ssMDReqID);
+    }
+  }while(0);
+
+  //行情深度是否合法的判断
+  if (stuScrbParm.m_iDepth > 5)
   {
-  std::set<std::string> setMdReqID;
-  setMdReqID.insert(ssMDReqID);
-  m_mapMDReqID[stuScrbParm.m_ssSessionKey] = setMdReqID;
+    chRejReason = FIX::MDReqRejReason_UNSUPPORTED_MARKETDEPTH;
+    Poco::format(ssErrMsg, "market depth no more than 5, receive:%d", stuScrbParm.m_iDepth);
+    return false;
   }
-  else
-  {
-  if(it->second.count(ssMDReqID) > 0)
-  {
-  chRejReason = FIX::MDReqRejReason_DUPLICATE_MDREQID;
-  Poco::format(ssErrMsg, "MDReqID:%s is duplicate", ssMDReqID);
-  return false;
-  }
 
-  it->second.insert(ssMDReqID);
-  }
-  }while(0);*/
-
-  //if (stuScrbParm.m_iDepth > 5)
-  //{
-  //  chRejReason = FIX::MDReqRejReason_UNSUPPORTED_MARKETDEPTH;
-  //  Poco::format(ssErrMsg, "market depth no more than 5, receive:%d", stuScrbParm.m_iDepth);
-  //  return false;
-  //}
-
- /* for(std::set<char>::const_iterator citEntryType = stuScrbParm.m_setEntryTypes.begin(); 
+  //类型是否支持的判断
+  for(std::set<char>::const_iterator citEntryType = stuScrbParm.m_setEntryTypes.begin(); 
     citEntryType != stuScrbParm.m_setEntryTypes.end(); 
     citEntryType++)
   {
@@ -292,17 +297,29 @@ bool CSgitMdSpi::CheckValid(
     }
   }
 
+  //标的是否存在的判断
   for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    ScopedReadRWLock scopeLock(m_rwLockSnapShot);
+    //取消订阅判断
+    if (chScrbReqType == FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST)
+    {
+      ScopedReadRWLock scopeLock(m_rwLockCode2ScrbParmSet);
+      if (m_mapCode2ScrbParmSet.count(*citSymbol) < 1)
+      {
+        chRejReason = FIX::MDReqRejReason_UNSUPPORTED_SUBSCRIPTIONREQUESTTYPE;
+        Poco::format(ssErrMsg, "Symbol:%s have not been subscribed by this session before", *citSymbol);
+        return false;
+      }
+    }
 
+    ScopedReadRWLock scopeLock(m_rwLockSnapShot);
     if (m_mapSnapshot.count(*citSymbol) < 1)
     {
       chRejReason = FIX::MDReqRejReason_UNKNOWN_SYMBOL;
       Poco::format(ssErrMsg, "Can not find symbol:%s in current market data cache", *citSymbol);
       return false;
     }
-  }*/
+  }
 
   return true;
 }
@@ -316,17 +333,7 @@ bool CSgitMdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSess
 
   if (msgType == FIX::MsgType_MarketDataRequest)
   {
-    const FIX42::MarketDataRequest& oMarketDataRequest = (const FIX42::MarketDataRequest&) oMsg;
-    if(!MarketDataRequest(oMarketDataRequest, ssErrMsg))
-    {
-      FIX::MDReqID mdReqID;
-      oMarketDataRequest.get(mdReqID);
-
-      FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(mdReqID));
-      marketDataRequestReject.set(FIX::MDReqRejReason());
-
-      return true;
-    }
+    return MarketDataRequest((const FIX42::MarketDataRequest&) oMsg, ssErrMsg);
   }
 
   ssErrMsg = "unsupported message type";

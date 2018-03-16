@@ -35,7 +35,7 @@ protected:
 
   bool CheckValid(
     const std::set<std::string> &symbolSet,
-    const std::string &ssMDReqID, const STUScrbParm &stuScrbParm, char &chRejReason, const std::string &ssErrMsg);
+    const std::string &ssMDReqID, char chScrbReqType, const STUScrbParm &stuScrbParm, char &chRejReason, std::string &ssErrMsg);
 
   //·¢ËÍ¿ìÕÕ
   bool SendMarketDataSet(const FIX42::MarketDataRequest& oMarketDataRequest, const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm, std::string &ssErrMsg);
