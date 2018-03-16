@@ -241,6 +241,9 @@ void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const STUScrbPar
     if (itStuScrbParm == m_mapCode2ScrbParmSet[ssOriginalSymbol].end()) continue;
 
     m_mapCode2ScrbParmSet[ssOriginalSymbol].erase(itStuScrbParm);
+
+    if (m_mapCode2ScrbParmSet[ssOriginalSymbol].size() < 1)
+      m_mapCode2ScrbParmSet.erase(ssOriginalSymbol);
   }
 }
 
@@ -298,22 +301,30 @@ bool CSgitMdSpi::CheckValid(
   }
 
   //标的是否存在的判断
+  std::string ssOriginalSymbol = "";
   for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
+    ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
     //取消订阅判断
     if (chScrbReqType == FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST)
     {
       ScopedReadRWLock scopeLock(m_rwLockCode2ScrbParmSet);
-      if (m_mapCode2ScrbParmSet.count(*citSymbol) < 1)
+      if (m_mapCode2ScrbParmSet.count(ssOriginalSymbol) < 1)
       {
         chRejReason = FIX::MDReqRejReason_UNSUPPORTED_SUBSCRIPTIONREQUESTTYPE;
-        Poco::format(ssErrMsg, "Symbol:%s have not been subscribed by this session before", *citSymbol);
+        Poco::format(ssErrMsg, "Symbol:%s not be subscribed currently", *citSymbol);
+        return false;
+      }
+      else if(m_mapCode2ScrbParmSet[ssOriginalSymbol].count(stuScrbParm) < 1)
+      {
+        chRejReason = FIX::MDReqRejReason_UNSUPPORTED_SUBSCRIPTIONREQUESTTYPE;
+        Poco::format(ssErrMsg, "Symbol:%s not be subscribed by this session currently", *citSymbol);
         return false;
       }
     }
 
     ScopedReadRWLock scopeLock(m_rwLockSnapShot);
-    if (m_mapSnapshot.count(*citSymbol) < 1)
+    if (m_mapSnapshot.count(ssOriginalSymbol) < 1)
     {
       chRejReason = FIX::MDReqRejReason_UNKNOWN_SYMBOL;
       Poco::format(ssErrMsg, "Can not find symbol:%s in current market data cache", *citSymbol);
