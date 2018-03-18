@@ -727,6 +727,8 @@ void CSgitTdSpi::Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrde
 	stuOrder.m_cSide = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::Side, stuFtdcOrder.Direction, Convert::Fix);
 	stuOrder.m_iOrderQty = stuFtdcOrder.VolumeTotalOriginal;
 	stuOrder.m_dPrice = stuFtdcOrder.LimitPrice;
+  stuOrder.m_iCumQty = stuFtdcOrder.VolumeTraded;
+  stuOrder.m_iLeavesQty = stuFtdcOrder.VolumeTotal;
 }
 
 bool CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest, std::string& ssErrMsg)
