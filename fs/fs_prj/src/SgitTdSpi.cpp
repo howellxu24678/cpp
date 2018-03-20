@@ -183,26 +183,26 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
      pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pOrder->OrderRef);
-  if(!spOrder) return;
+  //Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pOrder->OrderRef);
+  //if(!spOrder) return;
 
-  spOrder->Update(*pOrder, m_stuTdParam);
+  //spOrder->Update(*pOrder, m_stuTdParam);
 
-	//STUOrder stuOrder;
- // UpsertOrder(*pOrder, stuOrder);
+	STUOrder stuOrder;
+  UpsertOrder(*pOrder, stuOrder);
 
   //订单被拒绝
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
     || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected)
   {
-    SendExecutionReport(*spOrder, -1, "Reject by Exchange");
+    SendExecutionReport(stuOrder, -1, "Reject by Exchange");
   }
   //撤单回报
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
   {
     //撤单的回报中应把订单剩余数量置0
-    spOrder->m_iLeavesQty = 0;
-    SendExecutionReport(*spOrder);
+    stuOrder.m_iLeavesQty = 0;
+    SendExecutionReport(stuOrder);
   }
 }
 
