@@ -66,7 +66,9 @@ std::string CToolkit::GetSessionKey(const FIX::Message& oRecvMsg)
   oRecvMsg.getHeader().getFieldIfSet(onBehalfOfCompId);
 
   FIX::SessionID oSessionID(beginString.getValue(), targetCompID.getValue(), senderCompID.getValue());
-  return oSessionID.toString() + "|" + onBehalfOfCompId.getValue();
+  return onBehalfOfCompId.getValue().empty() ? 
+    oSessionID.toString() : 
+    oSessionID.toString() + "|" + onBehalfOfCompId.getValue();
 }
 
 bool CToolkit::IsTdRequest(const FIX::MsgType &msgType)
