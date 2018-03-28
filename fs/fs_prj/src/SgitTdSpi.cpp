@@ -1260,7 +1260,8 @@ bool CSgitTdSpi::ReqContractQuery(const FIX42::Message& oMessage, std::string& s
   memset(&stuInstrument, 0, sizeof(CThostFtdcQryInstrumentField));
   if (!symbol.getValue().empty())
   {
-    strncpy(stuInstrument.InstrumentID, symbol.getValue().c_str(), sizeof(stuInstrument.InstrumentID));
+    std::string ssOriginalSymbol = m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original);
+    strncpy(stuInstrument.InstrumentID, ssOriginalSymbol.c_str(), sizeof(stuInstrument.InstrumentID));
   }
   int iRet = m_stuTdParam.m_pTdReqApi->ReqQryInstrument(&stuInstrument, iCurRequsetId);
   if (iRet != 0)
@@ -1402,6 +1403,18 @@ void CSgitTdSpi::GenAndSend(const FIX::MsgType &oMsgType, int iDataSize, int iRe
       capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_Interest));
       capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.PreBalance + stuTradingAcct.CloseProfit + 
         stuTradingAcct.PositionProfit + stuTradingAcct.Deposit - stuTradingAcct.Withdraw - stuTradingAcct.Commission));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_FrozenMargin));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.FrozenMargin));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_Deposit));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.Deposit));
+      accountGroup.addGroup(capitalGroup);
+
+      capitalGroup.setField(FIX::CapitalFieldType(FIX::CapitalFieldType_Withdraw));
+      capitalGroup.setField(FIX::CapitalFieldValue(stuTradingAcct.Withdraw));
       accountGroup.addGroup(capitalGroup);
 
       oMsg.addGroup(accountGroup);

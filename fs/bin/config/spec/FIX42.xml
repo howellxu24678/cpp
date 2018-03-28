@@ -2859,6 +2859,9 @@
    <value enum='4' description='PositionProfit' />
    <value enum='5' description='CloseProfit' />
    <value enum='6' description='Interest' />
+   <value enum='7' description='FrozenMargin' />
+   <value enum='8' description='Deposit' />
+   <value enum='9' description='Withdraw' />
   </field>
   <field number='13014' name='CapitalFieldValue' type='AMT' />
   <field number='13015' name='PositionFieldType' type='INT'>

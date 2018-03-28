@@ -3298,6 +3298,9 @@ namespace FIX
   const int CapitalFieldType_PositionProfit = 4;
   const int CapitalFieldType_CloseProfit = 5;
   const int CapitalFieldType_Interest = 6;
+  const int CapitalFieldType_FrozenMargin = 7;
+  const int CapitalFieldType_Deposit = 8;
+  const int CapitalFieldType_Withdraw = 9;
   const int PositionFieldType_YesterdayLong = 0;
   const int PositionFieldType_TodayLong = 1;
   const int PositionFieldType_TodayOpenLong = 2;
