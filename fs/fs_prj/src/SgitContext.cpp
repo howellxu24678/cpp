@@ -16,7 +16,7 @@
 #include "quickfix/Session.h"
 #include "quickfix/SessionID.h"
 
-
+#include "Order.h"
 
 
 CSgitContext::CSgitContext(const std::string &ssSgitCfgPath, const std::string &ssCvtCfgPath)
@@ -25,19 +25,24 @@ CSgitContext::CSgitContext(const std::string &ssSgitCfgPath, const std::string &
   , m_ssCvtCfgPath(ssCvtCfgPath)
   , m_bQuoteSupported(false)
   , m_bTradeSupported(false)
+  , m_spSQLiteSession(NULL)
 {
-
+  SQLite::Connector::registerConnector();
 }
 
 CSgitContext::~CSgitContext()
 {
-
+  SQLite::Connector::unregisterConnector();
 }
 
 bool CSgitContext::Init()
 {
   try
   {
+    m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+
+    if(!InitSQLConnect()) return false;
+
     if(!InitConvert()) return false;
 
 		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg).c_str());
@@ -59,16 +64,17 @@ bool CSgitContext::Init()
   return true;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
+SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(STUTdParam &stuTdParam, EnTdSpiRole enTdSpiRole)
 {
   CThostFtdcTraderApi *pTdReqApi = CThostFtdcTraderApi::CreateFtdcTraderApi(m_ssFlowPath.c_str());
   stuTdParam.m_pSgitCtx = this;
   stuTdParam.m_pTdReqApi = pTdReqApi;
   stuTdParam.m_ssSgitCfgPath = m_ssSgitCfgPath;
   stuTdParam.m_ssDataPath = m_ssDataPath;
+  stuTdParam.m_spSQLiteSession = m_spSQLiteSession;
 
   SharedPtr<CSgitTdSpi> spTdSpi = NULL;
-  if (enTdSpiRole == CSgitTdSpi::HubTran)
+  if (enTdSpiRole == HubTran)
   {
     spTdSpi = new CSgitTdSpiHubTran(stuTdParam);
   }
@@ -90,9 +96,9 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdPar
   return spTdSpi;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
+SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(const std::string &ssSessionID, EnTdSpiRole enTdSpiRole)
 {
-  CSgitTdSpi::STUTdParam stuTdParam;
+  STUTdParam stuTdParam;
   stuTdParam.m_ssSessionID = ssSessionID;
 
   SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(stuTdParam, enTdSpiRole);
@@ -158,8 +164,6 @@ bool CSgitContext::InitSgit()
 {
   LOG(INFO_LOG_LEVEL, "TdApi version:%s, MdApi version:%s", 
     CThostFtdcTraderApi::GetApiVersion(), CThostFtdcMdApi::GetApiVersion());
-
-  m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
 
   CToolkit::GetStrinIfSet(m_apSgitConf, "global.FlowPath", m_ssFlowPath);
 	if (!m_ssFlowPath.empty()) FIX::file_mkdir(m_ssFlowPath.c_str());
@@ -272,7 +276,7 @@ void CSgitContext::UpdateSymbolType(const std::string &ssSessionKey, Convert::En
   if (itFind != m_mapFixUser2Info.end()) itFind->second->m_enCvtType = enSymbolType;
 }
 
-SharedPtr<CSgitTdSpi> CSgitContext::GetOrCreateTdSpi(const FIX::SessionID& oSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole)
+SharedPtr<CSgitTdSpi> CSgitContext::GetOrCreateTdSpi(const FIX::SessionID& oSessionID, EnTdSpiRole enTdSpiRole)
 {
   SharedPtr<CSgitTdSpi> spTdSpi = GetTdSpi(oSessionID);
   if (spTdSpi) return spTdSpi;
@@ -331,7 +335,7 @@ bool CSgitContext::InitSgitTrade()
 
     if(!CToolkit::GetString(m_apSgitConf, "trade." + stTdUserIdPassword[0], ssFixSession)) return false;
 
-    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(ssFixSession, CSgitTdSpi::HubTran);
+    SharedPtr<CSgitTdSpi> spTdSpi = CreateTdSpi(ssFixSession, HubTran);
     if (!spTdSpi) return false;
 
 
@@ -375,5 +379,75 @@ bool CSgitContext::IsQuoteSupported()
 bool CSgitContext::IsTradeSupported()
 {
   return m_bTradeSupported;
+}
+
+bool CSgitContext::InitSQLConnect()
+{
+  if(!CToolkit::GetString(m_apSgitConf, "global.DataPath", m_ssDataPath)) return false;
+  FIX::file_mkdir(m_ssDataPath.c_str());
+
+  try
+  {
+    std::string ssDbPath = m_ssDataPath + "fs.db";
+    m_spSQLiteSession = new Session(SQLite::Connector::KEY, ssDbPath);
+
+    if(!m_spSQLiteSession->isConnected())
+    {
+      LOG(ERROR_LOG_LEVEL, "Failed to connect to sqlite:%", ssDbPath.c_str());
+      return false;
+    }
+
+    *m_spSQLiteSession << 
+      "CREATE TABLE IF NOT EXISTS [Order] ( \
+      userID        TEXT, \
+      clOrdID       TEXT, \
+      orderRef      TEXT, \
+      acctRecv      TEXT, \
+      acctReal      TEXT, \
+      symbol        TEXT, \
+      orderQty      INTEGER, \
+      ordType       INTEGER, \
+      side          INTEGER, \
+      openClose     INTEGER, \
+      price         REAL, \
+      orderStatus   CHAR, \
+      orderSysID    TEXT, \
+      leavesQty     INTEGER, \
+      cumQty        INTEGER, \
+      cancelClOrdID TEXT, \
+      time          TEXT, \
+      PRIMARY KEY ( \
+      userID, \
+      clOrdID \
+      ) \
+      ON CONFLICT ROLLBACK, \
+      UNIQUE ( \
+      userID, \
+      orderRef \
+      ) \
+      ON CONFLICT ROLLBACK \
+      );", now;
+
+    //Order order;
+    //order.m_ssUserID = "12342d";
+    //order.m_ssClOrdID = "56eadf84";
+    //*m_spSQLiteSession << "INSERT INTO [Order] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", use(order), now;
+
+    //order.m_ssUserID = "5464";
+    //order.m_ssClOrdID = "56eadf84";
+    //*m_spSQLiteSession << "INSERT INTO [Order] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", use(order), now;
+
+    //Order order2;
+    //*m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ?", use(order.m_ssUserID), into(order2), limit(1), now;
+
+  }
+
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+    return false;
+  }
+  
+  return true;
 }
 

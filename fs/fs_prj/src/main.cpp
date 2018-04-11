@@ -20,24 +20,15 @@
 #include "Poco/Foundation.h"
 #include "Poco/Path.h"
 #include "Poco/File.h"
-//#include "Poco/LocalDateTime.h"
-//#include "Poco/DateTimeFormatter.h"
-//#include "Poco/DateTimeFormat.h"
-//#include "Poco/Timestamp.h"
-//#include "Poco/Thread.h"
-//#include "Poco/Timespan.h"
-
 #include "Poco/Util/Util.h"
-//#include "Poco/Util/Timer.h"
-//#include "Poco/Util/TimerTask.h"
-//#include "Poco/Util/TimerTaskAdapter.h"
+
+
 
 #include "Poco/Util/IniFileConfiguration.h"
 
 #include "SgitContext.h"
 
 #include "Toolkit.h"
-//#include "Poco/FileStream.h"
 #include "Poco/ExpireCache.h"
 
 using namespace Poco;
@@ -169,18 +160,35 @@ int main( int argc, char** argv )
 
 
 /*
-遗留问题：
-1. 上期所平今平昨
-2. 执行回报成交价格
-3. 13004 ->207
-   权益：上日结存+平仓盈亏+浮动盈亏+出入金-手续费 ？
-4. 13015 今平昨多仓 今平昨空仓？
-   13017 13018 值如何取
-   资金、持仓 返回结构体无市场（13004）字段， 但文档中有要求
-
-5. 460 Fix44为int 文档为String
-   541 返回结构体无值
-   970 ？
+CREATE TABLE [Order] (
+userID        TEXT,
+clOrdID       TEXT,
+orderRef      TEXT,
+acctRecv      TEXT,
+acctReal      TEXT,
+symbol        TEXT,
+orderQty      INTEGER,
+ordType       INTEGER,
+side          INTEGER,
+openClose     INTEGER,
+price         REAL,
+orderStatus   CHAR,
+orderSysID    TEXT,
+leavesQty     INTEGER,
+cumQty        INTEGER,
+cancelClOrdID TEXT,
+time          TEXT,
+PRIMARY KEY (
+userID,
+clOrdID
+)
+ON CONFLICT ROLLBACK,
+UNIQUE (
+userID,
+orderRef
+)
+ON CONFLICT ROLLBACK
+);
 
 
 

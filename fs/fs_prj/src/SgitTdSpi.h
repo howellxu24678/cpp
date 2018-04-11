@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "Convert.h"
+#include "Order.h"
 
 #include "sgit/SgitFtdcTraderApi.h"
 
@@ -11,6 +12,7 @@
 #include "Poco/ExpireCache.h"
 #include "Poco/RWLock.h"
 #include "Poco/Event.h"
+#include "Poco/Data/Session.h"
 
 #include "quickfix/fix42/NewOrderSingle.h"
 #include "quickfix/fix42/OrderCancelRequest.h"
@@ -22,6 +24,7 @@ using namespace fstech;
 
 using namespace Poco;
 using namespace Poco::Util;
+using namespace Poco::Data;
 
 const std::string ssOrderRefFormat = "%012d";
 
@@ -76,66 +79,36 @@ namespace FIX
 执行回报推送的流程：1.报单引用-》委托单(包括成交信息)-》资金账号
 资金账号-》FIX路由信息
 */
+
+
 class CSgitContext;
+struct STUTdParam
+{
+  STUTdParam()
+    : m_pSgitCtx(NULL)
+    , m_pTdReqApi(NULL)
+    //, m_ssUserId("")
+    //, m_ssPassword("")
+    , m_ssSessionID("")
+    , m_ssDataPath("")
+    , m_spSQLiteSession(NULL)
+  {}
+
+  CSgitContext        *m_pSgitCtx;
+  CThostFtdcTraderApi *m_pTdReqApi;
+  //std::string         m_ssUserId;
+  //std::string         m_ssPassword;
+  std::string         m_ssSessionID;
+  std::string         m_ssSgitCfgPath;
+  std::string					m_ssDataPath;
+  SharedPtr<Session>  m_spSQLiteSession;
+};
+
+enum EnTdSpiRole {HubTran, Direct};
+
 class CSgitTdSpi : public CThostFtdcTraderSpi
 {
 public:
-  struct STUTdParam
-  {
-    STUTdParam()
-      : m_pSgitCtx(NULL)
-      , m_pTdReqApi(NULL)
-      //, m_ssUserId("")
-      //, m_ssPassword("")
-      , m_ssSessionID("")
-			, m_ssDataPath("")
-    {}
-
-    CSgitContext        *m_pSgitCtx;
-    CThostFtdcTraderApi *m_pTdReqApi;
-    //std::string         m_ssUserId;
-    //std::string         m_ssPassword;
-    std::string         m_ssSessionID;
-    std::string         m_ssSgitCfgPath;
-		std::string					m_ssDataPath;
-  };
-
-  enum EnTdSpiRole {HubTran, Direct};
-
-  struct STUTradeRec
-  {
-    STUTradeRec();
-    STUTradeRec(double dPrice, int iVolume);
-
-    double  m_dMatchPrice;  //成交价格
-    int     m_iMatchVolume; //成交数量
-  };
-
-	struct STUOrder
-	{
-		std::string								m_ssRecvAccount;//客户请求带的资金账号
-		std::string               m_ssRealAccount;//真实资金账号
-    std::string               m_ssOrderRef;//报单引用
-    std::string               m_ssOrderID;//37合同编号
-		std::string		            m_ssClOrdID;//11委托请求编号 撤单回报时为41
-    std::string               m_ssCancelClOrdID;//要撤掉的原始委托请求编号 撤单回报时为11
-		char					            m_cOrderStatus;//39
-		std::string		            m_ssSymbol;//55
-		char					            m_cSide;//54
-    int                       m_iOrderQty;//38委托数量
-    double                    m_dPrice;//44价格
-		int						            m_iLeavesQty;//151
-		int						            m_iCumQty;//14
-		//成交记录
-		std::map<std::string, STUTradeRec> m_mapTradeRec;
-
-		STUOrder();
-    double AvgPx() const;
-    void Update(const CThostFtdcInputOrderField& oInputOrder);
-    void Update(const CThostFtdcOrderField& oOrder, const STUTdParam &stuTdParam);
-    void Update(const CThostFtdcTradeField& oTrade);
-	};
-
   CSgitTdSpi(const STUTdParam &stuTdParam);
   virtual ~CSgitTdSpi();
 
@@ -177,7 +150,7 @@ protected:
 
 	bool Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue);
 
-	bool SendExecutionReport(const STUOrder& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
+	bool SendExecutionReport(const Order& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
 	bool SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
 
@@ -187,25 +160,29 @@ protected:
 
 	bool SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
-	bool SendOrderCancelReject(const STUOrder& stuOrder, int iErrCode, const std::string& ssErrMsg);
+	bool SendOrderCancelReject(const Order& stuOrder, int iErrCode, const std::string& ssErrMsg);
 
 	bool SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
 
-	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, STUOrder& stuOrder, std::string& ssErrMsg);
+	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, Order& stuOrder, std::string& ssErrMsg);
 
 	bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
-	void  Cvt(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder);
+	void  Cvt(const CThostFtdcOrderField &stuFtdcOrder, Order &stuOrder);
 
-	Poco::SharedPtr<CSgitTdSpi::STUOrder> GetStuOrder(const std::string &ssOrderRef);
+	bool GetOrder(const std::string &ssOrderRef, Order &oOrder);
+
+  bool UpdateOrder(Order &oOrder);
 
 	std::string GetOrderRefDatFileName();
+
+  bool SaveOrder(Order &oOrder, std::string &ssErrMsg);
 
 	bool LoadDatFile();
 
 	void WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID);
 
-  void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, STUOrder &stuOrder);
+  void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, Order &stuOrder);
 
 	///报单录入请求
 	bool ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle, std::string& ssErrMsg);
@@ -582,7 +559,7 @@ private:
 	std::map<std::string, std::string>			          m_mapClOrdID2OrderRef;
 
   //OrderRef -> STUOrder (报单引用->委托)
-  std::map<std::string, Poco::SharedPtr<STUOrder> >  m_mapOrderRef2Order;
+  std::map<std::string, Poco::SharedPtr<Order> >  m_mapOrderRef2Order;
 
   //账户别名->真实账户
   std::map<std::string, std::string>                m_mapAlias2RealAcct;

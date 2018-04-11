@@ -8,8 +8,13 @@
 #include "quickfix/Message.h"
 #include "Poco/Util/JSONConfiguration.h"
 #include "Poco/Util/XMLConfiguration.h"
+#include "Poco/Data/Session.h"
+#include "Poco/Data/Statement.h"
+#include "Poco/Data/SQLite/Connector.h"
 
 using namespace Poco::Util;
+using namespace Poco::Data;
+using namespace Poco::Data::Keywords;
 
 class CSgitContext
 {
@@ -21,7 +26,7 @@ public:
 
   bool Deal(const FIX::Message& oMsg, const FIX::SessionID& oSessionID, std::string& ssErrMsg);
 
-  SharedPtr<CSgitTdSpi> GetOrCreateTdSpi(const FIX::SessionID& oSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
+  SharedPtr<CSgitTdSpi> GetOrCreateTdSpi(const FIX::SessionID& oSessionID, EnTdSpiRole enTdSpiRole);
 
   SharedPtr<CSgitTdSpi> GetTdSpi(const FIX::SessionID& oSessionID);
 
@@ -50,6 +55,8 @@ public:
   bool IsTradeSupported();
 
 protected:
+  bool InitSQLConnect();
+
   bool InitConvert();
 
   bool InitSgit();
@@ -60,9 +67,9 @@ protected:
 
   bool NeedRun(const std::string ssSectionName);
 
-  SharedPtr<CSgitTdSpi> CreateTdSpi(CSgitTdSpi::STUTdParam &stuTdParam, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
+  SharedPtr<CSgitTdSpi> CreateTdSpi(STUTdParam &stuTdParam, EnTdSpiRole enTdSpiRole);
 
-  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssSessionID, CSgitTdSpi::EnTdSpiRole enTdSpiRole);
+  SharedPtr<CSgitTdSpi> CreateTdSpi(const std::string &ssSessionID, EnTdSpiRole enTdSpiRole);
 
   void CreateMdSpi(const std::string &ssFlowPath, const std::string &ssMdServerAddr, const std::string &ssTradeId, const std::string &ssPassword);
 
@@ -94,5 +101,8 @@ private:
 
   bool                                                m_bQuoteSupported;
   bool                                                m_bTradeSupported;
+
+  SharedPtr<Session>                                  m_spSQLiteSession;
+  //Session                                             m_oSQLiteSession;
 };
 #endif // __SGITAPIMANAGER_H__

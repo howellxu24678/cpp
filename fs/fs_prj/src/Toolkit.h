@@ -30,6 +30,8 @@ public:
 
   static std::string GetUuid();
 
+  static std::string GetNowTime();
+
   static std::string GetSessionKey(const FIX::Message& oRecvMsg);
 
   //SessionKey ×ªÎªSessionIDºÍonBehalfCompID

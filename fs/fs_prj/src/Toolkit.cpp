@@ -54,6 +54,13 @@ std::string CToolkit::GetUuid()
   return Poco::DateTimeFormatter::format(now, "%Y%m%d%H%M%S%i");
 }
 
+
+std::string CToolkit::GetNowTime()
+{
+  Poco::LocalDateTime now;
+  return Poco::DateTimeFormatter::format(now, "%Y-%m-%d %H:%M:%s");
+}
+
 std::string CToolkit::GetSessionKey(const FIX::Message& oRecvMsg)
 {
   FIX::BeginString beginString;
@@ -168,5 +175,6 @@ bool CToolkit::GetString(AutoPtr<IniFileConfiguration> apConfig, const std::stri
   ssValue = apConfig->getString(ssProp);
   return true;
 }
+
 
 

@@ -120,7 +120,7 @@ void Application::onMessage(const FIX42::Logon& oMsg, const FIX::SessionID& oSes
   std::string ssErrMsg = "";
   if (m_pSigtCtx)
   {
-    spTdSpi = m_pSigtCtx->GetOrCreateTdSpi(oSessionID, CSgitTdSpi::Direct);
+    spTdSpi = m_pSigtCtx->GetOrCreateTdSpi(oSessionID, Direct);
   }
   else
   {
