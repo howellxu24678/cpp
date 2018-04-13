@@ -400,7 +400,7 @@ bool CSgitContext::InitSQLConnect()
 
     if(!m_spSQLiteSession->isConnected())
     {
-      LOG(ERROR_LOG_LEVEL, "Failed to connect to sqlite:%", ssDbPath.c_str());
+      LOG(ERROR_LOG_LEVEL, "Failed to connect to sqlite:%s", ssDbPath.c_str());
       return false;
     }
 

@@ -81,7 +81,7 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
     m_acOrderRef = MAX(m_acOrderRef, GetMaxOrderRefInDB());
     m_acOrderRef = MAX(m_acOrderRef, atoi(pRspUserLogin->MaxOrderRef));
 
-    LOG(INFO_LOG_LEVEL, "m_acOrderRef set to:%d", m_acOrderRef);
+    LOG(INFO_LOG_LEVEL, "m_acOrderRef set to:%d", m_acOrderRef.value());
 
     CThostFtdcSettlementInfoConfirmField stuConfirm;
     memset(&stuConfirm, 0, sizeof(CThostFtdcSettlementInfoConfirmField));
@@ -223,7 +223,8 @@ void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
     pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
 
-  if(!SaveTrade(Trade(*pTrade, m_ssUserID))) return;
+  Trade oTrade(*pTrade, m_ssUserID);
+  if(!SaveTrade(oTrade)) return;
 
   SendExecutionReport(pTrade->OrderRef);
 }

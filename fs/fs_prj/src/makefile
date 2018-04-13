@@ -59,7 +59,7 @@
 MY_CFLAGS = -I. -I../../third_party/include
   
 # The linker options.  
-MY_LIBS   = -lsgitquotapi -lsgittradeapi -llog4cplus -lquickfix -lPocoFoundation -lPocoJSON -lPocoUtil -lPocoXML -lpthread
+MY_LIBS   = -lsgitquotapi -lsgittradeapi -llog4cplus -lquickfix -lPocoFoundation -lPocoJSON -lPocoUtil -lPocoXML -lPocoData -lPocoDataSQLite -lpthread
   
 # The pre-processor options used by the cpp (man cpp for more).  
 CPPFLAGS  = -Wall -std=c++0x 
