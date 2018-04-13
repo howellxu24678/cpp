@@ -34,7 +34,6 @@ CSgitTdSpi::CSgitTdSpi(const STUTdParam &stuTdParam)
 
 CSgitTdSpi::~CSgitTdSpi()
 {
-	m_fOrderRef2ClOrdID.close();
   //释放Api内存
   if( m_stuTdParam.m_pTdReqApi )
   {
@@ -79,7 +78,10 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
   //登录成功
   if (!pRspInfo->ErrorID)
   {
+    m_acOrderRef = MAX(m_acOrderRef, GetMaxOrderRefInDB());
     m_acOrderRef = MAX(m_acOrderRef, atoi(pRspUserLogin->MaxOrderRef));
+
+    LOG(INFO_LOG_LEVEL, "m_acOrderRef set to:%d", m_acOrderRef);
 
     CThostFtdcSettlementInfoConfirmField stuConfirm;
     memset(&stuConfirm, 0, sizeof(CThostFtdcSettlementInfoConfirmField));
@@ -99,20 +101,18 @@ void CSgitTdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin,
 bool CSgitTdSpi::ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle, std::string& ssErrMsg)
 {
 	CThostFtdcInputOrderField stuInputOrder;
-  Poco::SharedPtr<Order> spStuOrder(new Order());
-	if(!Cvt(oNewOrderSingle, stuInputOrder, *spStuOrder, ssErrMsg))
+  Order oOrde;
+	if(!Cvt(oNewOrderSingle, stuInputOrder, oOrde, ssErrMsg))
   {
     return SendExecutionReport(oNewOrderSingle, -1, ssErrMsg);
   }
-
-	//m_mapOrderRef2Order[spStuOrder->m_ssOrderRef] = spStuOrder;
 
 	int iRet = m_stuTdParam.m_pTdReqApi->ReqOrderInsert(&stuInputOrder, stuInputOrder.RequestID);
 	if (iRet != 0)
 	{
     Poco::format(ssErrMsg, "Failed to call api:ReqOrderInsert,iRet:%d", iRet);
 		LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
-    return SendExecutionReport(*spStuOrder, iRet, ssErrMsg);
+    return SendExecutionReport(oNewOrderSingle, iRet, ssErrMsg);
 	}
 
   LOG(INFO_LOG_LEVEL, "Success call api:ReqOrderInsert,InvestorID:%s,InstrumentID:%s,OrderRef:%s", 
@@ -148,7 +148,7 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
 		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
   
   Order oOrder;
-	if(!GetOrder(pInputOrder->OrderRef, oOrder)) return;
+	if(!GetOrderByOrderRef(pInputOrder->OrderRef, oOrder)) return;
 
   oOrder.m_ssOrderSysID = pInputOrder->OrderSysID;
   
@@ -173,17 +173,17 @@ void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAc
     pInputOrderAction->OrderRef, pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange, 
 		pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-	//Poco::SharedPtr<Order> spOrder = GetStuOrder(pInputOrderAction->OrderRef, TODO);
-	//if(!spOrder) return;
+  Order oOrder;
+  if(!GetOrderByOrderRef(pInputOrderAction->OrderRef, oOrder)) return;
 
-	//if(pRspInfo->ErrorID != 0)
-	//{
-	//	SendOrderCancelReject(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
-	//}
-	//else
-	//{
-	//	SendExecutionReport(*spOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, true);
-	//}
+	if(pRspInfo->ErrorID != 0)
+	{
+		SendOrderCancelReject(oOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	}
+	else
+	{
+		SendExecutionReport(oOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, true);
+	}
 }
 
 //撤单的情况在此回复执行回报，其余情况只用于更新订单的最新状态参数
@@ -193,17 +193,13 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
      pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  //Poco::SharedPtr<CSgitTdSpi::STUOrder> spOrder = GetStuOrder(pOrder->OrderRef);
-  //if(!spOrder) return;
-
-  //spOrder->Update(*pOrder, m_stuTdParam);
-
 	Order oOrder;
-  if(!GetOrder(pOrder->OrderRef, oOrder)) return;
+  if(!GetOrderByOrderRef(pOrder->OrderRef, oOrder)) return;
 
   oOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, pOrder->OrderStatus, Convert::Fix);
-  //UpsertOrder(*pOrder, stuOrder);
-
+  oOrder.m_iCumQty = pOrder->VolumeTraded;
+  oOrder.m_iLeavesQty = pOrder->VolumeTotal;
+  
   //订单被拒绝
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
     || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected)
@@ -213,8 +209,6 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
   //撤单回报
   else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
   {
-    //撤单的回报中应把订单剩余数量置0
-    oOrder.m_iLeavesQty = 0;
     SendExecutionReport(oOrder);
   }
 
@@ -229,11 +223,9 @@ void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
     pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
 
-  //Poco::SharedPtr<Order> spOrder = GetStuOrder(pTrade->OrderRef, TODO);
-  //if(!spOrder) return;
+  if(!SaveTrade(Trade(*pTrade, m_ssUserID))) return;
 
-  //spOrder->Update(*pTrade);
-  //SendExecutionReport(*spOrder);
+  SendExecutionReport(pTrade->OrderRef);
 }
 
 void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
@@ -255,60 +247,63 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
-bool CSgitTdSpi::SendExecutionReport(const Order& stuOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
+bool CSgitTdSpi::SendExecutionReport(const Order& oOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
 {
+  std::vector<Trade> vTrade;
+  if(!GetTradeByOrderRef(oOrder.m_ssOrderRef, vTrade)) return false;
+
   std::string ssUUid = CToolkit::GetUuid();
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,ClOrdID:%s,OrderID:%s,uuid:%s", 
-    stuOrder.m_ssOrderRef.c_str(), stuOrder.m_ssClOrdID.c_str(), stuOrder.m_ssOrderSysID.c_str(), ssUUid.c_str());
+    oOrder.m_ssOrderRef.c_str(), oOrder.m_ssClOrdID.c_str(), oOrder.m_ssOrderSysID.c_str(), ssUUid.c_str());
 
   FIX42::ExecutionReport executionReport = FIX42::ExecutionReport();
-  executionReport.set(FIX::ClOrdID(stuOrder.m_ssClOrdID));
-  executionReport.set(FIX::OrderID(stuOrder.m_ssOrderSysID.empty() ? CToolkit::GetUuid() : stuOrder.m_ssOrderSysID));
+  executionReport.set(FIX::ClOrdID(oOrder.m_ssClOrdID));
+  executionReport.set(FIX::OrderID(oOrder.m_ssOrderSysID.empty() ? CToolkit::GetUuid() : oOrder.m_ssOrderSysID));
   executionReport.set(FIX::ExecID(ssUUid));
-  executionReport.set(FIX::Symbol(stuOrder.m_ssSymbol));
-  executionReport.set(FIX::Price(stuOrder.m_dPrice));
-  executionReport.set(FIX::OrderQty(stuOrder.m_iOrderQty));
-  executionReport.set(FIX::Side(stuOrder.m_cSide));
-  executionReport.set(FIX::LeavesQty(stuOrder.m_iLeavesQty));
-  executionReport.set(FIX::CumQty(stuOrder.m_iCumQty));
-  executionReport.set(FIX::AvgPx(stuOrder.AvgPx()));
+  executionReport.set(FIX::Symbol(oOrder.m_ssRecvSymbol));
+  executionReport.set(FIX::Price(oOrder.m_dPrice));
+  executionReport.set(FIX::OrderQty(oOrder.m_iOrderQty));
+  executionReport.set(FIX::Side(oOrder.m_cSide));
+  executionReport.set(FIX::LeavesQty(oOrder.m_iLeavesQty));
+  executionReport.set(FIX::CumQty(oOrder.m_iCumQty));
+  executionReport.set(FIX::AvgPx(AvgPx(vTrade)));
   executionReport.set(FIX::ExecTransType(FIX::ExecTransType_NEW));
 
-  if (bIsPendingCancel /*|| stuOrder.m_mapTradeRec.size() < 1*/)
+  if (bIsPendingCancel || vTrade.size() < 1)
   {
     executionReport.set(FIX::LastPx(0));
     executionReport.set(FIX::LastShares(0));
   }
   else
   {
-    //executionReport.set(FIX::LastPx(stuOrder.m_mapTradeRec.rbegin()->second.m_dMatchPrice));
-    //executionReport.set(FIX::LastShares(stuOrder.m_mapTradeRec.rbegin()->second.m_iMatchVolume));
+    executionReport.set(FIX::LastPx(vTrade[0].m_dMatchPrice));
+    executionReport.set(FIX::LastShares(vTrade[0].m_iMatchQty));
   }
 
-	//撤单应答
-	if(bIsPendingCancel)
-	{
-		executionReport.set(FIX::OrdStatus(FIX::ExecType_PENDING_CANCEL));
-		executionReport.set(FIX::ExecType(FIX::ExecType_PENDING_CANCEL));
-	}
-	//有错误发生
+  //撤单应答
+  if(bIsPendingCancel)
+  {
+    executionReport.set(FIX::OrdStatus(FIX::ExecType_PENDING_CANCEL));
+    executionReport.set(FIX::ExecType(FIX::ExecType_PENDING_CANCEL));
+  }
+  //有错误发生
   else if (iErrCode != 0)
   {
-		executionReport.set(FIX::ExecType(FIX::ExecType_REJECTED));
-		executionReport.set(FIX::OrdStatus(FIX::OrdStatus_REJECTED));
+    executionReport.set(FIX::ExecType(FIX::ExecType_REJECTED));
+    executionReport.set(FIX::OrdStatus(FIX::OrdStatus_REJECTED));
 
-		executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
-		executionReport.set(FIX::Text(ssErrMsg));
+    executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
+    executionReport.set(FIX::Text(ssErrMsg));
   }
-	//正常情况
+  //正常情况
   else
   {
-		executionReport.set(FIX::OrdStatus(stuOrder.m_cOrderStatus));
-		executionReport.set(FIX::ExecType(stuOrder.m_cOrderStatus));
+    executionReport.set(FIX::OrdStatus(oOrder.m_cOrderStatus));
+    executionReport.set(FIX::ExecType(oOrder.m_cOrderStatus));
   }
 
   //pending cancel 和 canceled时 tag20为1
-  if (bIsPendingCancel || stuOrder.m_cOrderStatus == FIX::OrdStatus_CANCELED)
+  if (bIsPendingCancel || oOrder.m_cOrderStatus == FIX::OrdStatus_CANCELED)
   {
     executionReport.set(FIX::ExecTransType(FIX::ExecTransType_CANCEL));
   }
@@ -318,27 +313,26 @@ bool CSgitTdSpi::SendExecutionReport(const Order& stuOrder, int iErrCode /*= 0*/
   }
 
   //回执行回报时，优先送入收到的账户，如果没有收到，找到配置中配置的账户别名，如果也没有找到，只能使用真实账户
-	std::string ssAccount = stuOrder.m_ssRealAccount;
-	if (!stuOrder.m_ssRecvAccount.empty())
-	{
-		ssAccount = stuOrder.m_ssRecvAccount;
-	}
-	else if (m_mapReal2AliasAcct.count(stuOrder.m_ssRealAccount) > 0)
-	{
-		ssAccount = m_mapReal2AliasAcct[stuOrder.m_ssRealAccount];
-	}
-	executionReport.set(FIX::Account(ssAccount));
+  std::string ssAccount = oOrder.m_ssRealAccount;
+  if (!oOrder.m_ssRecvAccount.empty())
+  {
+    ssAccount = oOrder.m_ssRecvAccount;
+  }
+  else if (m_mapReal2AliasAcct.count(oOrder.m_ssRealAccount) > 0)
+  {
+    ssAccount = m_mapReal2AliasAcct[oOrder.m_ssRealAccount];
+  }
+  executionReport.set(FIX::Account(ssAccount));
 
-	return SendByRealAcct(stuOrder.m_ssRealAccount, executionReport);
+  return SendByRealAcct(oOrder.m_ssRealAccount, executionReport);
 }
 
-bool CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/)
+bool CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
 {
-  //Poco::SharedPtr<Order> spOrder = GetStuOrder(ssOrderRef, TODO);
-  //if(!spOrder) return false;
+  Order oOrder;
+  if (!GetOrderByOrderRef(ssOrderRef, oOrder)) return false;
 
-  //return SendExecutionReport(*spOrder, iErrCode, ssErrMsg);
-  return true;
+  return SendExecutionReport(oOrder, iErrCode, ssErrMsg, bIsPendingCancel, bIsQueryRsp);
 }
 
 bool CSgitTdSpi::SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg)
@@ -428,25 +422,27 @@ bool CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingl
 
 bool CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
 {
- // Poco::SharedPtr<Order> spOrder = GetStuOrder(ssOrderRef, TODO);
- // if(!spOrder) return false;
+  Order oOrder;
+  if(!GetOrderByOrderRef(ssOrderRef, oOrder)) return false;
 
-	//return SendOrderCancelReject(*spOrder, iErrCode, ssErrMsg);
-  return true;
+  return SendOrderCancelReject(oOrder, iErrCode, ssErrMsg);
 }
 
-bool CSgitTdSpi::SendOrderCancelReject(const Order& stuOrder, int iErrCode, const std::string& ssErrMsg)
+bool CSgitTdSpi::SendOrderCancelReject(const Order& oOrder, int iErrCode, const std::string& ssErrMsg)
 {
+  Order oCancelOrder;
+  if (!GetCancelOrderByClOrdID(oOrder.m_ssClOrdID, oCancelOrder)) return false;
+
 	FIX42::OrderCancelReject orderCancelReject = FIX42::OrderCancelReject(
-		FIX::OrderID(stuOrder.m_ssOrderSysID),
-		FIX::ClOrdID(stuOrder.m_ssCancelClOrdID),
-		FIX::OrigClOrdID(stuOrder.m_ssClOrdID),
-		FIX::OrdStatus(stuOrder.m_cOrderStatus),
+		FIX::OrderID(oOrder.m_ssOrderSysID),
+		FIX::ClOrdID(oCancelOrder.m_ssClOrdID),
+		FIX::OrigClOrdID(oOrder.m_ssClOrdID),
+		FIX::OrdStatus(oOrder.m_cOrderStatus),
 		FIX::CxlRejResponseTo(FIX::CxlRejResponseTo_ORDER_CANCEL_REQUEST));
 
 	orderCancelReject.set(FIX::Text(ssErrMsg));
 
-	return SendByRealAcct(stuOrder.m_ssRealAccount, orderCancelReject);
+	return SendByRealAcct(oOrder.m_ssRealAccount, orderCancelReject);
 }
 
 bool CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg)
@@ -471,16 +467,6 @@ bool CSgitTdSpi::SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCa
   return CToolkit::Send(oOrderCancel, orderCancelReject);
 }
 
-bool CSgitTdSpi::GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID)
-{
-  return Get(m_mapOrderRef2ClOrdID, ssOrderRef, ssClOrdID);
-}
-
-bool CSgitTdSpi::GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef)
-{
-	return Get(m_mapClOrdID2OrderRef, ssClOrdID, ssOrderRef);
-}
-
 bool CSgitTdSpi::Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue)
 {
 	std::map<std::string, std::string>::const_iterator cit = oMap.find(ssKey);
@@ -492,28 +478,6 @@ bool CSgitTdSpi::Get( std::map<std::string, std::string> &oMap, const std::strin
 
 	ssValue = cit->second;
 	return true;
-}
-
-bool CSgitTdSpi::AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg)
-{
-	if(m_mapOrderRef2ClOrdID.count(ssOrderRef) > 0)
-	{
-    ssErrMsg = "OrderRef:" + ssOrderRef + " is duplicate";
-		LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
-    return false;
-	}
-  m_mapOrderRef2ClOrdID[ssOrderRef] = ssClOrdID;
-	
-
-	if(m_mapClOrdID2OrderRef.count(ssClOrdID) > 0)
-	{
-    ssErrMsg = "ClOrdID:" + ssClOrdID + " is duplicate";
-    LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
-		return false;
-	}
-	m_mapClOrdID2OrderRef[ssClOrdID] = ssOrderRef;
-
-  return true;
 }
 
 bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, Order& oOrder, std::string& ssErrMsg)
@@ -554,22 +518,19 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
     return false;
   }
   
-  oOrder.m_ssSymbol = symbol.getValue();
+  oOrder.m_ssRecvSymbol = symbol.getValue();
   oOrder.m_iOrderQty = (int)orderQty.getValue();
   oOrder.m_cOrdType = ordType.getValue();
   oOrder.m_cSide = side.getValue();
   oOrder.m_cOpenClose = openClose.getValue();
   oOrder.m_iLeavesQty = (int)orderQty.getValue();
   oOrder.m_iCumQty = 0;
-  oOrder.m_ssOrderTime = CToolkit::GetNowTime();
+  oOrder.m_ssOrderTime = CToolkit::GetNowDateTime();
 
   //价格(tag44)非必须字段
   if(oNewOrderSingle.getIfSet(price)) oOrder.m_dPrice = price.getValue();
 	
   if(!SaveOrder(oOrder, ssErrMsg)) return false;
-  
-	//if(!AddOrderRefClOrdID(ssOrderRef, clOrdID.getValue(), ssErrMsg)) return false;
-	//WriteDatFile(ssOrderRef, clOrdID.getValue());
   
 	Convert::EnCvtType enSymbolType = Convert::Unknow;
 	if(!CheckIdSource(oNewOrderSingle, enSymbolType, ssErrMsg)) return false;
@@ -682,77 +643,56 @@ bool CSgitTdSpi::Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcIn
   oOrderCancel.getIfSet(securityExchange);
   oOrderCancel.get(symbol);
 
- // //根据被撤单本地号找到报单引用
- // std::string ssOrderRef = "";
- // if(!GetOrderRef(origClOrdID.getValue(), ssOrderRef))
- // {
- //   ssErrMsg = "Can not GetOrderRef by origClOrdID:" + origClOrdID.getValue();
- //   LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
- //   return false;
- // }
+  Order oOrigOrder;
+  if(!GetOrderByClOrdID(origClOrdID.getValue(), oOrigOrder))
+  {
+    ssErrMsg = "Failed to GetOrderByClOrdID:" + origClOrdID.getValue();
+    LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
+    return false;
+  }
 
-	////将撤单请求ID赋值到原有委托结构体中
- // Poco::SharedPtr<Order> spOrder = GetStuOrder(ssOrderRef, TODO);
- // if(!spOrder)
- // {
- //   ssErrMsg = "Can not GetStuOrder by orderRef:" + ssOrderRef;
- //   LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
- //   return false;
- // }
- // spOrder->m_ssCancelClOrdID = clOrdID.getValue();
+  memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
+  stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
+  std::string ssOrderActionRef = Poco::format(ssOrderRefFormat, stuInputOrderAction.OrderActionRef);
+  LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,ClOrdID:%s", ssOrderActionRef.c_str(), clOrdID.getValue().c_str());
 
- // memset(&stuInputOrderAction, 0, sizeof(CThostFtdcInputOrderActionField));
- // stuInputOrderAction.OrderActionRef = ++m_acOrderRef;
- // std::string ssOrderActionRef = Poco::format(ssOrderRefFormat, stuInputOrderAction.OrderActionRef);
- // LOG(INFO_LOG_LEVEL, "OrderActionRef:%s,ClOrdID:%s", ssOrderActionRef.c_str(), clOrdID.getValue().c_str());
- // if(!AddOrderRefClOrdID(ssOrderActionRef, clOrdID.getValue(), ssErrMsg)) return false;
+  Order oOrderCancelReq;
+  oOrderCancelReq.m_ssUserID = m_ssUserID;
+  oOrderCancelReq.m_ssClOrdID = clOrdID.getValue();
+  oOrderCancelReq.m_ssOrderRef = ssOrderActionRef;
+  oOrderCancelReq.m_ssCancelClOrdID = origClOrdID.getValue();
+  oOrderCancelReq.m_ssOrderTime = CToolkit::GetNowDateTime();
 
+  if(!SaveOrder(oOrderCancelReq, ssErrMsg)) return false;
+  
+	Convert::EnCvtType enSymbolType = Convert::Unknow;
+	if (!CheckIdSource(oOrderCancel, enSymbolType, ssErrMsg)) return false;
 
-	//Convert::EnCvtType enSymbolType = Convert::Unknow;
-	//if (!CheckIdSource(oOrderCancel, enSymbolType, ssErrMsg)) return false;
+  //1.OrderSysID+ExchangeID
+  if (!orderID.getValue().empty() && !securityExchange.getValue().empty())
+  {
+    strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
+		strncpy(
+			stuInputOrderAction.ExchangeID,
+			enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
+			securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
+			sizeof(stuInputOrderAction.ExchangeID));
+  }
+  //2.OrderRef+UserID+InstrumentID
+  else
+  {
+    strncpy(stuInputOrderAction.OrderRef, oOrigOrder.m_ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
+    strncpy(stuInputOrderAction.UserID, m_ssUserID.c_str(), sizeof(stuInputOrderAction.UserID));
+		strncpy(
+			stuInputOrderAction.InstrumentID, 
+			enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
+			symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
+			sizeof(stuInputOrderAction.InstrumentID));
+  }
 
- // //1.OrderSysID+ExchangeID
- // if (!orderID.getValue().empty() && !securityExchange.getValue().empty())
- // {
- //   strncpy(stuInputOrderAction.OrderSysID, orderID.getValue().c_str(), sizeof(stuInputOrderAction.OrderSysID));
-	//	strncpy(
-	//		stuInputOrderAction.ExchangeID,
-	//		enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
-	//		securityExchange.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtExchange(securityExchange.getValue(), Convert::Original).c_str(),
-	//		sizeof(stuInputOrderAction.ExchangeID));
- // }
- // //2.OrderRef+UserID+InstrumentID
- // else
- // {
- //   strncpy(stuInputOrderAction.OrderRef, ssOrderRef.c_str(), sizeof(stuInputOrderAction.OrderRef));
- //   strncpy(stuInputOrderAction.UserID, m_ssUserID.c_str(), sizeof(stuInputOrderAction.UserID));
-	//	strncpy(
-	//		stuInputOrderAction.InstrumentID, 
-	//		enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ?
-	//		symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
-	//		sizeof(stuInputOrderAction.InstrumentID));
- // }
-
- // stuInputOrderAction.RequestID = m_acRequestId++;
+  stuInputOrderAction.RequestID = m_acRequestId++;
 
   return true;
-}
-
-void CSgitTdSpi::Cvt(const CThostFtdcOrderField &stuFtdcOrder, Order &stuOrder)
-{
-	stuOrder.m_ssRealAccount = stuFtdcOrder.InvestorID;
-	stuOrder.m_ssOrderRef = stuFtdcOrder.OrderRef;
-  GetClOrdID(stuFtdcOrder.OrderRef, stuOrder.m_ssClOrdID);
-	stuOrder.m_ssOrderSysID = stuFtdcOrder.OrderSysID;
-	stuOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, stuFtdcOrder.OrderStatus, Convert::Fix);
-	Convert::EnCvtType enSymbolType = GetSymbolType(stuOrder.m_ssRealAccount);
-	stuOrder.m_ssSymbol = enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
-		stuFtdcOrder.InstrumentID : m_stuTdParam.m_pSgitCtx->CvtSymbol(stuFtdcOrder.InstrumentID, enSymbolType);
-	stuOrder.m_cSide = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::Side, stuFtdcOrder.Direction, Convert::Fix);
-	stuOrder.m_iOrderQty = stuFtdcOrder.VolumeTotalOriginal;
-	stuOrder.m_dPrice = stuFtdcOrder.LimitPrice;
-  stuOrder.m_iCumQty = stuFtdcOrder.VolumeTraded;
-  stuOrder.m_iLeavesQty = stuFtdcOrder.VolumeTotal;
 }
 
 bool CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusRequest, std::string& ssErrMsg)
@@ -764,40 +704,31 @@ bool CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
   
   oOrderStatusRequest.get(clOrdID);
   oOrderStatusRequest.get(symbol);
-
-  CThostFtdcQryOrderField stuQryOrder;
-  memset(&stuQryOrder, 0, sizeof(CThostFtdcQryOrderField));
  
-  std::string ssOrderID = "";
+  std::string ssOrderSysID = "";
   if (oOrderStatusRequest.getIfSet(orderID))
   {
-    ssOrderID = orderID.getValue();
+    ssOrderSysID = orderID.getValue();
   }
   else
   {
-    std::string ssOrderRef = "";
-    if(!GetOrderRef(clOrdID.getValue(), ssOrderRef))
+    Order oOrder;
+    if(!GetOrderByClOrdID(clOrdID.getValue(), oOrder))
     {
-      ssErrMsg = "Can not GetOrderRef by clOrdID:" + clOrdID.getValue();
+      ssErrMsg = "Failed to GetOrderByClOrdID by clOrdID:" + clOrdID.getValue();
       LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
       return SendExecutionReport(oOrderStatusRequest, -1, ssErrMsg);
     }
 
-    //Poco::SharedPtr<Order> spOrder = GetStuOrder(ssOrderRef, TODO);
-    //if(!spOrder) 
-    //{
-    //  ssErrMsg = "Can not GetStuOrder by clOrdID:" + clOrdID.getValue();
-    //  LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
-    //  return SendExecutionReport(oOrderStatusRequest, -1, ssErrMsg);
-    //}
-
-    //ssOrderID = spOrder->m_ssOrderID;
+    ssOrderSysID = oOrder.m_ssOrderSysID;
   }
-  if (!ssOrderID.empty())
+
+  CThostFtdcQryOrderField stuQryOrder;
+  memset(&stuQryOrder, 0, sizeof(CThostFtdcQryOrderField));
+  if (!ssOrderSysID.empty())
   {
-    strncpy(stuQryOrder.OrderSysID, ssOrderID.c_str(), sizeof(stuQryOrder.OrderSysID));
+    strncpy(stuQryOrder.OrderSysID, ssOrderSysID.c_str(), sizeof(stuQryOrder.OrderSysID));
   }
-
 
   Convert::EnCvtType enSymbolType = m_stuTdParam.m_pSgitCtx->GetSymbolType(CToolkit::GetSessionKey(oOrderStatusRequest));
   strncpy(
@@ -806,6 +737,7 @@ bool CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
     symbol.getValue().c_str() : m_stuTdParam.m_pSgitCtx->CvtSymbol(symbol.getValue(), Convert::Original).c_str(), 
     sizeof(stuQryOrder.InstrumentID));
 
+  //有带上账号的情况
   if (oOrderStatusRequest.getIfSet(account))
   {
     std::string ssRealAccount = "";
@@ -833,23 +765,22 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
   LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
     pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
-  Order stuOrder;
-  UpsertOrder(*pOrder, stuOrder);;
+  Order oOrder;
+  if(!GetOrderByOrderRef(pOrder->OrderRef, oOrder)) return;
+
+  oOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, pOrder->OrderStatus, Convert::Fix);
+  oOrder.m_iCumQty = pOrder->VolumeTraded;
+  oOrder.m_iLeavesQty = pOrder->VolumeTotal;
 
   //订单被拒绝
   if (pOrder->OrderSubmitStatus == THOST_FTDC_OSS_InsertRejected 
     || pOrder->OrderSubmitStatus == THOST_FTDC_OSS_CancelRejected)
   {
-    SendExecutionReport(stuOrder, -1, "Reject by Exchange", false, true);
-  }
-  //撤单回报
-  else if (pOrder->OrderStatus == THOST_FTDC_OST_Canceled)
-  {
-    //撤单的回报中应把订单剩余数量置0
-    stuOrder.m_iLeavesQty = 0;
+    SendExecutionReport(oOrder, -1, "Reject by Exchange", false, true);
+    return;
   }
 
-  SendExecutionReport(stuOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, false, true);
+  SendExecutionReport(oOrder, pRspInfo->ErrorID, pRspInfo->ErrorMsg, false, true);
 }
 
 void CSgitTdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -897,8 +828,6 @@ bool CSgitTdSpi::OnMessage(const FIX::Message& oMsg, const FIX::SessionID& oSess
 
 bool CSgitTdSpi::Init()
 {
-	//if (!LoadDatFile()) return false;
-
   if(!LoadConfig()) return false;
 
   return true;
@@ -1015,87 +944,6 @@ bool CSgitTdSpi::GetRealAccount(const FIX::Message& oRecvMsg, std::string &ssRea
   LOG(ERROR_LOG_LEVEL, ssErrMsg.c_str());
   return false;
 }
-
-bool CSgitTdSpi::GetOrder(const std::string &ssOrderRef, Order &oOrder)
-{
-	//std::map<std::string, Poco::SharedPtr<Order> >::iterator it = m_mapOrderRef2Order.find(ssOrderRef);
-	//if (it == m_mapOrderRef2Order.end())
-	//{
-	//	LOG(ERROR_LOG_LEVEL, "Can not find orderRef:%s in cache m_mapOrderRef2Order", ssOrderRef.c_str());
-	//	return NULL;
-	//}
-	//return it->second;
-
-  try
-  {
-    *m_stuTdParam.m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ? and orderRef = ? ", 
-      use(m_ssUserID), useRef(ssOrderRef), into(oOrder), limit(1, true), now;
-  }
-  catch (Poco::Exception &e)
-  {
-    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
-    return false;
-  }
-
-  return true;
-}
-
-std::string CSgitTdSpi::GetOrderRefDatFileName()
-{
-	return m_stuTdParam.m_ssDataPath + Poco::replace(Poco::replace(Poco::replace(m_stuTdParam.m_ssSessionID, ">", "_"), ".", "_"), ":", "_") + "_ref.dat";
-}
-
-bool CSgitTdSpi::LoadDatFile()
-{
-	std::string ssFileName = GetOrderRefDatFileName();
-	m_fOrderRef2ClOrdID.open(ssFileName, std::fstream::in | std::fstream::out | std::fstream::app);
-	if (m_fOrderRef2ClOrdID.bad())
-	{
-		LOG(ERROR_LOG_LEVEL, "Failed to open file:%s", ssFileName.c_str());
-		return false;
-	}
-
-	//加载OrderRef和ClOrdID
-	string ssOrderRef = "", ssClOrdID = "", ssErrMsg = "";
-	while(m_fOrderRef2ClOrdID >> ssOrderRef >> ssClOrdID)
-	{
-		LOG(INFO_LOG_LEVEL, "ssOrderRef:%s, ssClOrdID:%s", ssOrderRef.c_str(), ssClOrdID.c_str());
-		if(!AddOrderRefClOrdID(ssOrderRef, ssClOrdID, ssErrMsg)) return false;
-	}
-
-	m_fOrderRef2ClOrdID.clear();
-
-  if (m_mapOrderRef2ClOrdID.size() > 0)
-  {
-    std::map<std::string, std::string>::reverse_iterator rit = m_mapOrderRef2ClOrdID.rbegin();
-    m_acOrderRef = MAX(atoi(rit->first.c_str()), m_acOrderRef);
-  }
-
-	return true;
-}
-
-void CSgitTdSpi::WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID)
-{
-	Poco::FastMutex::ScopedLock oScopedLock(m_fastMutexOrderRef2ClOrdID);
-
-	m_fOrderRef2ClOrdID << ssOrderRef << " " << ssClOrdID << endl;
-}
-
-void CSgitTdSpi::UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, Order &stuOrder)
-{
-  std::map<std::string, Poco::SharedPtr<Order> >::iterator itFind = m_mapOrderRef2Order.find(stuFtdcOrder.OrderRef);
-  if (itFind != m_mapOrderRef2Order.end())
-  {
-    //itFind->second->Update(stuFtdcOrder, m_stuTdParam);
-		stuOrder = *(itFind->second);
-  }
-  else
-  {
-		Cvt(stuFtdcOrder, stuOrder);
-    m_mapOrderRef2Order[stuFtdcOrder.OrderRef] = new Order(stuOrder);
-  }
-}
-
 
 bool CSgitTdSpi::CheckIdSource(const FIX::Message& oRecvMsg, Convert::EnCvtType &enSymbolType, std::string& ssErrMsg)
 {
@@ -1561,6 +1409,120 @@ bool CSgitTdSpi::UpdateOrder(Order &oOrder)
     return false;
   }
   return true;
+}
+
+bool CSgitTdSpi::SaveTrade(Trade &oTrade)
+{
+  try
+  {
+    *m_stuTdParam.m_spSQLiteSession << 
+      "INSERT INTO [Trade] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", use(oTrade), now;
+  }
+
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+    //ssErrMsg = e.displayText();
+    return false;
+  }
+
+  return true;
+}
+
+bool CSgitTdSpi::GetOrderByOrderRef(const std::string &ssOrderRef, Order &oOrder)
+{
+  try
+  {
+    *m_stuTdParam.m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ? and orderRef = ? ", 
+      use(m_ssUserID), useRef(ssOrderRef), into(oOrder), limit(1, true), now;
+  }
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+    return false;
+  }
+
+  return true;
+}
+
+
+bool CSgitTdSpi::GetOrderByClOrdID(const std::string &ssClOrdID, Order &oOrder)
+{
+  try
+  {
+    *m_stuTdParam.m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ? and clOrdID = ? ", 
+      use(m_ssUserID), useRef(ssClOrdID), into(oOrder), limit(1, true), now;
+  }
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+    return false;
+  }
+
+  return true;
+}
+
+int CSgitTdSpi::GetMaxOrderRefInDB()
+{
+  int iMaxOrderRef = 0;
+  try
+  {
+    *m_stuTdParam.m_spSQLiteSession << "SELECT MAX(orderRef) FROM [Order] WHERE userID = ?", 
+      use(m_ssUserID), into(iMaxOrderRef), now;
+  }
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+  }
+
+  return iMaxOrderRef;
+}
+
+bool CSgitTdSpi::GetCancelOrderByClOrdID(const std::string &ssClOrdID, Order &oOrder)
+{
+  try
+  {
+    *m_stuTdParam.m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ? and cancelClOrdID = ? ORDER BY time desc", 
+      use(m_ssUserID), useRef(ssClOrdID), into(oOrder), limit(1), now;
+  }
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+    return false;
+  }
+
+  return true;
+}
+
+bool CSgitTdSpi::GetTradeByOrderRef(const std::string &ssOrderRef, std::vector<Trade> &vTrade)
+{
+  try
+  {
+    *m_stuTdParam.m_spSQLiteSession << "SELECT * FROM [Trade] WHERE userID = ? and orderRef = ? ORDER BY tradeID desc", 
+      use(m_ssUserID), useRef(ssOrderRef), into(vTrade), now;
+  }
+  catch (Poco::Exception &e)
+  {
+    LOG(ERROR_LOG_LEVEL, e.displayText().c_str());
+    return false;
+  }
+
+  return true;
+}
+
+double CSgitTdSpi::AvgPx(const std::vector<Trade> &vTrade) const
+{
+  double dTurnover = 0.0;
+  int iTotalVolume = 0;
+  for (std::vector<Trade>::const_iterator cit = vTrade.begin(); cit != vTrade.end(); cit++)
+  {
+    dTurnover += cit->m_dMatchPrice * cit->m_iMatchQty;
+    iTotalVolume += cit->m_iMatchQty; 
+  }
+
+  if (iTotalVolume == 0) return 0.0;
+
+  return dTurnover / iTotalVolume;
 }
 
 CSgitTdSpiHubTran::CSgitTdSpiHubTran(const STUTdParam &stuTdParam)

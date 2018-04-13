@@ -388,7 +388,14 @@ bool CSgitContext::InitSQLConnect()
 
   try
   {
-    std::string ssDbPath = m_ssDataPath + "fs.db";
+    std::string ssDbPath = m_ssDataPath + "fs.db", ssCreateNewDBByDayProp = "trade.CreateNewDBByDay";
+
+    if (m_apSgitConf->hasProperty(ssCreateNewDBByDayProp) && m_apSgitConf->getBool("trade.CreateNewDBByDay"))
+    {
+      ssDbPath = Poco::format("%sfs%s.db", m_ssDataPath, CToolkit::GetNowDay());
+    }
+    
+
     m_spSQLiteSession = new Session(SQLite::Connector::KEY, ssDbPath);
 
     if(!m_spSQLiteSession->isConnected())
@@ -404,7 +411,7 @@ bool CSgitContext::InitSQLConnect()
       orderRef      TEXT, \
       acctRecv      TEXT, \
       acctReal      TEXT, \
-      symbol        TEXT, \
+      recvSymbol    TEXT, \
       orderQty      INTEGER, \
       ordType       INTEGER, \
       side          INTEGER, \
@@ -428,18 +435,23 @@ bool CSgitContext::InitSQLConnect()
       ON CONFLICT ROLLBACK \
       );", now;
 
-    //Order order;
-    //order.m_ssUserID = "12342d";
-    //order.m_ssClOrdID = "56eadf84";
-    //*m_spSQLiteSession << "INSERT INTO [Order] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", use(order), now;
-
-    //order.m_ssUserID = "5464";
-    //order.m_ssClOrdID = "56eadf84";
-    //*m_spSQLiteSession << "INSERT INTO [Order] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", use(order), now;
-
-    //Order order2;
-    //*m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ?", use(order.m_ssUserID), into(order2), limit(1), now;
-
+    *m_spSQLiteSession << 
+      "CREATE TABLE IF NOT EXISTS [Trade] ( \
+      tradeID    TEXT, \
+      tradingDay TEXT, \
+      matchTime  TEXT, \
+      orderSysID TEXT, \
+      matchPrice REAL, \
+      matchQty   INTEGER, \
+      userID     TEXT, \
+      orderRef   TEXT, \
+      acctReal   TEXT, \
+      PRIMARY KEY ( \
+      tradeID, \
+      tradingDay \
+      ) \
+      ON CONFLICT ROLLBACK \
+      );", now;
   }
 
   catch (Poco::Exception &e)

@@ -120,7 +120,6 @@
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\Convert.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\Order.cpp" />
     <ClCompile Include="src\SgitContext.cpp" />
     <ClCompile Include="src\SgitMdSpi.cpp" />
     <ClCompile Include="src\SgitTdSpi.cpp" />
@@ -136,6 +135,7 @@
     <ClInclude Include="src\SgitMdSpi.h" />
     <ClInclude Include="src\SgitTdSpi.h" />
     <ClInclude Include="src\Toolkit.h" />
+    <ClInclude Include="src\Trade.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

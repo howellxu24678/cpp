@@ -191,6 +191,24 @@ ON CONFLICT ROLLBACK
 );
 
 
+CREATE TABLE [Trade] (
+userID     TEXT,
+orderRef   TEXT,
+acctReal   TEXT,
+tradeID    TEXT,
+orderSysID TEXT,
+price      REAL,
+matchQty   INTEGER,
+matchDate  TEXT,
+matchTime  TEXT,
+tradingDay TEXT,
+UNIQUE (
+userID,
+orderRef
+)
+ON CONFLICT ROLLBACK
+);
+
 
 
 */

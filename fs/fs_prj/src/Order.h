@@ -2,39 +2,58 @@
 #define __ORDER_H__
 
 #include <string>
-#include <map>
 #include "sgit/SgitFtdcTraderApi.h"
 #include "Poco/Data/TypeHandler.h"
-
-
-using namespace fstech;
-
-struct STUTradeRec
-{
-  STUTradeRec();
-  STUTradeRec(double dPrice, int iVolume);
-
-  double  m_dMatchPrice;  //成交价格
-  int     m_iMatchVolume; //成交数量
-};
-
-//oNewOrderSingle.get(account);
-//oNewOrderSingle.get(clOrdID);
-//oNewOrderSingle.get(symbol);
-//oNewOrderSingle.get(orderQty);
-//oNewOrderSingle.get(ordType);
-//oNewOrderSingle.get(side);
-//oNewOrderSingle.get(openClose);
 
 class Order
 {
 public:
+  Order()
+    : m_ssUserID("")
+    , m_ssClOrdID("")
+    , m_ssOrderRef("")
+    , m_ssRecvAccount("")
+    , m_ssRealAccount("")
+    , m_ssRecvSymbol("")
+    , m_iOrderQty(0)
+    , m_cOrdType('*')
+    , m_cSide('*')
+    , m_cOpenClose('*')
+    , m_dPrice(0.0)
+    , m_cOrderStatus(FIX::OrdStatus_NEW)
+    , m_ssOrderSysID("")
+    , m_iLeavesQty(0)
+    , m_iCumQty(0)
+    , m_ssCancelClOrdID("")
+    , m_ssOrderTime("")
+  {}
+
+  //Order(const Order &oOrder)
+  //  : m_ssUserID(oOrder.m_ssUserID)
+  //  , m_ssClOrdID(oOrder.m_ssClOrdID)
+  //  , m_ssOrderRef(oOrder.m_ssClOrdID)
+  //  , m_ssRecvAccount(oOrder.m_ssClOrdID)
+  //  , m_ssRealAccount(oOrder.m_ssClOrdID)
+  //  , m_ssRecvSymbol(oOrder.m_ssClOrdID)
+  //  , m_iOrderQty(oOrder.m_ssClOrdID)
+  //  , m_cOrdType(oOrder.m_ssClOrdID)
+  //  , m_cSide('*')
+  //  , m_cOpenClose('*')
+  //  , m_dPrice(0.0)
+  //  , m_cOrderStatus(FIX::OrdStatus_NEW)
+  //  , m_ssOrderSysID("")
+  //  , m_iLeavesQty(0)
+  //  , m_iCumQty(0)
+  //  , m_ssCancelClOrdID("")
+  //  , m_ssOrderTime("")
+  //{}
+
   std::string               m_ssUserID;//用户名
   std::string		            m_ssClOrdID;//11委托请求编号 撤单回报时为41
   std::string               m_ssOrderRef;//报单引用
   std::string               m_ssRecvAccount;//客户请求带的资金账号
   std::string               m_ssRealAccount;//真实资金账号
-  std::string		            m_ssSymbol;//55
+  std::string		            m_ssRecvSymbol;//55
   int                       m_iOrderQty;//38委托数量
   char                      m_cOrdType;//40报价类型
   char					            m_cSide;//54方向
@@ -43,20 +62,59 @@ public:
 
   char					            m_cOrderStatus;//39
   std::string               m_ssOrderSysID;//37合同编号
-  int						            m_iLeavesQty;//151
-  int						            m_iCumQty;//14
+  int						            m_iLeavesQty;//151 剩余数量
+  int						            m_iCumQty;//14 累计成交数量
   std::string               m_ssCancelClOrdID;//要撤掉的原始委托请求编号 撤单回报时为11
   std::string               m_ssOrderTime;
-  
-  ////成交记录
-  //std::map<std::string, STUTradeRec> m_mapTradeRec;
+  //double AvgPx() const;
+  //void Update(const CThostFtdcInputOrderField& oInputOrder);
+  ////void Update(const CThostFtdcOrderField& oOrder, const STUTdParam &stuTdParam);
+  //void Update(const CThostFtdcTradeField& oTrade);
 
-  Order();
-
-  double AvgPx() const;
-  void Update(const CThostFtdcInputOrderField& oInputOrder);
-  //void Update(const CThostFtdcOrderField& oOrder, const STUTdParam &stuTdParam);
-  void Update(const CThostFtdcTradeField& oTrade);
+  //double Order::AvgPx() const
+  //{
+  //  //double dTurnover = 0.0;
+  //  //int iTotalVolume = 0;
+  //  //for (std::map<std::string, STUTradeRec>::const_iterator cit = m_mapTradeRec.begin(); cit != m_mapTradeRec.end(); cit++)
+  //  //{
+  //  //  dTurnover += cit->second.m_dMatchPrice * cit->second.m_iMatchVolume;
+  //  //  iTotalVolume += cit->second.m_iMatchVolume; 
+  //  //}
+  //
+  //  //if (iTotalVolume == 0) return 0.0;
+  //
+  //  //return dTurnover / iTotalVolume;
+  //
+  //  return 0;
+  //}
+  //
+  //void Order::Update(const CThostFtdcInputOrderField& oInputOrder)
+  //{
+  //  if(m_ssOrderSysID.empty() && strlen(oInputOrder.OrderSysID) > 0)
+  //  {
+  //    m_ssOrderSysID = oInputOrder.OrderSysID;
+  //  }
+  //}
+  //
+  ////void STUOrder::Update(const CThostFtdcOrderField& oOrder, const STUTdParam &stuTdParam)
+  ////{
+  ////  if (m_ssOrderID.empty() && strlen(oOrder.OrderSysID) > 0)
+  ////  {
+  ////    m_ssOrderID = oOrder.OrderSysID;
+  ////  }
+  ////
+  ////  m_cOrderStatus = stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, oOrder.OrderStatus, Convert::Fix);
+  ////  //m_iLeavesQty = oOrder.VolumeTotal;
+  ////  //m_iCumQty = m_iOrderQty - m_iLeavesQty;
+  ////}
+  //
+  //void Order::Update(const CThostFtdcTradeField& oTrade)
+  //{
+  //  //m_mapTradeRec[oTrade.TradeID] = STUTradeRec(oTrade.Price, oTrade.Volume);
+  //
+  //  //m_iCumQty += oTrade.Volume;
+  //  //m_iLeavesQty = m_iOrderQty - m_iCumQty;
+  //}
 };
 
 namespace Poco {
@@ -80,7 +138,7 @@ namespace Poco {
         pBinder->bind(pos++, obj.m_ssOrderRef, dir);
         pBinder->bind(pos++, obj.m_ssRecvAccount, dir);
         pBinder->bind(pos++, obj.m_ssRealAccount, dir);
-        pBinder->bind(pos++, obj.m_ssSymbol, dir);
+        pBinder->bind(pos++, obj.m_ssRecvSymbol, dir);
         pBinder->bind(pos++, obj.m_iOrderQty, dir);
         pBinder->bind(pos++, obj.m_cOrdType, dir);
         pBinder->bind(pos++, obj.m_cSide, dir);
@@ -108,7 +166,7 @@ namespace Poco {
         if(!pExt->extract(pos++, obj.m_ssOrderRef)) obj.m_ssOrderRef = defVal.m_ssOrderRef;
         if(!pExt->extract(pos++, obj.m_ssRecvAccount)) obj.m_ssRecvAccount = defVal.m_ssRecvAccount;
         if(!pExt->extract(pos++, obj.m_ssRealAccount)) obj.m_ssRealAccount = defVal.m_ssRealAccount;
-        if(!pExt->extract(pos++, obj.m_ssSymbol)) obj.m_ssSymbol = defVal.m_ssSymbol;
+        if(!pExt->extract(pos++, obj.m_ssRecvSymbol)) obj.m_ssRecvSymbol = defVal.m_ssRecvSymbol;
         if(!pExt->extract(pos++, obj.m_iOrderQty)) obj.m_iOrderQty = defVal.m_iOrderQty;
         if(!pExt->extract(pos++, obj.m_cOrdType)) obj.m_cOrdType = defVal.m_cOrdType;
         if(!pExt->extract(pos++, obj.m_cSide)) obj.m_cSide = defVal.m_cSide;

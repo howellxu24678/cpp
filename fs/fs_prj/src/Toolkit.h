@@ -30,7 +30,9 @@ public:
 
   static std::string GetUuid();
 
-  static std::string GetNowTime();
+  static std::string GetNowDateTime();
+
+  static std::string GetNowDay();
 
   static std::string GetSessionKey(const FIX::Message& oRecvMsg);
 

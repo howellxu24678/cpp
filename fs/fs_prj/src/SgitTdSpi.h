@@ -5,6 +5,7 @@
 
 #include "Convert.h"
 #include "Order.h"
+#include "Trade.h"
 
 #include "sgit/SgitFtdcTraderApi.h"
 
@@ -139,50 +140,46 @@ protected:
 
 	bool GetRealAccount(const FIX::Message& oRecvMsg, std::string &ssRealAccount, std::string &ssErrMsg);
 
-	bool AddOrderRefClOrdID(const std::string& ssOrderRef, const std::string& ssClOrdID, std::string& ssErrMsg);
-
 	//代码类型校验
 	bool CheckIdSource(const FIX::Message& oRecvMsg, Convert::EnCvtType &enSymbolType, std::string& ssErrMsg);
-
-	bool GetClOrdID(const std::string& ssOrderRef, std::string& ssClOrdID);
-
-	bool GetOrderRef(const std::string& ssClOrdID, std::string& ssOrderRef);
 
 	bool Get( std::map<std::string, std::string> &oMap, const std::string& ssKey, std::string& ssValue);
 
 	bool SendExecutionReport(const Order& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
-	bool SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "");
+	bool SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
   bool SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg);
 
   bool SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle, int iErrCode = 0, const std::string& ssErrMsg = "");
 
-	bool SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
+  bool SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
-	bool SendOrderCancelReject(const Order& stuOrder, int iErrCode, const std::string& ssErrMsg);
-
+  bool SendOrderCancelReject(const Order& stuOrder, int iErrCode, const std::string& ssErrMsg);
+  
 	bool SendOrderCancelReject(const FIX42::OrderCancelRequest& oOrderCancel, const std::string& ssErrMsg);
 
 	bool Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInputOrderField& stuInputOrder, Order& stuOrder, std::string& ssErrMsg);
 
 	bool Cvt(const FIX42::OrderCancelRequest& oOrderCancel, CThostFtdcInputOrderActionField& stuInputOrderAction, std::string& ssErrMsg);
 
-	void  Cvt(const CThostFtdcOrderField &stuFtdcOrder, Order &stuOrder);
+  int GetMaxOrderRefInDB();
+  
+  bool SaveOrder(Order &oOrder, std::string &ssErrMsg);
 
-	bool GetOrder(const std::string &ssOrderRef, Order &oOrder);
+	bool GetOrderByOrderRef(const std::string &ssOrderRef, Order &oOrder);
+
+  bool GetOrderByClOrdID(const std::string &ssClOrdID, Order &oOrder);
+
+  bool GetCancelOrderByClOrdID(const std::string &ssClOrdID, Order &oOrder);
 
   bool UpdateOrder(Order &oOrder);
 
-	std::string GetOrderRefDatFileName();
+  bool SaveTrade(Trade &oTrade);
 
-  bool SaveOrder(Order &oOrder, std::string &ssErrMsg);
+  bool GetTradeByOrderRef(const std::string &ssOrderRef, std::vector<Trade> &vTrade);
 
-	bool LoadDatFile();
-
-	void WriteDatFile(const std::string &ssOrderRef, const std::string &ssClOrdID);
-
-  void UpsertOrder(const CThostFtdcOrderField &stuFtdcOrder, Order &stuOrder);
+  double AvgPx(const std::vector<Trade> &vTrade) const;
 
 	///报单录入请求
 	bool ReqOrderInsert(const FIX42::NewOrderSingle& oNewOrderSingle, std::string& ssErrMsg);
@@ -551,24 +548,12 @@ private:
   std::string                             m_ssLoginRespErrMsg;//登录响应错误信息
 
 	AtomicCounter														          m_acOrderRef;
-  //考虑到程序如果需要长时间不重启运行，需要使用超时缓存，否则，可用map替代
-	//OrderRef -> ClOrderID (报单引用->fix本地报单编号)
-	std::map<std::string, std::string>			          m_mapOrderRef2ClOrdID;
-
-	//ClOrderID -> OrderRef (fix本地报单编号->报单引用)
-	std::map<std::string, std::string>			          m_mapClOrdID2OrderRef;
-
-  //OrderRef -> STUOrder (报单引用->委托)
-  std::map<std::string, Poco::SharedPtr<Order> >  m_mapOrderRef2Order;
 
   //账户别名->真实账户
   std::map<std::string, std::string>                m_mapAlias2RealAcct;
 
 	//真实账户->账户别名
 	std::map<std::string, std::string>			          m_mapReal2AliasAcct;
-
-	std::fstream														          m_fOrderRef2ClOrdID;
-	Poco::FastMutex													          m_fastMutexOrderRef2ClOrdID;
 
   //m_acRequestId -> FIX::ReqID(13002) 默认超时10分钟             
   Poco::ExpireCache<int, FIX42::Message>            m_expchReqId2Message;

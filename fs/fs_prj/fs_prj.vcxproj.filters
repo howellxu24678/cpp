@@ -36,9 +36,6 @@
     <ClCompile Include="src\SgitTdSpi.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="src\Order.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -66,6 +63,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="src\Order.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Trade.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
