@@ -23,10 +23,10 @@ CSgitContext::CSgitContext(const std::string &ssSgitCfgPath, const std::string &
   : m_ssSgitCfgPath(ssSgitCfgPath)
   , m_oConvert(ssCvtCfgPath)
   , m_ssCvtCfgPath(ssCvtCfgPath)
+  , m_ssTradingDay("")
   , m_bQuoteSupported(false)
   , m_bTradeSupported(false)
   , m_spSQLiteSession(NULL)
-  , m_ssTradingDay("")
 {
   SQLite::Connector::registerConnector();
 }
@@ -421,7 +421,7 @@ bool CSgitContext::InitSQLConnect()
       return false;
     }
 
-    LOG(INFO_LOG_LEVEL, "SQLite DbPath:%s", ssDbPath);
+    LOG(INFO_LOG_LEVEL, "SQLite DbPath:%s", ssDbPath.c_str());
 
     *m_spSQLiteSession << 
       "CREATE TABLE IF NOT EXISTS [Order] ( \
