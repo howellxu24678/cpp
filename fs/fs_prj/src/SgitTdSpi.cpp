@@ -1543,6 +1543,10 @@ std::string CSgitTdSpi::GetTradingDay()
 void CSgitTdSpi::SetSQLiteSession(SharedPtr<Session> spSQLiteSession)
 {
   m_stuTdParam.m_spSQLiteSession = spSQLiteSession;
+
+  //对于网关自动登录的账户，初始化时数据库会话并没有初始化，设置数据库会话时顺便确认一下报单引用的值保持最大
+  m_acOrderRef = MAX(m_acOrderRef, GetMaxOrderRefInDB());
+  LOG(INFO_LOG_LEVEL, "m_acOrderRef set to:%d", m_acOrderRef.value());
 }
 
 CSgitTdSpiHubTran::CSgitTdSpiHubTran(const STUTdParam &stuTdParam)
