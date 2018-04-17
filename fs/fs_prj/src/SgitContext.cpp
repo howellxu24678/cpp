@@ -26,6 +26,7 @@ CSgitContext::CSgitContext(const std::string &ssSgitCfgPath, const std::string &
   , m_bQuoteSupported(false)
   , m_bTradeSupported(false)
   , m_spSQLiteSession(NULL)
+  , m_ssTradingDay("")
 {
   SQLite::Connector::registerConnector();
 }
@@ -39,10 +40,6 @@ bool CSgitContext::Init()
 {
   try
   {
-    m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
-
-    if(!InitSQLConnect()) return false;
-
     if(!InitConvert()) return false;
 
 		//LOG(DEBUG_LOG_LEVEL, "%s", m_oConvert.CvtSymbol("IF1812", Convert::Bloomberg).c_str());
@@ -71,6 +68,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(STUTdParam &stuTdParam, EnTdSpiR
   stuTdParam.m_pTdReqApi = pTdReqApi;
   stuTdParam.m_ssSgitCfgPath = m_ssSgitCfgPath;
   stuTdParam.m_ssDataPath = m_ssDataPath;
+  //对于网关预先登录的账号，这时数据库会话还是空指针（需要账户登录后才可以获得交易日期信息）
   stuTdParam.m_spSQLiteSession = m_spSQLiteSession;
 
   SharedPtr<CSgitTdSpi> spTdSpi = NULL;
@@ -162,6 +160,8 @@ SharedPtr<CSgitMdSpi> CSgitContext::GetMdSpi(const FIX::SessionID& oSessionID)
 
 bool CSgitContext::InitSgit()
 {
+  m_apSgitConf = new IniFileConfiguration(m_ssSgitCfgPath);
+
   LOG(INFO_LOG_LEVEL, "TdApi version:%s, MdApi version:%s", 
     CThostFtdcTraderApi::GetApiVersion(), CThostFtdcMdApi::GetApiVersion());
 
@@ -173,6 +173,7 @@ bool CSgitContext::InitSgit()
 
   if (!InitSgitQuote()) return false;
   if (!InitSgitTrade()) return false;
+
 
   return true;
 }
@@ -348,7 +349,23 @@ bool CSgitContext::InitSgitTrade()
 
     LOG(INFO_LOG_LEVEL, "Create trade api instance for TradeID:%s, RegisterFront tradeServerAddr:%s", 
       stTdUserIdPassword[0].c_str(), m_ssTdServerAddr.c_str());
+
+    if(m_ssTradingDay.empty())
+    {
+      m_ssTradingDay = spTdSpi->GetTradingDay();
+      LOG(INFO_LOG_LEVEL, "TradingDay is %s", m_ssTradingDay.c_str());
+    }
   }
+
+  if(!InitSQLConnect()) return false;
+
+  //在这里批量重置一下数据库会话。对于这种需要网关预先登录的账号需要这样操作，后续就不需要了。因为上面的数据会话已经正确创建了
+  for(std::map<std::string, SharedPtr<CSgitTdSpi> >::iterator it = m_mapSessionID2TdSpi.begin(); 
+    it != m_mapSessionID2TdSpi.end(); it++)
+  {
+    if (it->second) it->second->SetSQLiteSession(m_spSQLiteSession);
+  }
+
   return true;
 }
 
@@ -388,14 +405,14 @@ bool CSgitContext::InitSQLConnect()
 
   try
   {
-    std::string ssDbPath = m_ssDataPath + "fs.db", ssCreateNewDBByDayProp = "trade.CreateNewDBByDay";
+    std::string ssDbPath = Poco::format("%sfs%s.db", m_ssDataPath, m_ssTradingDay);
+    std::string ssCreateNewDBEveryTradingDayProp = "trade.CreateNewDBEveryTradingDay";
 
-    if (m_apSgitConf->hasProperty(ssCreateNewDBByDayProp) && m_apSgitConf->getBool("trade.CreateNewDBByDay"))
+    //默认按交易日创建sqlite数据库文件，除非显式设为0，才只生成一个fs.db文件
+    if (m_apSgitConf->hasProperty(ssCreateNewDBEveryTradingDayProp) && !m_apSgitConf->getBool(ssCreateNewDBEveryTradingDayProp))
     {
-      ssDbPath = Poco::format("%sfs%s.db", m_ssDataPath, CToolkit::GetNowDay());
+      ssDbPath = m_ssDataPath + "fs.db";
     }
-    
-
     m_spSQLiteSession = new Session(SQLite::Connector::KEY, ssDbPath);
 
     if(!m_spSQLiteSession->isConnected())
@@ -403,6 +420,8 @@ bool CSgitContext::InitSQLConnect()
       LOG(ERROR_LOG_LEVEL, "Failed to connect to sqlite:%s", ssDbPath.c_str());
       return false;
     }
+
+    LOG(INFO_LOG_LEVEL, "SQLite DbPath:%s", ssDbPath);
 
     *m_spSQLiteSession << 
       "CREATE TABLE IF NOT EXISTS [Order] ( \
@@ -422,6 +441,7 @@ bool CSgitContext::InitSQLConnect()
       leavesQty     INTEGER, \
       cumQty        INTEGER, \
       cancelClOrdID TEXT, \
+      tradingDay    TEXT, \
       time          TEXT, \
       PRIMARY KEY ( \
       userID, \

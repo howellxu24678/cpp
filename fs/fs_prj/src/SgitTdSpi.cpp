@@ -144,8 +144,8 @@ bool CSgitTdSpi::ReqOrderAction(const FIX42::OrderCancelRequest& oOrderCancel, s
 void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
 	if (!pInputOrder || !pRspInfo) return;
-	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d, ErrorMsg:%s", 
-		pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d, ErrorMsg:%s", 
+		pInputOrder->UserID, pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
   
   Order oOrder;
 	if(!GetOrderByOrderRef(pInputOrder->OrderRef, oOrder)) return;
@@ -169,8 +169,8 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
 void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAction, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
 	if (!pInputOrderAction || !pRspInfo) return;
-	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
-    pInputOrderAction->OrderRef, pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange, 
+	LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
+    pInputOrderAction->UserID, pInputOrderAction->OrderRef, pInputOrderAction->OrderSysID, pInputOrderAction->VolumeChange, 
 		pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
   Order oOrder;
@@ -190,8 +190,8 @@ void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAc
 void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 {
 	if (!pOrder) return;
-  LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
-     pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
+  LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
+     pOrder->UserID, pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
 	Order oOrder;
   if(!GetOrderByOrderRef(pOrder->OrderRef, oOrder)) return;
@@ -220,8 +220,8 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
 void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 {
 	if (!pTrade) return;
-	LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
-    pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
+	LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,TradeID:%s,Price:%f,Volume:%d", 
+    pTrade->UserID, pTrade->OrderRef, pTrade->OrderSysID, pTrade->TradeID, pTrade->Price, pTrade->Volume);
 
   Trade oTrade(*pTrade, m_ssUserID);
   if(!SaveTrade(oTrade)) return;
@@ -232,8 +232,8 @@ void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
 void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (!pInputOrder || !pRspInfo) return;
-  LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d,ErrorMsg:%s", 
-    pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+  LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d,ErrorMsg:%s", 
+    pInputOrder->UserID, pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
   SendExecutionReport(pInputOrder->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
@@ -241,8 +241,8 @@ void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
 {
 	if (!pOrderAction || !pRspInfo) return;
-  LOG(INFO_LOG_LEVEL, "OrderActionRef:%d,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
-    pOrderAction->OrderActionRef, pOrderAction->OrderRef, pOrderAction->OrderSysID, pOrderAction->ActionFlag, 
+  LOG(INFO_LOG_LEVEL, "UserID:%s,OrderActionRef:%d,OrderRef:%s,OrderSysID:%s,ActionFlag:%c,VolumeChange:%d,ErrorID:%d,ErrorMsg:%s", 
+    pOrderAction->UserID, pOrderAction->OrderActionRef, pOrderAction->OrderRef, pOrderAction->OrderSysID, pOrderAction->ActionFlag, 
     pOrderAction->VolumeChange, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
 	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
@@ -763,8 +763,8 @@ bool CSgitTdSpi::ReqQryOrder(const FIX42::OrderStatusRequest& oOrderStatusReques
 void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
 	if (!pOrder || !pRspInfo) return;
-  LOG(INFO_LOG_LEVEL, "OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
-    pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
+  LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,OrderStatus:%c,VolumeTraded:%d,VolumeLeave:%d",
+    pOrder->UserID, pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
   Order oOrder;
   if(!GetOrderByOrderRef(pOrder->OrderRef, oOrder)) return;
@@ -1379,8 +1379,17 @@ bool CSgitTdSpi::SaveOrder(Order &oOrder, std::string &ssErrMsg)
 {
   try
   {
+    oOrder.m_ssTradingDay = m_stuTdParam.m_pTdReqApi->GetTradingDay();
+    
+    //if(!m_stuTdParam.m_spSQLiteSession)
+    //{
+    //  ssErrMsg = "SQLiteSession is not initialized";
+    //  LOG(WARN_LOG_LEVEL, ssErrMsg.c_str());
+    //  return false;
+    //}
+
     *m_stuTdParam.m_spSQLiteSession << 
-      "INSERT INTO [Order] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", use(oOrder), now;
+      "INSERT INTO [Order] VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", use(oOrder), now;
   }
 
   catch (Poco::Exception &e)
@@ -1524,6 +1533,16 @@ double CSgitTdSpi::AvgPx(const std::vector<Trade> &vTrade) const
   if (iTotalVolume == 0) return 0.0;
 
   return dTurnover / iTotalVolume;
+}
+
+std::string CSgitTdSpi::GetTradingDay()
+{
+  return m_stuTdParam.m_pTdReqApi->GetTradingDay();
+}
+
+void CSgitTdSpi::SetSQLiteSession(SharedPtr<Session> spSQLiteSession)
+{
+  m_stuTdParam.m_spSQLiteSession = spSQLiteSession;
 }
 
 CSgitTdSpiHubTran::CSgitTdSpiHubTran(const STUTdParam &stuTdParam)

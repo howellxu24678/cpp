@@ -85,6 +85,8 @@ private:
   std::string                                         m_ssDataPath;
   std::string                                         m_ssTdServerAddr;
 
+  std::string                                         m_ssTradingDay;
+
   SharedPtr<CSgitMdSpi>                               m_spMdSpi;
 
   //fix用户(SessionID+onBehalfOfCompID)->所用代码类型等信息 --用于交易行情推送

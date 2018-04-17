@@ -121,6 +121,10 @@ public:
   virtual bool ReqUserLogin(const std::string &ssUserID, const std::string &ssPassword, std::string &ssErrMsg);
 
   virtual void ReqUserLogout(){}
+
+  virtual std::string GetTradingDay();
+
+  void SetSQLiteSession(SharedPtr<Session>  spSQLiteSession);
 protected:
   bool LoadConfig();
 

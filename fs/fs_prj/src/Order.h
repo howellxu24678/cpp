@@ -25,6 +25,7 @@ public:
     , m_iLeavesQty(0)
     , m_iCumQty(0)
     , m_ssCancelClOrdID("")
+    , m_ssTradingDay("")
     , m_ssOrderTime("")
   {}
 
@@ -65,6 +66,7 @@ public:
   int						            m_iLeavesQty;//151 剩余数量
   int						            m_iCumQty;//14 累计成交数量
   std::string               m_ssCancelClOrdID;//要撤掉的原始委托请求编号 撤单回报时为11
+  std::string               m_ssTradingDay;//交易日
   std::string               m_ssOrderTime;
   //double AvgPx() const;
   //void Update(const CThostFtdcInputOrderField& oInputOrder);
@@ -126,7 +128,7 @@ namespace Poco {
     public:
       static std::size_t size()
       {
-        return 17;
+        return 18;
       }
 
       static void bind(std::size_t pos, const Order& obj, AbstractBinder::Ptr pBinder, AbstractBinder::Direction dir)
@@ -149,6 +151,7 @@ namespace Poco {
         pBinder->bind(pos++, obj.m_iLeavesQty, dir);
         pBinder->bind(pos++, obj.m_iCumQty, dir);
         pBinder->bind(pos++, obj.m_ssCancelClOrdID, dir);
+        pBinder->bind(pos++, obj.m_ssTradingDay, dir);
         pBinder->bind(pos++, obj.m_ssOrderTime, dir);
       }
 
@@ -177,6 +180,7 @@ namespace Poco {
         if(!pExt->extract(pos++, obj.m_iLeavesQty)) obj.m_iLeavesQty = defVal.m_iLeavesQty;
         if(!pExt->extract(pos++, obj.m_iCumQty)) obj.m_iCumQty = defVal.m_iCumQty;
         if(!pExt->extract(pos++, obj.m_ssCancelClOrdID)) obj.m_ssCancelClOrdID = defVal.m_ssCancelClOrdID;
+        if(!pExt->extract(pos++, obj.m_ssTradingDay)) obj.m_ssTradingDay = defVal.m_ssTradingDay;
         if(!pExt->extract(pos++, obj.m_ssOrderTime)) obj.m_ssOrderTime = defVal.m_ssOrderTime;
       }
 
