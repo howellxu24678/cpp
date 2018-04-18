@@ -590,7 +590,7 @@ bool CSgitTdSpi::Cvt(const FIX42::NewOrderSingle& oNewOrderSingle, CThostFtdcInp
   //平今平昨处理
   stuInputOrder.CombOffsetFlag[0] = m_stuTdParam.m_pSgitCtx->CvtDict(openClose.getField(), openClose.getValue(), Convert::Sgit);
   //有自定义平今平昨tag，更改原先的赋值
-  if (spUserInfo->m_iCloseTodayYesterdayTag > 0)
+  if (openClose == FIX::OpenClose_CLOSE && spUserInfo->m_iCloseTodayYesterdayTag > 0)
   {
     FIX::FieldBase fCloseTodayYesterday = FIX::FieldBase(spUserInfo->m_iCloseTodayYesterdayTag, "");
     if(oNewOrderSingle.getFieldIfSet(fCloseTodayYesterday))
