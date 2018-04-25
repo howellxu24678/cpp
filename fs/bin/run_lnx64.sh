@@ -1,2 +1,2 @@
-export LD_LIBRARY_PATH=./:./Lnx64
-Lnx64/fs
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./Lnx64
+./Lnx64/fs

@@ -1,1 +1,1 @@
-Win32\Release\fs.exe
+Win32\fs.exe
