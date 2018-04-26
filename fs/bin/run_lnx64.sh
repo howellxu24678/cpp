@@ -1,2 +1,2 @@
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./Lnx64
-./Lnx64/fs
+nohup ./Lnx64/fs >/dev/null 2>&1 &

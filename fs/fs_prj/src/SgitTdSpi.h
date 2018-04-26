@@ -151,13 +151,13 @@ protected:
 
 	bool SendExecutionReport(const Order& stuOrder, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
-	bool SendExecutionReport(const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
+	bool SendExecutionReport(const std::string &ssUserID, const std::string& ssOrderRef, int iErrCode = 0, const std::string& ssErrMsg = "", bool bIsPendingCancel = false, bool bIsQueryRsp = false);
 
   bool SendExecutionReport(const FIX42::OrderStatusRequest& oOrderStatusRequest, int iErrCode, const std::string& ssErrMsg);
 
   bool SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingle, int iErrCode = 0, const std::string& ssErrMsg = "");
 
-  bool SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
+  bool SendOrderCancelReject(const std::string &ssUserID, const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg);
 
   bool SendOrderCancelReject(const Order& stuOrder, int iErrCode, const std::string& ssErrMsg);
   
@@ -171,8 +171,9 @@ protected:
   
   bool SaveOrder(Order &oOrder, std::string &ssErrMsg);
 
-	bool GetOrderByOrderRef(const std::string &ssOrderRef, Order &oOrder);
+	bool GetOrderByOrderRef(const std::string &ssUserID, const std::string &ssOrderRef, Order &oOrder);
 
+	//根据请求的ClOrdID获取对应的委托信息，默认取当前Spi中的UserID的值，
   bool GetOrderByClOrdID(const std::string &ssClOrdID, Order &oOrder);
 
   bool GetCancelOrderByClOrdID(const std::string &ssClOrdID, Order &oOrder);

@@ -148,7 +148,7 @@ void CSgitTdSpi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
 		pInputOrder->UserID, pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
   
   Order oOrder;
-	if(!GetOrderByOrderRef(pInputOrder->OrderRef, oOrder)) return;
+	if(!GetOrderByOrderRef(pInputOrder->UserID, pInputOrder->OrderRef, oOrder)) return;
 
   oOrder.m_ssOrderSysID = pInputOrder->OrderSysID;
   
@@ -174,7 +174,7 @@ void CSgitTdSpi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAc
 		pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
   Order oOrder;
-  if(!GetOrderByOrderRef(pInputOrderAction->OrderRef, oOrder)) return;
+  if(!GetOrderByOrderRef(pInputOrderAction->UserID, pInputOrderAction->OrderRef, oOrder)) return;
 
 	if(pRspInfo->ErrorID != 0)
 	{
@@ -194,7 +194,7 @@ void CSgitTdSpi::OnRtnOrder(CThostFtdcOrderField *pOrder)
      pOrder->UserID, pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
 	Order oOrder;
-  if(!GetOrderByOrderRef(pOrder->OrderRef, oOrder)) return;
+  if(!GetOrderByOrderRef(pOrder->UserID, pOrder->OrderRef, oOrder)) return;
 
   oOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, pOrder->OrderStatus, Convert::Fix);
   oOrder.m_iCumQty = pOrder->VolumeTraded;
@@ -226,7 +226,7 @@ void CSgitTdSpi::OnRtnTrade(CThostFtdcTradeField *pTrade)
   Trade oTrade(*pTrade, m_ssUserID);
   if(!SaveTrade(oTrade)) return;
 
-  SendExecutionReport(pTrade->OrderRef);
+  SendExecutionReport(pTrade->UserID, pTrade->OrderRef);
 }
 
 void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThostFtdcRspInfoField *pRspInfo)
@@ -235,7 +235,7 @@ void CSgitTdSpi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
   LOG(INFO_LOG_LEVEL, "UserID:%s,OrderRef:%s,OrderSysID:%s,ExchangeID:%s,ErrorID:%d,ErrorMsg:%s", 
     pInputOrder->UserID, pInputOrder->OrderRef, pInputOrder->OrderSysID, pInputOrder->ExchangeID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-  SendExecutionReport(pInputOrder->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+  SendExecutionReport(pInputOrder->UserID, pInputOrder->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
 void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, CThostFtdcRspInfoField *pRspInfo)
@@ -245,7 +245,7 @@ void CSgitTdSpi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
     pOrderAction->UserID, pOrderAction->OrderActionRef, pOrderAction->OrderRef, pOrderAction->OrderSysID, pOrderAction->ActionFlag, 
     pOrderAction->VolumeChange, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
-	SendOrderCancelReject(pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	SendOrderCancelReject(pOrderAction->UserID, pOrderAction->OrderRef, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 }
 
 bool CSgitTdSpi::SendExecutionReport(const Order& oOrder, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
@@ -328,10 +328,10 @@ bool CSgitTdSpi::SendExecutionReport(const Order& oOrder, int iErrCode /*= 0*/, 
   return SendByRealAcct(oOrder.m_ssRealAccount, executionReport);
 }
 
-bool CSgitTdSpi::SendExecutionReport(const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
+bool CSgitTdSpi::SendExecutionReport(const std::string &ssUserID, const std::string& ssOrderRef, int iErrCode /*= 0*/, const std::string& ssErrMsg /*= ""*/, bool bIsPendingCancel /*= false*/, bool bIsQueryRsp /*= false*/)
 {
   Order oOrder;
-  if (!GetOrderByOrderRef(ssOrderRef, oOrder)) return false;
+  if (!GetOrderByOrderRef(ssUserID, ssOrderRef, oOrder)) return false;
 
   return SendExecutionReport(oOrder, iErrCode, ssErrMsg, bIsPendingCancel, bIsQueryRsp);
 }
@@ -421,10 +421,10 @@ bool CSgitTdSpi::SendExecutionReport(const FIX42::NewOrderSingle& oNewOrderSingl
   return CToolkit::Send(oNewOrderSingle, executionReport);
 }
 
-bool CSgitTdSpi::SendOrderCancelReject(const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
+bool CSgitTdSpi::SendOrderCancelReject(const std::string &ssUserID, const std::string& ssOrderRef, int iErrCode, const std::string& ssErrMsg)
 {
   Order oOrder;
-  if(!GetOrderByOrderRef(ssOrderRef, oOrder)) return false;
+  if(!GetOrderByOrderRef(ssUserID, ssOrderRef, oOrder)) return false;
 
   return SendOrderCancelReject(oOrder, iErrCode, ssErrMsg);
 }
@@ -767,7 +767,7 @@ void CSgitTdSpi::OnRspQryOrder(CThostFtdcOrderField *pOrder, CThostFtdcRspInfoFi
     pOrder->UserID, pOrder->OrderRef, pOrder->OrderSysID, pOrder->OrderStatus, pOrder->VolumeTraded, pOrder->VolumeTotal);
 
   Order oOrder;
-  if(!GetOrderByOrderRef(pOrder->OrderRef, oOrder)) return;
+  if(!GetOrderByOrderRef(pOrder->UserID, pOrder->OrderRef, oOrder)) return;
 
   oOrder.m_cOrderStatus = m_stuTdParam.m_pSgitCtx->CvtDict(FIX::FIELD::OrdStatus, pOrder->OrderStatus, Convert::Fix);
   oOrder.m_iCumQty = pOrder->VolumeTraded;
@@ -1439,12 +1439,12 @@ bool CSgitTdSpi::SaveTrade(Trade &oTrade)
   return true;
 }
 
-bool CSgitTdSpi::GetOrderByOrderRef(const std::string &ssOrderRef, Order &oOrder)
+bool CSgitTdSpi::GetOrderByOrderRef(const std::string &ssUserID, const std::string &ssOrderRef, Order &oOrder)
 {
   try
   {
     *m_stuTdParam.m_spSQLiteSession << "SELECT * FROM [Order] WHERE userID = ? and orderRef = ? ", 
-      use(m_ssUserID), useRef(ssOrderRef), into(oOrder), limit(1, true), now;
+      useRef(ssUserID), useRef(ssOrderRef), into(oOrder), limit(1, true), now;
   }
   catch (Poco::Exception &e)
   {
