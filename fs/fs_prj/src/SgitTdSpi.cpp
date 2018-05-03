@@ -1242,10 +1242,14 @@ void CSgitTdSpi::GenAndSend(const FIX::MsgType &oMsgType, int iDataSize, int iRe
       memset(&stuTradingCode, 0, sizeof(CThostFtdcTradingCodeField));
       memcpy(&stuTradingCode, &m_vBuffer[iDataSize * i], iDataSize);
 
+	  LOG(DEBUG_LOG_LEVEL, "InvestorID:%s, ClientID:%s, ExchangeID:%s", stuTradingCode.InvestorID, stuTradingCode.ClientID, stuTradingCode.ExchangeID);
+
       FIX::AccountGroup accountGroup;
       accountGroup.setField(FIX::Account(stuTradingCode.InvestorID));
       accountGroup.setField(FIX::ClientID(stuTradingCode.ClientID));
-      accountGroup.setField(FIX::SecurityExchange(stuTradingCode.ExchangeID));
+      //accountGroup.setField(FIX::SecurityExchange(stuTradingCode.ExchangeID));
+	  accountGroup.setField(FIX::SecurityExchange(enSymbolType == Convert::Original ||  enSymbolType == Convert::Unknow ? 
+		  stuTradingCode.ExchangeID : m_stuTdParam.m_pSgitCtx->CvtExchange(stuTradingCode.ExchangeID, enSymbolType)));
       oMsg.addGroup(accountGroup);
     }
   }
