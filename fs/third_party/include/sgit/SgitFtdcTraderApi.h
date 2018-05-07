@@ -365,6 +365,19 @@ public:
 	/// 当收到合约价位查询应答时回调该函数
 	virtual void onRspMBLQuot(CThostMBLQuotData *pMBLQuotData, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
 
+
+	/// 递延费方向和费率询回报
+	virtual void OnRspQryDeferFeeRate(CThostDeferFeeRateField* pDeferFeeRate,CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
+	/// 递延费方向和费率更知
+	virtual void OnRtnDeferFeeRate(CThostDeferFeeRateField* pDeferFeeRate){};
+
+	/// 递延交割/中立仓成交查询通知
+	virtual void OnRspQryDeferMidTrade(CThostDeferMidAppTradeField* pDeferMidAppMatch,CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast){};
+	/// 递延交割/中立仓成交通知
+	virtual void OnRtnDeferMidTrade(CThostDeferMidAppTradeField* pDeferMidAppMatch){};
+
+	///持仓轧差通知
+	virtual void OnRtnPositionNetting(CThostFtdcPositionNettingField* pPositionNetting){};
 };
 
 class FS_TRADER_API_EXPORT CThostFtdcTraderApi
@@ -635,8 +648,20 @@ public:
 	/// 发送合约价位查询请求
 	virtual int ReqMBLQuot(CThostMBLQuotReq *pMBLQuotReq, int nRequest) = 0;
 
-	virtual int InitLog(TThostFtdcBoolType bLog=1) = 0;
-	virtual int IsReviveNtyCapital(TThostFtdcBoolType bRecive=1) = 0;
+	/// 是否打印api日志
+	virtual int InitLog(TThostFtdcBoolType bLog=TRUE) = 0;
+
+	/// 是否接受资金推送
+	virtual int IsReciveNtyCapital(TThostFtdcBoolType bRecive=TRUE) = 0;
+
+	//查询递延费方向和费率
+	virtual int ReqQryDeferFeeRate(CThostDeferFeeRateField * pReqQryDeferFeeRate,int nRequsetID) = 0;
+
+	//查询递延交割/中立仓成交
+	virtual int ReqQryDeferMidAppTrade(CThostFtdcQryTradeField *pReqQryDeferMidTrade,int nRequsetID) = 0;
+	 
+	//是否启用极速模式,次函数要再init之前调用,若不调用该函数,为非极速模式.
+	virtual int SetFastModel(bool bFastModel = false) = 0;
 protected:
 	~CThostFtdcTraderApi(){};
 };

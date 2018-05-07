@@ -34,7 +34,7 @@ protected:
   bool GetMarketData(const std::string ssSymbol, CThostFtdcDepthMarketDataField &stuMarketData);
 
   bool CheckValid(
-    const std::set<std::string> &symbolSet,
+    const std::set<std::string> &symbolSetIn, std::set<std::string> &symbolSetOrg,
     const std::string &ssMDReqID, char chScrbReqType, const STUScrbParm &stuScrbParm, char &chRejReason, std::string &ssErrMsg);
 
   //·¢ËÍ¿ìÕÕ

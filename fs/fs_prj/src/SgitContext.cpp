@@ -83,7 +83,7 @@ SharedPtr<CSgitTdSpi> CSgitContext::CreateTdSpi(STUTdParam &stuTdParam, EnTdSpiR
 
   if(!spTdSpi->Init()) return NULL;
 
-  pTdReqApi->IsReviveNtyCapital(false);
+  pTdReqApi->IsReciveNtyCapital(false);
   pTdReqApi->RegisterSpi(spTdSpi);
   pTdReqApi->SubscribePublicTopic(THOST_TERT_RESUME);
   pTdReqApi->SubscribePrivateTopic(THOST_TERT_RESUME);

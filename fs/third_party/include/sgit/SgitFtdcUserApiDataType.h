@@ -19,6 +19,18 @@ enum THOST_TE_RESUME_TYPE
 	THOST_TERT_QUICK
 };
 
+#ifndef	NULL
+#define NULL 0
+#endif
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
 /////////////////////////////////////////////////////////////////////////
 ///TFtdcTraderIDType是一个交易所交易员代码类型
 /////////////////////////////////////////////////////////////////////////
@@ -4221,7 +4233,10 @@ typedef char TThostFtdcClientTypeType;
 #define THOST_FTDC_EIDT_PAT 'P'
 ///
 #define THOST_FTDC_EIDT_LTS 'L'
-
+///
+#define THOST_FTDC_EIDT_CME 'A'
+///
+#define THOST_FTDC_EIDT_LME 'B'
 typedef char TThostFtdcExchangeIDTypeType;
 
 /////////////////////////////////////////////////////////////////////////
@@ -6310,6 +6325,14 @@ typedef char TThostFtdcCombDirectionType;
 /////////////////////////////////////////////////////////////////////////
 typedef char TThostFtdcFBTBankIDType[2];
 
+//////////////////////////////////////////////////////////////////////////
+/// TFtdcPayDirectionType是一个递延费支付方向类型
+//////////////////////////////////////////////////////////////////////////
+#define	THOST_FTDC_PDT_LTS                        '1'           //多付空
+#define	THOST_FTDC_PDT_STL                        '2'           //空付多
+#define	THOST_FTDC_PDT_NONE                       '3'           //方向未定
+
+typedef char TThostFtdcPayDirectionType;
 ///
 };
 #endif

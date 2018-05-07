@@ -7,8 +7,8 @@
 ///20060106	
 /////////////////////////////////////////////////////////////////////////
 
-#if !defined(THOST_FTDCMDAPI_H)
-#define THOST_FTDCMDAPI_H
+#if !defined(SGIT_FTDCMDAPI_H)
+#define SGIT_FTDCMDAPI_H
 
 #if _MSC_VER > 1000
 #pragma once
@@ -116,8 +116,8 @@ public:
 	
 	///注册名字服务器网络地址
 	///@param pszNsAddress：名字服务器网络地址。
-	///@remark 网络地址的格式为：“protocol://ipaddress:port”，如：”tcp://127.0.0.1:12001”。 
-	///@remark “tcp”代表传输协议，“127.0.0.1”代表服务器地址。”12001”代表服务器端口号。
+	///@remark 网络地址的格式为：“MlCast://hostIP$multiaddress:port”，如：”MlCast://127.0.0.1$224.0.1.12:12001”。 
+	///@remark 127.0.0.1”代表本机地址。”224.0.1.12:12001”代表多播地址和端口。
 	///@remark RegisterNameServer优先于RegisterFront
 	virtual void RegisterNameServer(char *pszNsAddress) = 0;
 	
@@ -159,6 +159,13 @@ public:
 
 	///登出请求
 	virtual int ReqUserLogout(CThostFtdcUserLogoutField *pUserLogout, int nRequestID) = 0;
+
+	/// 是否打印api日志,在init之前调用
+	virtual int InitLog(TThostFtdcBoolType bLog=TRUE) = 0;
+
+	//是否启用极速模式,次函数要再init之前调用,若不调用该函数,为非极速模式.
+	virtual int SetFastModel(bool bFastModel = false) = 0;
+
 protected:
 	~CThostFtdcMdApi(){};
 };

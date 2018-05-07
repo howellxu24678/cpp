@@ -64,17 +64,20 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
 
   //代码
   int iSymCount = noRelatedSym.getValue();
-  std::set<std::string> symbolSet;
+  //请求的原始代码
+  std::set<std::string> symbolSetIn;
   for (int i = 0; i < iSymCount; i++)
   {
     oMarketDataRequest.getGroup(i + 1, symGroup);
     symGroup.get(symbol);
     LOG(DEBUG_LOG_LEVEL, "symbol:%s", symbol.getValue().c_str());
-    symbolSet.insert(symbol.getValue());
+    symbolSetIn.insert(symbol.getValue());
   }
 
   char chRejReason;
-  if(!CheckValid(symbolSet, mdReqID.getValue(), subscriptionRequestType.getValue(), stuScrbParm, chRejReason, ssErrMsg))
+  //转化成的交易所原始代码
+  std::set<std::string> symbolSetOrg;
+  if(!CheckValid(symbolSetIn, symbolSetOrg, mdReqID.getValue(), subscriptionRequestType.getValue(), stuScrbParm, chRejReason, ssErrMsg))
   {
     FIX42::MarketDataRequestReject marketDataRequestReject = FIX42::MarketDataRequestReject(FIX::MDReqID(mdReqID));
     marketDataRequestReject.set(FIX::MDReqRejReason(chRejReason));
@@ -86,15 +89,15 @@ bool CSgitMdSpi::MarketDataRequest(const FIX42::MarketDataRequest& oMarketDataRe
   switch(subscriptionRequestType.getValue())
   {
   case FIX::SubscriptionRequestType_SNAPSHOT:
-    return SendMarketDataSet(oMarketDataRequest, symbolSet, stuScrbParm, ssErrMsg);
+    return SendMarketDataSet(oMarketDataRequest, symbolSetOrg, stuScrbParm, ssErrMsg);
     break;
   case FIX::SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES:
-    if(!SendMarketDataSet(oMarketDataRequest, symbolSet, stuScrbParm, ssErrMsg)) return false;
+    if(!SendMarketDataSet(oMarketDataRequest, symbolSetOrg, stuScrbParm, ssErrMsg)) return false;
 
-    AddSub(symbolSet, stuScrbParm);
+    AddSub(symbolSetOrg, stuScrbParm);
     break;
   case FIX::SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST:
-    DelSub(symbolSet, stuScrbParm);
+    DelSub(symbolSetOrg, stuScrbParm);
     break;
   default:
     Poco::format(ssErrMsg, "unsupported subscriptionRequestType:%c", subscriptionRequestType.getValue());
@@ -211,19 +214,17 @@ void CSgitMdSpi::AddPrice(FIX42::MarketDataSnapshotFullRefresh &oMdSnapShot, cha
 void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm)
 {
   ScopedWriteRWLock scopeLock(m_rwLockCode2ScrbParmSet);
-  std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
-    if (m_mapCode2ScrbParmSet.count(ssOriginalSymbol) < 1)
+    if (m_mapCode2ScrbParmSet.count(*citSymbol) < 1)
     {
       std::set<STUScrbParm> stuScrbParmSet;
       stuScrbParmSet.insert(stuScrbParm);
-      m_mapCode2ScrbParmSet[ssOriginalSymbol] = stuScrbParmSet;
+      m_mapCode2ScrbParmSet[*citSymbol] = stuScrbParmSet;
     }
     else
     {
-      m_mapCode2ScrbParmSet[ssOriginalSymbol].insert(stuScrbParm);
+      m_mapCode2ScrbParmSet[*citSymbol].insert(stuScrbParm);
     }
   }
 }
@@ -231,24 +232,22 @@ void CSgitMdSpi::AddSub(const std::set<std::string> &symbolSet, const STUScrbPar
 void CSgitMdSpi::DelSub(const std::set<std::string> &symbolSet, const STUScrbParm &stuScrbParm)
 {
   ScopedWriteRWLock scopeLock(m_rwLockCode2ScrbParmSet);
-  std::string ssOriginalSymbol = "";
   for (std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
   {
-    ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
-    if (m_mapCode2ScrbParmSet.count(ssOriginalSymbol) < 1) continue;
+    if (m_mapCode2ScrbParmSet.count(*citSymbol) < 1) continue;
 
-    std::set<STUScrbParm>::iterator itStuScrbParm = m_mapCode2ScrbParmSet[ssOriginalSymbol].find(stuScrbParm);
-    if (itStuScrbParm == m_mapCode2ScrbParmSet[ssOriginalSymbol].end()) continue;
+    std::set<STUScrbParm>::iterator itStuScrbParm = m_mapCode2ScrbParmSet[*citSymbol].find(stuScrbParm);
+    if (itStuScrbParm == m_mapCode2ScrbParmSet[*citSymbol].end()) continue;
 
-    m_mapCode2ScrbParmSet[ssOriginalSymbol].erase(itStuScrbParm);
+    m_mapCode2ScrbParmSet[*citSymbol].erase(itStuScrbParm);
 
-    if (m_mapCode2ScrbParmSet[ssOriginalSymbol].size() < 1)
-      m_mapCode2ScrbParmSet.erase(ssOriginalSymbol);
+    if (m_mapCode2ScrbParmSet[*citSymbol].size() < 1)
+      m_mapCode2ScrbParmSet.erase(*citSymbol);
   }
 }
 
 bool CSgitMdSpi::CheckValid(
-  const std::set<std::string> &symbolSet, 
+  const std::set<std::string> &symbolSetIn, std::set<std::string> &symbolSetOrg, 
   const std::string &ssMDReqID, char chScrbReqType, const STUScrbParm &stuScrbParm, char &chRejReason, std::string &ssErrMsg)
 {
   //请求ID重复的判断
@@ -302,7 +301,7 @@ bool CSgitMdSpi::CheckValid(
 
   //标的是否存在的判断
   std::string ssOriginalSymbol = "";
-  for(std::set<std::string>::const_iterator citSymbol = symbolSet.begin(); citSymbol != symbolSet.end(); citSymbol++)
+  for(std::set<std::string>::const_iterator citSymbol = symbolSetIn.begin(); citSymbol != symbolSetIn.end(); citSymbol++)
   {
     ssOriginalSymbol = m_pSgitCtx->CvtSymbol(*citSymbol, Convert::Original);
     //取消订阅判断
@@ -330,6 +329,8 @@ bool CSgitMdSpi::CheckValid(
       Poco::format(ssErrMsg, "Can not find symbol:%s in current market data cache", *citSymbol);
       return false;
     }
+
+	symbolSetOrg.insert(ssOriginalSymbol);
   }
 
   return true;

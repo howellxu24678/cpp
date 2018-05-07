@@ -1,4 +1,4 @@
-  /////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 ///@system 
 ///@company 
 ///@file SgitFtdcUserApiStruct.h
@@ -747,6 +747,8 @@ struct CThostFtdcInvestorPositionField
 	TThostFtdcMoneyType	StrikeFrozenAmount;
 	///放弃执行冻结
 	TThostFtdcVolumeType	AbandonFrozen;
+	///上日持仓
+	TThostFtdcVolumeType	PrePosition;
 };
 
 ///合约保证金率
@@ -1268,6 +1270,11 @@ struct CThostFtdcInputOrderField
 	///onRspOrderInsert中使用,ReqOrderInsert中不用填写.
 	TThostFtdcOrderSysIDType OrderSysID;
 	TThostFtdcExchangeIDType ExchangeID;
+	///上期所fak/fok回报中有效
+	///剩余数量,即撤销数量 成交数量=VolumeTotalOriginal-VolumeTotal
+	TThostFtdcVolumeType	VolumeTotal;
+	///客户代码,
+	TThostFtdcClientIDType	ClientID;
 };
 
 ///报单
@@ -1529,7 +1536,7 @@ struct CThostFtdcInputOrderActionField
 	///合约代码
 	TThostFtdcInstrumentIDType	InstrumentID;
 	///交易编码
-	//TThostFtdcClientIDType ClientID;
+	TThostFtdcClientIDType ClientID;
 };
 
 ///报单操作
@@ -7830,6 +7837,72 @@ struct CThostDeferDeliveryQuot
 	TThostFtdcVolumeType          MidBidVolume;           //中立仓申买量
 };
 
+struct CThostDeferFeeRateField
+{
+	TThostFtdcExchangeIDType ExchangeID;//交易所
+	TThostFtdcInstrumentIDType InstrumentID;//合约代码
+	TThostFtdcDateType EffectDate;//交割日期
+	TThostFtdcPayDirectionType PayDirection;//递延费支付方向
+	TThostFtdcRatioType FeeRate;//递延费率(交易所数据到小数点后六位,红马甲显示到小数点后五位)
+};
+
+struct CThostDeferMidAppTradeField
+{
+	///经纪公司代码
+	TThostFtdcBrokerIDType	BrokerID;
+	///客户代码
+	TThostFtdcClientIDType	ClientID;
+	///投资者代码
+	TThostFtdcInvestorIDType	InvestorID;
+	///合约代码
+	TThostFtdcInstrumentIDType	InstrumentID;
+	///报单引用
+	TThostFtdcOrderRefType	OrderRef;
+	///用户代码
+	TThostFtdcUserIDType	UserID;
+	///交易所代码
+	TThostFtdcExchangeIDType	ExchangeID;
+	///成交编号
+	TThostFtdcTradeIDType	TradeID;
+	///买卖方向
+	TThostFtdcDirectionType	Direction;
+	///报单编号
+	TThostFtdcOrderSysIDType	OrderSysID;
+	///价格
+	TThostFtdcPriceType	Price;
+	///数量
+	TThostFtdcVolumeType	Volume;
+	///成交日期
+	TThostFtdcDateType	TradeDate;
+	///成交时间
+	TThostFtdcTimeType	TradeTime;
+	///交易所交易员代码
+	TThostFtdcTraderIDType	TraderID;
+	///本地报单编号
+	TThostFtdcOrderLocalIDType	OrderLocalID;
+	///是否中立仓成交
+	TThostFtdcBoolType MiddleFlag;
+};
+
+struct CThostFtdcPositionNettingField
+{
+	///经纪公司代码
+	TThostFtdcBrokerIDType	BrokerID;
+	///合约代码
+	TThostFtdcInstrumentIDType	InstrumentID;
+	///投资者代码
+	TThostFtdcInvestorIDType	InvestorID;
+	///轧差方向
+	TThostFtdcPosiDirectionType Direction;
+	///投机套保标志
+	TThostFtdcHedgeFlagType	HedgeFlag;
+	///今日持仓
+	TThostFtdcVolumeType	PositionNetting;
+	///轧差计算价格
+	TThostFtdcPriceType		Price;
+	///保证金轧差
+	TThostFtdcPriceType		MarginNetting;
+};
 
 };
 
