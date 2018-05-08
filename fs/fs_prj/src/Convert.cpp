@@ -20,7 +20,7 @@ Convert::~Convert()
 
 bool Convert::Init()
 {
-  AutoPtr<XMLConfiguration> apXmlConf = new XMLConfiguration(m_ssCfgPath);
+	AutoPtr<XMLConfiguration> apXmlConf = new XMLConfiguration(m_ssCfgPath);
 
 	if (!InitMonthMap(apXmlConf))
 	{
@@ -51,22 +51,22 @@ bool Convert::Init()
 
 char Convert::CvtDict(const int iField, const char cFrom, const EnDictType enDstDictType)
 {
-  return CvtDict(iField, Poco::format("%c", cFrom), enDstDictType)[0];
+	return CvtDict(iField, Poco::format("%c", cFrom), enDstDictType)[0];
 }
 
 std::string Convert::CvtDict(const int iField, const std::string &ssFrom, const EnDictType enDstDictType)
 {
-  std::string ssKey = GetDictKey(Poco::format("%d", iField), ssFrom, enDstDictType);
-  std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
-  if (citFind != m_mapDict.end())
-  {
-    return citFind->second;
-  }
-  else
-  {
-    LOG(ERROR_LOG_LEVEL, "Can not find key:%s in dict", ssKey.c_str());
-    return "*";
-  }
+	std::string ssKey = GetDictKey(Poco::format("%d", iField), ssFrom, enDstDictType);
+	std::map<std::string, std::string>::const_iterator citFind = m_mapDict.find(ssKey);
+	if (citFind != m_mapDict.end())
+	{
+		return citFind->second;
+	}
+	else
+	{
+		LOG(ERROR_LOG_LEVEL, "Can not find key:%s in dict", ssKey.c_str());
+		return "*";
+	}
 }
 
 bool Convert::AddDict(const std::string &ssField, const std::string &ssFix, const std::string &ssSgit, EnDictType enDstDictType)
@@ -78,7 +78,7 @@ bool Convert::AddDict(const std::string &ssField, const std::string &ssFix, cons
 
 	std::pair<std::map<std::string, std::string>::iterator, bool> ret = 
 		m_mapDict.insert(std::pair<std::string, std::string>(ssKey, ssValue));
-	
+
 	if (!ret.second)
 	{
 		LOG(ERROR_LOG_LEVEL, "Failed to insert dict field:%s,in:%s,out:%s,way:%d, may be repeated", 
@@ -245,7 +245,7 @@ std::string Convert::CvtYear(const std::string &ssSrcSymbol, const STUSymbol &st
 std::string Convert::CvtMonth(const std::string &ssSrcSymbol, const STUSymbol &stuSrcSymbol, const STUSymbol &stuDstSymbol) const
 {
 	std::string ssSrcMonth = ssSrcSymbol.substr(stuSrcSymbol.m_iMonthPos, stuSrcSymbol.m_iMonthLen);
-	
+
 	//长度相同时用原始代码的月份替代目的代码的月份
 	if (stuSrcSymbol.m_iMonthLen == stuDstSymbol.m_iMonthLen) return ssSrcMonth;
 
@@ -335,9 +335,9 @@ bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)
 		{
 			ssItemKey = ssSymbolKey + "." + *itItem;
 
-      STUExchange stuExchange;
-      stuExchange.m_ssName = ssName;
-      stuExchange.m_enCvtType = (EnCvtType)apXmlConf->getUInt(ssItemKey + "[@type]");
+			STUExchange stuExchange;
+			stuExchange.m_ssName = ssName;
+			stuExchange.m_enCvtType = (EnCvtType)apXmlConf->getUInt(ssItemKey + "[@type]");
 			stuExchange.m_ssExchange = apXmlConf->getString(ssItemKey + "[@value]");
 
 			if(!AddExchange(GetExchangeKey(stuExchange.m_ssName, stuExchange.m_enCvtType), stuExchange)) return false;
@@ -348,22 +348,22 @@ bool Convert::InitExchange(AutoPtr<XMLConfiguration> apXmlConf)
 
 std::string Convert::CvtExchange(const std::string &ssExchange, const EnCvtType enDstType)
 {
-  for(std::map<std::string, STUExchange>::const_iterator cit = m_mapExchange.begin(); cit != m_mapExchange.end(); cit++)
-  {
-    if (cit->second.m_ssExchange == ssExchange)
-    {
-      const STUExchange &stuExchange = cit->second;
-      if (stuExchange.m_enCvtType == enDstType) return ssExchange;
-      
-      std::map<std::string, STUExchange>::const_iterator citFind = m_mapExchange.find(GetExchangeKey(stuExchange.m_ssName, enDstType));
-      if (citFind != m_mapExchange.end())
-      {
-        return citFind->second.m_ssExchange;
-      }
-    }
-  }
+	for(std::map<std::string, STUExchange>::const_iterator cit = m_mapExchange.begin(); cit != m_mapExchange.end(); cit++)
+	{
+		if (cit->second.m_ssExchange == ssExchange)
+		{
+			const STUExchange &stuExchange = cit->second;
+			if (stuExchange.m_enCvtType == enDstType) return ssExchange;
 
-  return ssExchange;
+			std::map<std::string, STUExchange>::const_iterator citFind = m_mapExchange.find(GetExchangeKey(stuExchange.m_ssName, enDstType));
+			if (citFind != m_mapExchange.end())
+			{
+				return citFind->second.m_ssExchange;
+			}
+		}
+	}
+
+	return ssExchange;
 }
 
 std::string Convert::GetExchangeKey(const std::string &ssName, EnCvtType enCvtType)

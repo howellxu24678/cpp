@@ -98,13 +98,13 @@ int main( int argc, char** argv )
 		std::string ssLogCfgPath = "";
 		std::string ssSgitCfgPath = "";
 		std::string ssFixCfgPath = "";
-    std::string ssDictCfgPath = "";
+		std::string ssDictCfgPath = "";
 
 		AutoPtr<IniFileConfiguration> apGlobalConf = new IniFileConfiguration(ssConfigPath);
 		if (!checkCfgPath(apGlobalConf, G_CONFIG_LOG, ssLogCfgPath)) return 0;
 		if (!checkCfgPath(apGlobalConf, G_CONFIG_SGIT, ssSgitCfgPath)) return 0;
 		if (!checkCfgPath(apGlobalConf, G_CONFIG_FIX, ssFixCfgPath)) return 0;
-    if (!checkCfgPath(apGlobalConf, G_CONFIG_DICT, ssDictCfgPath)) return 0;
+		if (!checkCfgPath(apGlobalConf, G_CONFIG_DICT, ssDictCfgPath)) return 0;
 
 		//初始化日志
 		initialize ();
@@ -122,7 +122,7 @@ int main( int argc, char** argv )
 		if(!apSigtCtx->Init())
 		{
 			LOG(FATAL_LOG_LEVEL, "Failed to Init CSgitApiManager");
-      return -1;
+			return -1;
 		}
 
 		//创建fix的相关服务（带上fs的api指针给app，app收到订单的请求解析对应的字段后通过飞鼠的api向fs系统发送请求）
@@ -152,8 +152,8 @@ int main( int argc, char** argv )
 	catch ( std::exception & e )
 	{
 		std::cout << e.what() << std::endl;
-    LOG(FATAL_LOG_LEVEL, e.what());
-    getchar();
+		LOG(FATAL_LOG_LEVEL, e.what());
+		getchar();
 		return -1;
 	}
 }
