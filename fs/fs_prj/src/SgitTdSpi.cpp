@@ -292,6 +292,7 @@ bool CSgitTdSpi::SendExecutionReport(const Order& oOrder, int iErrCode /*= 0*/, 
 	{
 		executionReport.set(FIX::ExecType(FIX::ExecType_REJECTED));
 		executionReport.set(FIX::OrdStatus(FIX::OrdStatus_REJECTED));
+		executionReport.set(FIX::LeavesQty(0));
 
 		executionReport.set(FIX::OrdRejReason(FIX::OrdRejReason_BROKER_OPTION));
 		executionReport.set(FIX::Text(ssErrMsg));
